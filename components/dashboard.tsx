@@ -147,24 +147,28 @@ export function Dashboard() {
       />
 
       {/* Stats Bar */}
-      <div className="px-4 py-2.5 bg-slate-900/60 border-b border-white/5 flex items-center gap-3 overflow-x-auto shrink-0">
+      <div className="px-4 py-2.5 bg-[#05070f]/80 border-b border-white/[0.05] flex items-center gap-2.5 overflow-x-auto shrink-0 backdrop-blur-sm">
         <StatCard icon={<TrendingDown className="w-3.5 h-3.5 text-red-400" />} label="Revenue Leak"
           value={`$${stats.totalRevenueLeak.toLocaleString()}`} sub="/mo" accent="red" />
+        <div className="w-px h-7 bg-white/[0.06] shrink-0" />
         <StatCard icon={<Users className="w-3.5 h-3.5 text-cyan-400" />} label="Total Targets"
           value={filteredLeads.length.toString()} accent="neutral" />
-        <StatCard icon={<Target className="w-3.5 h-3.5 text-red-400" />} label="No Website"
+        <StatCard icon={<Target className="w-3.5 h-3.5 text-red-400/80" />} label="No Website"
           value={stats.noWebsite.toString()} accent="neutral" />
-        <StatCard icon={<Target className="w-3.5 h-3.5 text-orange-400" />} label="Old Website"
+        <StatCard icon={<Target className="w-3.5 h-3.5 text-orange-400/80" />} label="Old Website"
           value={stats.oldWebsite.toString()} accent="neutral" />
-        <StatCard icon={<Zap className="w-3.5 h-3.5 text-cyan-400" />} label="Need Chatbot"
+        <StatCard icon={<Zap className="w-3.5 h-3.5 text-cyan-400/80" />} label="Need Chatbot"
           value={stats.needsChatbot.toString()} accent="neutral" />
-        <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/4 border border-white/6 shrink-0">
-          <div className={cn("w-2 h-2 rounded-full",
-            stats.avgScore >= 60 ? "bg-emerald-400" : stats.avgScore >= 40 ? "bg-orange-400" : "bg-red-400"
+        <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.07] shrink-0">
+          <div className={cn(
+            "w-2 h-2 rounded-full shadow-[0_0_6px_currentColor]",
+            stats.avgScore >= 60 ? "bg-emerald-400 text-emerald-400"
+            : stats.avgScore >= 40 ? "bg-orange-400 text-orange-400"
+            : "bg-red-400 text-red-400"
           )} />
           <div>
-            <p className="text-[9px] text-white/40 uppercase tracking-wider">Avg Health</p>
-            <p className="text-sm font-black text-white">{stats.avgScore}%</p>
+            <p className="text-[9px] text-white/30 uppercase tracking-wider font-mono">Avg Health</p>
+            <p className="text-sm font-black text-white font-mono">{stats.avgScore}%</p>
           </div>
         </div>
       </div>
@@ -259,15 +263,17 @@ function StatCard({ icon, label, value, sub, accent }: {
 }) {
   return (
     <div className={cn(
-      "flex items-center gap-2.5 px-3 py-1.5 rounded-lg border shrink-0",
-      accent === "red" ? "bg-red-500/8 border-red-500/20" : "bg-white/4 border-white/6"
+      "flex items-center gap-2.5 px-3 py-1.5 rounded-lg border shrink-0 transition-colors",
+      accent === "red"
+        ? "bg-red-500/[0.07] border-red-500/20 shadow-[0_0_16px_rgba(239,68,68,0.05)]"
+        : "bg-white/[0.03] border-white/[0.07]"
     )}>
       {icon}
       <div>
-        <p className="text-[9px] text-white/40 uppercase tracking-wider">{label}</p>
-        <p className="text-sm font-black text-white leading-tight">
+        <p className="text-[9px] text-white/28 uppercase tracking-wider font-mono">{label}</p>
+        <p className="text-sm font-black text-white leading-tight font-mono">
           {value}
-          {sub && <span className="text-[10px] text-white/35 font-normal ml-0.5">{sub}</span>}
+          {sub && <span className="text-[10px] text-white/28 font-normal ml-0.5">{sub}</span>}
         </p>
       </div>
     </div>
