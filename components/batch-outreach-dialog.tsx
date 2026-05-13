@@ -13,9 +13,12 @@ import {
   Building2, Globe, AlertCircle, Sparkles, ChevronRight, RotateCcw,
 } from "lucide-react"
 import {
-  guessEmail, EMAIL_PREFIXES, renderTemplate, buildGmailUrl, buildMailtoUrl,
-  DEFAULT_SUBJECT, DEFAULT_BODY,
+  guessEmail, renderTemplate, buildGmailUrl, buildMailtoUrl,
+  getTemplate, getEmailPrefixesForLead, ALL_LANGUAGES, languageName,
 } from "@/lib/email-utils"
+import {
+  emailPrefixesForCountry, languageForCountry, type LangCode,
+} from "@/lib/country-utils"
 
 interface BatchOutreachDialogProps {
   open: boolean
@@ -26,15 +29,37 @@ interface BatchOutreachDialogProps {
 type Mode = "compose" | "preview" | "sequence"
 
 export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialogProps) {
-  const [subject, setSubject]     = useState(DEFAULT_SUBJECT)
-  const [body, setBody]           = useState(DEFAULT_BODY)
+  // Detect dominant language from selected leads (majority vote)
+  const detectedLang = useMemo<LangCode>(() => {
+    if (!leads.length) return "en"
+    const counts: Record<string, number> = {}
+    for (const l of leads) {
+      const lang = languageForCountry(l.country)
+      counts[lang] = (counts[lang] ?? 0) + 1
+    }
+    return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "en") as LangCode
+  }, [leads])
+
+  const [lang, setLang]           = useState<LangCode>(detectedLang)
+  const [subject, setSubject]     = useState(getTemplate(detectedLang).subject)
+  const [body, setBody]           = useState(getTemplate(detectedLang).body)
   const [prefix, setPrefix]       = useState<string>("info")
+  // User edit tracking — so language switch doesn't blow away manual changes
+  const [subjectEdited, setSubjectEdited] = useState(false)
+  const [bodyEdited, setBodyEdited]       = useState(false)
   const [emails, setEmails]       = useState<Record<string, string>>({})
   const [skipped, setSkipped]     = useState<Set<string>>(new Set())
   const [mode, setMode]           = useState<Mode>("compose")
   const [previewIdx, setPreviewIdx] = useState(0)
   const [sentSet, setSentSet]     = useState<Set<string>>(new Set())
   const [sequenceIdx, setSequenceIdx] = useState(0)
+
+  // Country-aware email prefix list — picks Swedish "kontakt@" for SE leads, etc.
+  const availablePrefixes = useMemo(() => {
+    if (!leads.length) return ["info","contact","hello"] as readonly string[]
+    // Use first lead's country for prefix suggestions
+    return emailPrefixesForCountry(leads[0].country)
+  }, [leads])
 
   // Init emails per lead when dialog opens / leads change
   useEffect(() => {
@@ -51,7 +76,20 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     setSentSet(new Set())
     setSequenceIdx(0)
     setMode("compose")
-  }, [open, leads])
+    setLang(detectedLang)
+    setSubject(getTemplate(detectedLang).subject)
+    setBody(getTemplate(detectedLang).body)
+    setSubjectEdited(false)
+    setBodyEdited(false)
+  }, [open, leads, detectedLang])
+
+  // Switch template when language changes (only if user hasn't edited)
+  useEffect(() => {
+    if (!open) return
+    const tpl = getTemplate(lang)
+    if (!subjectEdited) setSubject(tpl.subject)
+    if (!bodyEdited) setBody(tpl.body)
+  }, [lang, open])
 
   // Rebuild emails when prefix changes
   useEffect(() => {
@@ -59,14 +97,14 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     setEmails(prev => {
       const next: Record<string, string> = { ...prev }
       for (const lead of leads) {
-        // Only rebuild if the user hasn't manually edited (i.e. still matches a guessed prefix)
         const cur = next[lead.id]
-        const guessedAny = EMAIL_PREFIXES.some(p => guessEmail(lead.website, p) === cur)
+        const allPrefixes = [...availablePrefixes, "info","contact","hello","office","team","admin"]
+        const guessedAny = allPrefixes.some(p => guessEmail(lead.website, p) === cur)
         if (guessedAny || !cur) next[lead.id] = guessEmail(lead.website, prefix)
       }
       return next
     })
-  }, [prefix, leads, open])
+  }, [prefix, leads, open, availablePrefixes])
 
   const validLeads = useMemo(() =>
     leads.filter(l => !skipped.has(l.id) && emails[l.id]?.includes("@")),
@@ -170,17 +208,47 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                   <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                   <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 font-mono">Template</h3>
                   <button
-                    onClick={() => { setSubject(DEFAULT_SUBJECT); setBody(DEFAULT_BODY) }}
+                    onClick={() => {
+                      const tpl = getTemplate(lang)
+                      setSubject(tpl.subject); setBody(tpl.body)
+                      setSubjectEdited(false); setBodyEdited(false)
+                    }}
                     className="ml-auto text-[10px] text-white/40 hover:text-white/70 flex items-center gap-1 cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3" /> Reset
                   </button>
                 </div>
+                {/* Language picker */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] text-white/45 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    Language
+                    {lang === detectedLang && (
+                      <span className="text-emerald-400/70 normal-case tracking-normal">· auto-detected from leads</span>
+                    )}
+                  </Label>
+                  <div className="flex flex-wrap gap-1">
+                    {ALL_LANGUAGES.map(l => (
+                      <button
+                        key={l}
+                        onClick={() => setLang(l)}
+                        className={cn(
+                          "text-[10px] font-mono px-2 py-1 rounded-md border transition-all cursor-pointer",
+                          lang === l
+                            ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30"
+                            : "bg-white/[0.03] text-white/45 border-white/[0.07] hover:border-white/15 hover:text-white/70"
+                        )}
+                      >
+                        {languageName(l)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label className="text-[10px] text-white/45 uppercase tracking-wider font-mono">Subject</Label>
                   <Input
                     value={subject}
-                    onChange={e => setSubject(e.target.value)}
+                    onChange={e => { setSubject(e.target.value); setSubjectEdited(true) }}
                     className="h-9 bg-white/[0.04] border-white/[0.08] text-white text-sm focus:border-cyan-500/40 font-mono"
                   />
                 </div>
@@ -188,14 +256,14 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                   <Label className="text-[10px] text-white/45 uppercase tracking-wider font-mono">Body</Label>
                   <Textarea
                     value={body}
-                    onChange={e => setBody(e.target.value)}
+                    onChange={e => { setBody(e.target.value); setBodyEdited(true) }}
                     rows={10}
                     className="bg-white/[0.04] border-white/[0.08] text-white text-xs focus:border-cyan-500/40 font-mono resize-y leading-relaxed"
                   />
                 </div>
                 <div className="flex items-center flex-wrap gap-1 text-[10px] text-white/35">
                   <span className="font-mono uppercase tracking-wider mr-2">Variables:</span>
-                  {["{name}","{category}","{website}","{domain}","{phone}","{rating}","{reviews}","{revenueLeak}","{healthScore}","{issues}"].map(v => (
+                  {["{name}","{category}","{website}","{domain}","{phone}","{rating}","{revenueLeak}","{healthScore}","{issues}"].map(v => (
                     <button
                       key={v}
                       onClick={() => navigator.clipboard.writeText(v)}
@@ -208,11 +276,14 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                 </div>
               </div>
 
-              {/* Email prefix selector */}
+              {/* Email prefix selector — country-aware */}
               <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 font-mono">Email Pattern</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 font-mono">
+                  Email Pattern
+                  <span className="ml-2 text-white/30 normal-case tracking-normal">· localised for {lang.toUpperCase()}</span>
+                </h3>
                 <div className="flex items-center gap-1 flex-wrap">
-                  {EMAIL_PREFIXES.map(p => (
+                  {availablePrefixes.map(p => (
                     <button
                       key={p}
                       onClick={() => setPrefix(p)}

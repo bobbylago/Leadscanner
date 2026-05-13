@@ -2,6 +2,7 @@
 
 import { type Lead, getStatusConfig } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, cn } from "@/lib/utils"
+import { formatCurrency } from "@/lib/country-utils"
 import { Star, TrendingDown, Globe, AlertTriangle, Flame, ShieldCheck } from "lucide-react"
 
 interface LeadCardProps {
@@ -101,7 +102,7 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
           <div className="flex items-center gap-1">
             <TrendingDown className="w-3 h-3 text-red-400/70" />
             <span className="text-[10px] font-bold font-mono text-red-400/85">
-              -${revenueLeak.toLocaleString()}/mo
+              -{formatCurrency(revenueLeak, lead.country)}/mo
             </span>
           </div>
           {lead.category && (

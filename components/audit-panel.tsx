@@ -3,6 +3,8 @@
 import { memo, useMemo, useState } from "react"
 import { type Lead, getStatusConfig } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, scoreGradient, scoreStroke, cn } from "@/lib/utils"
+import { getTemplate, renderTemplate } from "@/lib/email-utils"
+import { languageForCountry, formatCurrency } from "@/lib/country-utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import {
@@ -72,46 +74,11 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
   const revenueLeak  = useMemo(() => calcRevenueLeak(auditedLead),  [auditedLead])
 
   const pitchText = useMemo(() => {
-    const isNoSite  = lead.status === "No Website"
-    const isOldSite = lead.status === "Old Website"
-
-    // Build a concrete problem statement from real signals if available
-    let problem: string
-    if (isNoSite) {
-      problem = "Your business currently has no website, making it invisible to customers searching online."
-    } else if (signals) {
-      const concrete: string[] = []
-      if (!signals.isHttps) concrete.push("the site is served over HTTP — Chrome flags it as 'Not Secure'")
-      if (!signals.hasViewport) concrete.push("there's no mobile viewport tag, so the site doesn't render correctly on phones")
-      if (!signals.chatbotProvider && !signals.bookingProvider) concrete.push("no chatbot or booking system was found — every after-hours lead has no way to convert")
-      if (!signals.hasSchemaMarkup) concrete.push("no schema.org markup — Google can't surface your business in rich local results")
-      if (signals.responseTimeMs > 3000) concrete.push(`the homepage takes ${(signals.responseTimeMs/1000).toFixed(1)}s to respond — 53% of mobile users abandon at 3s`)
-      if (signals.h1Count !== 1) concrete.push(`${signals.h1Count} H1 tags on the page (should be 1) — hurts SEO`)
-      problem = concrete.length > 0
-        ? "I pulled up your homepage and found:\n• " + concrete.slice(0, 3).map(c => c.charAt(0).toUpperCase() + c.slice(1)).join("\n• ")
-        : "Your site is missing key conversion infrastructure — there's no automated lead capture."
-    } else {
-      problem = isOldSite
-        ? "Your current website appears outdated and is likely hurting your conversion rate."
-        : "Your site is missing an AI-powered booking system — leads arriving after hours go unanswered."
-    }
-
-    return `Subject: Quick question about ${lead.name}'s online presence
-
-Hi ${lead.name} team,
-
-I was researching ${lead.category || "local businesses"} in your area and ran a quick digital health audit on your business.
-
-Digital Health Score: ${overallScore}% ${verified ? "(verified from your live site)" : "(industry avg: 58%)"}
-
-${problem}
-
-Based on your ${lead.reviews} Google reviews, this gap is likely costing you an estimated $${revenueLeak.toLocaleString()}/month in missed conversions.
-
-I've built a working prototype specifically for ${lead.name} that directly fixes this. Worth 5 minutes?
-
-Best,
-[Your Name]`
+    const lang = languageForCountry(lead.country)
+    const tpl = getTemplate(lang)
+    const subject = renderTemplate(tpl.subject, lead)
+    const body = renderTemplate(tpl.body, lead)
+    return `Subject: ${subject}\n\n${body}`
   }, [lead, overallScore, revenueLeak, signals, verified])
 
   const handleCopy = () => {
@@ -346,11 +313,11 @@ Best,
               <span className="text-[10px] font-bold uppercase tracking-widest text-red-400 font-mono">Monthly Revenue Leak</span>
             </div>
             <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-3xl font-black text-white font-mono">${revenueLeak.toLocaleString()}</span>
+              <span className="text-3xl font-black text-white font-mono">{formatCurrency(revenueLeak, lead.country)}</span>
               <span className="text-sm text-white/30">/month</span>
             </div>
             <p className="text-[10px] text-white/30 font-mono">
-              Est. from {lead.reviews} reviews × visitor conversion gap
+              Est. from review volume × visitor conversion gap
             </p>
           </div>
 

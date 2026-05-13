@@ -123,7 +123,20 @@ export function Dashboard() {
 
   const cityLeads = useMemo(() => getLeadsByCity(location), [location])
   const customLeads = customLeadsMap[location] ?? []
-  const allCityLeads = useMemo(() => [...cityLeads, ...customLeads], [cityLeads, customLeads])
+  // Infer country for non-scanned leads from the city string ("Austin, TX" → US, etc.)
+  const inferredCountry = useMemo(() => {
+    const parts = location.split(",").map(p => p.trim())
+    const last = parts[parts.length - 1]?.toUpperCase() ?? ""
+    const US_STATES = new Set(["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"])
+    if (US_STATES.has(last)) return "US"
+    if (last === "UK") return "GB"
+    if (last.length === 2) return last
+    return "US"
+  }, [location])
+  const allCityLeads = useMemo(
+    () => [...cityLeads, ...customLeads].map(l => l.country ? l : { ...l, country: inferredCountry }),
+    [cityLeads, customLeads, inferredCountry]
+  )
 
   const filteredLeads = useMemo(() => {
     if (industry === "All Industries") return allCityLeads

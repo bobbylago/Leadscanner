@@ -104,6 +104,8 @@ export interface RawLead {
   qualityScore: number
   /** Set after website verification */
   websiteVerified?: boolean
+  /** ISO 3166 country code */
+  country?: string
 }
 
 interface OSMElement {
@@ -236,6 +238,7 @@ export interface GeocodeResult {
   lon: number
   bbox: { minLat: number; maxLat: number; minLon: number; maxLon: number }
   displayName: string
+  countryCode: string
 }
 
 export async function geocodeCity(city: string): Promise<GeocodeResult | null> {
@@ -251,6 +254,7 @@ export async function geocodeCity(city: string): Promise<GeocodeResult | null> {
     lon: parseFloat(p.lon),
     bbox: { minLat, maxLat, minLon, maxLon },
     displayName: p.display_name,
+    countryCode: (p.address?.country_code ?? "").toUpperCase(),
   }
 }
 
@@ -486,6 +490,7 @@ export async function findLeads(
       audit: generateAuditScores(partial),
       qualityScore,
       websiteVerified: verified ?? undefined,
+      country: geocode.countryCode || undefined,
     }
   })
 

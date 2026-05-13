@@ -49,6 +49,8 @@ export interface Lead {
   qualityScore?: number
   /** Set by lead-finder if website verification ran */
   websiteVerified?: boolean
+  /** ISO 3166 country code (e.g. "US", "SE", "GB") */
+  country?: string
   audit: {
     seo: number
     mobileFriendliness: number
