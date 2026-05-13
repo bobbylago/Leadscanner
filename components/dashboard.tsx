@@ -10,7 +10,8 @@ import { LeadList } from "./lead-list"
 import { AuditPanel } from "./audit-panel"
 import { AddLeadDialog } from "./add-lead-dialog"
 import { FindLeadsDialog } from "./find-leads-dialog"
-import { TrendingDown, Target, Zap, Users, Activity, Plus, Radar } from "lucide-react"
+import { BatchOutreachDialog } from "./batch-outreach-dialog"
+import { TrendingDown, Target, Zap, Users, Activity, Plus, Radar, Mail, CheckSquare, Square, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -46,6 +47,9 @@ export function Dashboard() {
   const [mapCenters, setMapCenters] = useState<Record<string, { lat: number; lon: number }>>({})
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showFindDialog, setShowFindDialog] = useState(false)
+  const [showOutreachDialog, setShowOutreachDialog] = useState(false)
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
+  const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set())
   // Map of leadId -> realAudit (cached in-memory for the session)
   const [auditCache, setAuditCache] = useState<Record<string, Lead["realAudit"]>>({})
   const [auditingId, setAuditingId] = useState<string | null>(null)
@@ -264,36 +268,110 @@ export function Dashboard() {
 
         {/* Lead List Sidebar */}
         <div className="w-[390px] border-l border-white/5 bg-slate-950/90 backdrop-blur-xl z-30 flex flex-col">
-          <div className="px-4 py-2.5 border-b border-white/5 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-[10px] font-bold uppercase tracking-wider text-white/50">Detected Targets</h2>
-              <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md">
-                {filteredLeads.length}
-              </span>
+          <div className="px-4 py-2.5 border-b border-white/5 shrink-0 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10px] font-bold uppercase tracking-wider text-white/50">
+                  {multiSelectMode ? "Select for Outreach" : "Detected Targets"}
+                </h2>
+                <span className={cn(
+                  "text-xs font-mono px-2 py-0.5 rounded-md",
+                  multiSelectMode
+                    ? "text-cyan-400 bg-cyan-500/15 border border-cyan-500/25"
+                    : "text-cyan-400 bg-cyan-500/10"
+                )}>
+                  {multiSelectMode ? `${multiSelected.size} / ${filteredLeads.length}` : filteredLeads.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {!multiSelectMode ? (
+                  <>
+                    <Button
+                      onClick={() => setShowFindDialog(true)}
+                      size="sm"
+                      className="h-7 px-2.5 bg-gradient-to-r from-cyan-500/20 to-teal-500/10 border border-cyan-500/30 text-cyan-400 hover:from-cyan-500/30 hover:to-teal-500/20 font-bold text-xs gap-1.5"
+                      variant="ghost"
+                    >
+                      <Radar className="w-3 h-3" />
+                      Find Leads
+                    </Button>
+                    <Button
+                      onClick={() => setShowAddDialog(true)}
+                      size="sm"
+                      className="h-7 px-2.5 bg-white/5 border border-white/10 text-white/60 hover:bg-white/8 hover:text-white font-bold text-xs gap-1"
+                      variant="ghost"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    onClick={() => { setMultiSelectMode(false); setMultiSelected(new Set()) }}
+                    size="sm"
+                    className="h-7 px-2.5 bg-white/5 border border-white/10 text-white/60 hover:bg-white/8 hover:text-white font-bold text-xs gap-1"
+                    variant="ghost"
+                  >
+                    <X className="w-3 h-3" />
+                    Cancel
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {/* Outreach action bar */}
             <div className="flex items-center gap-1.5">
-              <Button
-                onClick={() => setShowFindDialog(true)}
-                size="sm"
-                className="h-7 px-2.5 bg-gradient-to-r from-cyan-500/20 to-teal-500/10 border border-cyan-500/30 text-cyan-400 hover:from-cyan-500/30 hover:to-teal-500/20 font-bold text-xs gap-1.5"
-                variant="ghost"
-              >
-                <Radar className="w-3 h-3" />
-                Find Leads
-              </Button>
-              <Button
-                onClick={() => setShowAddDialog(true)}
-                size="sm"
-                className="h-7 px-2.5 bg-white/5 border border-white/10 text-white/60 hover:bg-white/8 hover:text-white font-bold text-xs gap-1"
-                variant="ghost"
-              >
-                <Plus className="w-3 h-3" />
-                Add
-              </Button>
+              {!multiSelectMode ? (
+                <Button
+                  onClick={() => { setMultiSelectMode(true); setSelectedLead(null) }}
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2.5 bg-white/[0.03] border border-white/[0.08] text-white/55 hover:bg-white/[0.06] hover:text-white font-bold text-xs gap-1.5 flex-1"
+                >
+                  <Mail className="w-3 h-3" />
+                  Batch Outreach
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => {
+                      const hotLeads = filteredLeads.filter(l => (l.qualityScore ?? 0) >= 70).map(l => l.id)
+                      setMultiSelected(new Set(hotLeads))
+                    }}
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2.5 bg-orange-500/[0.08] border border-orange-500/20 text-orange-400 hover:bg-orange-500/15 font-bold text-[10px] gap-1"
+                  >
+                    Select Hot
+                  </Button>
+                  <Button
+                    onClick={() => setShowOutreachDialog(true)}
+                    disabled={multiSelected.size === 0}
+                    size="sm"
+                    className="h-7 px-3 bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs gap-1.5 flex-1 disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_12px_rgba(6,182,212,0.15)]"
+                  >
+                    <Mail className="w-3 h-3" />
+                    Compose ({multiSelected.size})
+                  </Button>
+                </>
+              )}
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
-            <LeadList leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} />
+            <LeadList
+              leads={filteredLeads}
+              selectedLead={selectedLead}
+              onSelectLead={setSelectedLead}
+              multiSelectMode={multiSelectMode}
+              multiSelected={multiSelected}
+              onToggleMultiSelect={(id) => {
+                setMultiSelected(prev => {
+                  const next = new Set(prev)
+                  next.has(id) ? next.delete(id) : next.add(id)
+                  return next
+                })
+              }}
+              onSelectAll={(ids) => setMultiSelected(new Set(ids))}
+            />
           </div>
         </div>
 
@@ -321,6 +399,12 @@ export function Dashboard() {
         onClose={() => setShowFindDialog(false)}
         onAdd={handleFindLeads}
         currentCity={location}
+      />
+
+      <BatchOutreachDialog
+        open={showOutreachDialog}
+        onClose={() => setShowOutreachDialog(false)}
+        leads={filteredLeads.filter(l => multiSelected.has(l.id))}
       />
     </div>
   )
