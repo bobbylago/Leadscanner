@@ -1,5 +1,38 @@
 export type Priority = "Low" | "Medium" | "High"
 
+export interface AuditSignals {
+  reachable: boolean
+  httpStatus: number | null
+  isHttps: boolean
+  hasViewport: boolean
+  hasTitle: boolean
+  titleLength: number
+  hasMetaDescription: boolean
+  metaDescriptionLength: number
+  hasOgTags: boolean
+  hasFavicon: boolean
+  hasSchemaMarkup: boolean
+  hasCanonical: boolean
+  hasH1: boolean
+  h1Count: number
+  chatbotProvider: string | null
+  bookingProvider: string | null
+  analyticsProvider: string | null
+  socialLinks: string[]
+  socialLinkCount: number
+  responseTimeMs: number
+  htmlSizeKb: number
+  imgCount: number
+  imgWithoutAlt: number
+  scriptCount: number
+  inlineStyleCount: number
+  usesModernFramework: boolean
+  hasServiceWorker: boolean
+  hasManifest: boolean
+  finalUrl: string
+  error: string | null
+}
+
 export interface Lead {
   id: string
   name: string
@@ -18,6 +51,16 @@ export interface Lead {
     chatbotPresence: number
     pageSpeed: number
     socialPresence: number
+  }
+  /** Set after a real-website audit runs; presence signals "verified" */
+  realAudit?: {
+    seo: number
+    mobileFriendliness: number
+    chatbotPresence: number
+    pageSpeed: number
+    socialPresence: number
+    signals: AuditSignals
+    auditedAt: number
   }
 }
 

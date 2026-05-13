@@ -46,12 +46,55 @@ export function Dashboard() {
   const [mapCenters, setMapCenters] = useState<Record<string, { lat: number; lon: number }>>({})
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showFindDialog, setShowFindDialog] = useState(false)
+  // Map of leadId -> realAudit (cached in-memory for the session)
+  const [auditCache, setAuditCache] = useState<Record<string, Lead["realAudit"]>>({})
+  const [auditingId, setAuditingId] = useState<string | null>(null)
 
   useEffect(() => {
     setCustomLeadsMap(loadCustomLeads())
     setScannedCities(loadScannedCities())
     setMapCenters(loadMapCenters())
   }, [])
+
+  // Auto-run real audit when a lead with a website is selected (once per lead)
+  useEffect(() => {
+    if (!selectedLead?.website) return
+    if (auditCache[selectedLead.id]) return
+    if (auditingId === selectedLead.id) return
+
+    const ctrl = new AbortController()
+    setAuditingId(selectedLead.id)
+
+    fetch(`/api/audit?url=${encodeURIComponent(selectedLead.website)}`, { signal: ctrl.signal })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.signals) {
+          setAuditCache(prev => ({
+            ...prev,
+            [selectedLead.id]: {
+              seo: data.seo,
+              mobileFriendliness: data.mobileFriendliness,
+              chatbotPresence: data.chatbotPresence,
+              pageSpeed: data.pageSpeed,
+              socialPresence: data.socialPresence,
+              signals: data.signals,
+              auditedAt: Date.now(),
+            },
+          }))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setAuditingId(prev => (prev === selectedLead.id ? null : prev)))
+
+    return () => ctrl.abort()
+  }, [selectedLead, auditCache, auditingId])
+
+  // Merge cached realAudit onto the selected lead before passing it down
+  const enrichedSelected = useMemo(() => {
+    if (!selectedLead) return null
+    const real = auditCache[selectedLead.id]
+    return real ? { ...selectedLead, realAudit: real } : selectedLead
+  }, [selectedLead, auditCache])
 
   const cityLeads = useMemo(() => getLeadsByCity(location), [location])
   const customLeads = customLeadsMap[location] ?? []
@@ -234,9 +277,13 @@ export function Dashboard() {
         </div>
 
         {/* Audit Panel */}
-        {selectedLead && (
+        {enrichedSelected && (
           <div className="absolute inset-y-0 right-0 w-[430px] z-50 animate-in slide-in-from-right duration-200">
-            <AuditPanel lead={selectedLead} onClose={() => setSelectedLead(null)} />
+            <AuditPanel
+              lead={enrichedSelected}
+              onClose={() => setSelectedLead(null)}
+              isAuditing={auditingId === enrichedSelected.id}
+            />
           </div>
         )}
       </div>
