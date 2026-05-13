@@ -8,9 +8,19 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { type Lead, INDUSTRIES } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Radar, MapPin, Loader2, CheckCircle2, AlertCircle, Plus, Globe, Phone, Check } from "lucide-react"
+import { Radar, MapPin, Loader2, CheckCircle2, AlertCircle, Plus, Globe, Phone, Check, Flame } from "lucide-react"
 
 type Phase = "idle" | "scanning" | "done" | "error"
+
+interface ScanStats {
+  rawElements: number
+  afterDedup: number
+  afterChainFilter: number
+  afterWebsiteFilter: number
+  finalCount: number
+  websitesVerified: number
+  websitesDead: number
+}
 
 const SCAN_MESSAGES = [
   "Querying OpenStreetMap...",
@@ -40,6 +50,7 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
   const [progress, setProgress] = useState(0)
   const [msgIdx, setMsgIdx] = useState(0)
   const [center, setCenter] = useState<{ lat: number; lon: number } | undefined>()
+  const [stats, setStats] = useState<ScanStats | null>(null)
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const msgTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -59,6 +70,7 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
       setMsgIdx(0)
       setError("")
       setCenter(undefined)
+      setStats(null)
     }
   }, [open])
 
@@ -85,8 +97,12 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
 
       setProgress(100)
       setCenter(data.center)
+      setStats(data.stats ?? null)
       setLeads(data.leads)
-      setSelected(new Set(data.leads.map((l: Lead) => l.id)))
+      // Auto-select only hot leads (quality > 50) by default
+      const hotLeads = data.leads.filter((l: Lead) => (l.qualityScore ?? 0) > 50)
+      const toSelect = hotLeads.length > 0 ? hotLeads : data.leads
+      setSelected(new Set(toSelect.map((l: Lead) => l.id)))
       setPhase("done")
 
       // Reveal leads with staggered animation
@@ -239,15 +255,37 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
               <div className="flex items-center gap-2.5 py-2.5 px-3.5 rounded-xl bg-emerald-500/8 border border-emerald-500/15">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="text-xs text-white/70 flex-1">
-                  Found <span className="font-bold text-white">{leads.length}</span> real{" "}
-                  <span className="text-cyan-400 font-semibold">{industry}</span> businesses in{" "}
+                  <span className="font-bold text-white">{leads.length}</span> qualified{" "}
+                  <span className="text-cyan-400 font-semibold">{industry}</span> leads in{" "}
                   <span className="font-bold text-white">{city.split(",")[0]}</span>
                 </span>
                 <button onClick={toggleAll}
-                  className="text-[10px] text-cyan-400 hover:text-cyan-300 shrink-0 transition-colors">
+                  className="text-[10px] text-cyan-400 hover:text-cyan-300 shrink-0 transition-colors cursor-pointer">
                   {selected.size === leads.length ? "Deselect all" : "Select all"}
                 </button>
               </div>
+
+              {/* Scan stats — show pipeline */}
+              {stats && (
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3.5 py-2.5">
+                  <div className="text-[9px] text-white/30 uppercase tracking-wider font-mono mb-1.5">Scan Pipeline</div>
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-white/55 flex-wrap">
+                    <span>{stats.rawElements} found</span>
+                    <span className="text-white/15">→</span>
+                    <span>{stats.afterDedup} unique</span>
+                    <span className="text-white/15">→</span>
+                    <span>{stats.afterChainFilter} non-chain</span>
+                    <span className="text-white/15">→</span>
+                    <span className="text-cyan-400">{stats.finalCount} ranked</span>
+                    {stats.websitesDead > 0 && (
+                      <>
+                        <span className="text-white/15">·</span>
+                        <span className="text-red-400/80">{stats.websitesDead} dead sites</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {leads.length === 0 && (
                 <div className="text-center py-6 text-white/40 text-sm">
@@ -278,11 +316,16 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{lead.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-white truncate">{lead.name}</p>
+                        {(lead.qualityScore ?? 0) >= 70 && (
+                          <Flame className="w-3 h-3 text-orange-400 shrink-0" strokeWidth={2.5} />
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {lead.website
                           ? <><Globe className="w-2.5 h-2.5 text-white/25 shrink-0" />
-                            <span className="text-[9px] text-white/30 truncate">
+                            <span className="text-[9px] text-white/30 truncate font-mono">
                               {lead.website.replace(/^https?:\/\//, '').split('/')[0]}
                             </span></>
                           : <span className="text-[9px] text-white/25 italic">No website</span>
@@ -290,17 +333,29 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                         {lead.phone && (
                           <><span className="text-[9px] text-white/15">·</span>
                           <Phone className="w-2.5 h-2.5 text-white/25 shrink-0" />
-                          <span className="text-[9px] text-white/30 truncate">{lead.phone}</span></>
+                          <span className="text-[9px] text-white/30 truncate font-mono">{lead.phone}</span></>
                         )}
                       </div>
                     </div>
 
-                    <span className={cn(
-                      "shrink-0 text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border",
-                      statusPill(lead.status)
-                    )}>
-                      {statusLabel(lead.status)}
-                    </span>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      <span className={cn(
+                        "text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border",
+                        statusPill(lead.status)
+                      )}>
+                        {statusLabel(lead.status)}
+                      </span>
+                      {lead.qualityScore !== undefined && (
+                        <span className={cn(
+                          "text-[8px] font-mono font-bold",
+                          lead.qualityScore >= 70 ? "text-orange-400"
+                          : lead.qualityScore >= 50 ? "text-cyan-400"
+                          : "text-white/25"
+                        )}>
+                          Q{lead.qualityScore}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>

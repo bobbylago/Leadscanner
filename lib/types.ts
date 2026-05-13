@@ -45,6 +45,10 @@ export interface Lead {
   priority?: Priority
   mapPos: { top: string; left: string }
   isCustom?: boolean
+  /** 0-100, set by lead-finder when scanned. Higher = better target. */
+  qualityScore?: number
+  /** Set by lead-finder if website verification ran */
+  websiteVerified?: boolean
   audit: {
     seo: number
     mobileFriendliness: number

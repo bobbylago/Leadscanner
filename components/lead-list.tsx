@@ -6,7 +6,7 @@ import { calcRevenueLeak } from "@/lib/utils"
 import { LeadCard } from "./lead-card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
-import { Search, TrendingDown, Star, ArrowUpDown } from "lucide-react"
+import { Search, TrendingDown, Star, ArrowUpDown, Flame } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface LeadListProps {
@@ -15,18 +15,21 @@ interface LeadListProps {
   onSelectLead: (lead: Lead) => void
 }
 
-type SortKey = "leak" | "rating" | "name"
+type SortKey = "quality" | "leak" | "rating" | "name"
 type StatusFilter = "all" | "No Website" | "Needs AI Chatbot" | "Old Website"
 
 const SORTS: { value: SortKey; label: string; icon: React.ReactNode }[] = [
-  { value: "leak",   label: "Leak",   icon: <TrendingDown className="w-3 h-3" /> },
-  { value: "rating", label: "Rating", icon: <Star className="w-3 h-3" /> },
-  { value: "name",   label: "A–Z",    icon: <ArrowUpDown className="w-3 h-3" /> },
+  { value: "quality", label: "Hot",    icon: <Flame className="w-3 h-3" /> },
+  { value: "leak",    label: "Leak",   icon: <TrendingDown className="w-3 h-3" /> },
+  { value: "rating",  label: "Rating", icon: <Star className="w-3 h-3" /> },
+  { value: "name",    label: "A–Z",    icon: <ArrowUpDown className="w-3 h-3" /> },
 ]
 
 export function LeadList({ leads, selectedLead, onSelectLead }: LeadListProps) {
   const [search, setSearch]           = useState("")
-  const [sortBy, setSortBy]           = useState<SortKey>("leak")
+  // Default to "quality" sort when any lead has a qualityScore (scanned leads)
+  const hasQualityScores = leads.some(l => l.qualityScore !== undefined)
+  const [sortBy, setSortBy]           = useState<SortKey>(hasQualityScores ? "quality" : "leak")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
 
   const counts = useMemo(() => ({
@@ -45,8 +48,9 @@ export function LeadList({ leads, selectedLead, onSelectLead }: LeadListProps) {
       result = result.filter(l => l.status === statusFilter)
     }
     result.sort((a, b) => {
-      if (sortBy === "leak")   return calcRevenueLeak(b) - calcRevenueLeak(a)
-      if (sortBy === "rating") return b.rating - a.rating
+      if (sortBy === "quality") return (b.qualityScore ?? 0) - (a.qualityScore ?? 0)
+      if (sortBy === "leak")    return calcRevenueLeak(b) - calcRevenueLeak(a)
+      if (sortBy === "rating")  return b.rating - a.rating
       return a.name.localeCompare(b.name)
     })
     return result

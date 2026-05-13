@@ -2,7 +2,7 @@
 
 import { type Lead, getStatusConfig } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, cn } from "@/lib/utils"
-import { Star, TrendingDown, Globe, AlertTriangle } from "lucide-react"
+import { Star, TrendingDown, Globe, AlertTriangle, Flame } from "lucide-react"
 
 interface LeadCardProps {
   lead: Lead
@@ -63,12 +63,17 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
       <div className="pl-3 relative">
         {/* Name + badge */}
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className={cn(
-            "font-semibold text-sm leading-snug transition-colors duration-150 line-clamp-1",
-            isSelected ? "text-white" : "text-white/75 group-hover:text-white/95"
-          )}>
-            {lead.name}
-          </h3>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {(lead.qualityScore ?? 0) >= 70 && (
+              <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0 drop-shadow-[0_0_4px_rgba(251,146,60,0.5)]" strokeWidth={2.5} />
+            )}
+            <h3 className={cn(
+              "font-semibold text-sm leading-snug transition-colors duration-150 line-clamp-1",
+              isSelected ? "text-white" : "text-white/75 group-hover:text-white/95"
+            )}>
+              {lead.name}
+            </h3>
+          </div>
           <span className={cn(
             "shrink-0 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border",
             config.bgColor, config.color, "border-current/20"
