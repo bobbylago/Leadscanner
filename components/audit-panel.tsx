@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { memo, useMemo, useState } from "react"
 import { type Lead, getStatusConfig } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, scoreGradient, scoreStroke, cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -56,7 +56,7 @@ function MiniBar({ value, gradient }: { value: number; gradient: string }) {
   )
 }
 
-export function AuditPanel({ lead, onClose, isAuditing }: AuditPanelProps) {
+function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
   const config = getStatusConfig(lead.status)
   const [copied, setCopied] = useState(false)
 
@@ -272,7 +272,7 @@ Best,
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#060912]/98 backdrop-blur-2xl border-l border-white/[0.08] shadow-[-8px_0_40px_rgba(0,0,0,0.6)] overflow-hidden">
+    <div className="h-full flex flex-col bg-[#060912] border-l border-white/[0.08] shadow-[-8px_0_24px_rgba(0,0,0,0.5)] overflow-hidden">
 
       {/* Header */}
       <div className="px-5 pt-4 pb-4 border-b border-white/[0.07] bg-gradient-to-b from-white/[0.025] to-transparent shrink-0">
@@ -600,6 +600,14 @@ Best,
     </div>
   )
 }
+
+// Re-render the audit panel only when its inputs actually change.
+// Compares lead.id and realAudit?.auditedAt — both cheap reference checks.
+export const AuditPanel = memo(AuditPanelInner, (prev, next) =>
+  prev.lead.id === next.lead.id
+  && prev.lead.realAudit?.auditedAt === next.lead.realAudit?.auditedAt
+  && prev.isAuditing === next.isAuditing
+)
 
 function EvidenceRow({ label, ok, detail }: { label: string; ok: boolean; detail?: string }) {
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { type Lead } from "@/lib/types"
 import { getLeadsByCity } from "@/lib/mock-data"
 import { calcRevenueLeak } from "@/lib/utils"
@@ -49,6 +49,10 @@ export function Dashboard() {
   // Map of leadId -> realAudit (cached in-memory for the session)
   const [auditCache, setAuditCache] = useState<Record<string, Lead["realAudit"]>>({})
   const [auditingId, setAuditingId] = useState<string | null>(null)
+  // Track which leads we've already kicked off a fetch for (avoids dep-loop)
+  const auditFetchedRef = useRef<Set<string>>(new Set())
+  // Debounce timer so rapid clicks don't spam the audit endpoint
+  const auditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setCustomLeadsMap(loadCustomLeads())
@@ -56,22 +60,29 @@ export function Dashboard() {
     setMapCenters(loadMapCenters())
   }, [])
 
-  // Auto-run real audit when a lead with a website is selected (once per lead)
+  // Auto-audit selected lead — debounced, deduped, only depends on lead.id
   useEffect(() => {
     if (!selectedLead?.website) return
-    if (auditCache[selectedLead.id]) return
-    if (auditingId === selectedLead.id) return
+    const id = selectedLead.id
+    const url = selectedLead.website
+    if (auditFetchedRef.current.has(id)) return
 
+    // Debounce so flipping between leads quickly cancels prior pending fetches
+    if (auditDebounceRef.current) clearTimeout(auditDebounceRef.current)
     const ctrl = new AbortController()
-    setAuditingId(selectedLead.id)
 
-    fetch(`/api/audit?url=${encodeURIComponent(selectedLead.website)}`, { signal: ctrl.signal })
-      .then(r => r.json())
-      .then(data => {
-        if (data?.signals) {
+    auditDebounceRef.current = setTimeout(() => {
+      if (auditFetchedRef.current.has(id)) return
+      auditFetchedRef.current.add(id)
+      setAuditingId(id)
+
+      fetch(`/api/audit?url=${encodeURIComponent(url)}`, { signal: ctrl.signal })
+        .then(r => r.json())
+        .then(data => {
+          if (!data?.signals) return
           setAuditCache(prev => ({
             ...prev,
-            [selectedLead.id]: {
+            [id]: {
               seo: data.seo,
               mobileFriendliness: data.mobileFriendliness,
               chatbotPresence: data.chatbotPresence,
@@ -81,20 +92,30 @@ export function Dashboard() {
               auditedAt: Date.now(),
             },
           }))
-        }
-      })
-      .catch(() => {})
-      .finally(() => setAuditingId(prev => (prev === selectedLead.id ? null : prev)))
+        })
+        .catch(() => {
+          // Allow a retry if the request was aborted (user re-selected this lead)
+          if (ctrl.signal.aborted) auditFetchedRef.current.delete(id)
+        })
+        .finally(() => setAuditingId(prev => (prev === id ? null : prev)))
+    }, 250)
 
-    return () => ctrl.abort()
-  }, [selectedLead, auditCache, auditingId])
+    return () => {
+      if (auditDebounceRef.current) clearTimeout(auditDebounceRef.current)
+      ctrl.abort()
+    }
+    // Only re-run when the selected lead's identity changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLead?.id, selectedLead?.website])
 
-  // Merge cached realAudit onto the selected lead before passing it down
-  const enrichedSelected = useMemo(() => {
+  // Look up the audit for the selected lead only — stable when other entries change
+  const selectedRealAudit = selectedLead ? auditCache[selectedLead.id] : undefined
+
+  // Merge real audit onto selected lead — only changes when selectedLead or its audit changes
+  const enrichedSelected = useMemo<Lead | null>(() => {
     if (!selectedLead) return null
-    const real = auditCache[selectedLead.id]
-    return real ? { ...selectedLead, realAudit: real } : selectedLead
-  }, [selectedLead, auditCache])
+    return selectedRealAudit ? { ...selectedLead, realAudit: selectedRealAudit } : selectedLead
+  }, [selectedLead, selectedRealAudit])
 
   const cityLeads = useMemo(() => getLeadsByCity(location), [location])
   const customLeads = customLeadsMap[location] ?? []
