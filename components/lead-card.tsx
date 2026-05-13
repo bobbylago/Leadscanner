@@ -2,7 +2,7 @@
 
 import { type Lead, getStatusConfig } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, cn } from "@/lib/utils"
-import { Star, TrendingDown, Globe, AlertTriangle, Flame } from "lucide-react"
+import { Star, TrendingDown, Globe, AlertTriangle, Flame, ShieldCheck } from "lucide-react"
 
 interface LeadCardProps {
   lead: Lead
@@ -14,6 +14,10 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
   const config = getStatusConfig(lead.status)
   const revenueLeak = calcRevenueLeak(lead)
   const healthScore = calcHealthScore(lead)
+  const quality = lead.qualityScore
+  const isHot = (quality ?? 0) >= 70
+  const isVerified = !!lead.realAudit
+
   const scores = [
     lead.audit?.seo ?? 0,
     lead.audit?.mobileFriendliness ?? 0,
@@ -23,9 +27,9 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
   ]
 
   const stripeColor =
-    lead.status === "No Website" ? "bg-red-500"
-    : (lead.audit?.seo ?? 0) < 70 ? "bg-orange-500"
-    : "bg-cyan-400"
+    lead.status === "No Website" ? "from-red-500 to-red-600"
+    : lead.status === "Old Website" ? "from-orange-500 to-amber-500"
+    : "from-cyan-400 to-teal-500"
 
   const healthBarColor =
     healthScore >= 70 ? "bg-gradient-to-r from-emerald-500 to-teal-400"
@@ -41,35 +45,40 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-4 py-3.5 rounded-xl border transition-all duration-200 group relative overflow-hidden cursor-pointer",
+        "w-full text-left rounded-xl border transition-all duration-200 group relative overflow-hidden cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50",
         isSelected
-          ? "bg-gradient-to-br from-cyan-500/[0.08] via-slate-900/90 to-slate-950 border-cyan-500/30 shadow-[0_0_28px_rgba(6,182,212,0.10),0_4px_20px_rgba(0,0,0,0.5)]"
-          : "bg-[#0d1117]/80 border-white/[0.06] hover:bg-slate-900/90 hover:border-white/10 hover:shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
+          ? "bg-gradient-to-br from-cyan-500/[0.10] via-slate-900/95 to-slate-950 border-cyan-500/35 shadow-[0_0_28px_rgba(6,182,212,0.14),0_4px_20px_rgba(0,0,0,0.5)]"
+          : isHot
+            ? "bg-gradient-to-br from-orange-500/[0.05] to-slate-900/70 border-orange-500/15 hover:border-orange-500/30 hover:from-orange-500/[0.07] hover:shadow-[0_4px_20px_rgba(251,146,60,0.10)]"
+            : "bg-[#0c1119]/85 border-white/[0.06] hover:bg-slate-900/95 hover:border-white/12 hover:shadow-[0_4px_18px_rgba(0,0,0,0.4)]"
       )}
     >
-      {/* Left status stripe */}
+      {/* Status stripe — gradient now */}
       <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl transition-all duration-200",
+        "absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b transition-all duration-200",
         stripeColor,
-        isSelected ? "opacity-100" : "opacity-35 group-hover:opacity-65"
+        isSelected ? "opacity-100 shadow-[2px_0_10px_currentColor]" : "opacity-50 group-hover:opacity-80"
       )} />
 
-      {/* Subtle inner glow on selected */}
+      {/* Selected: subtle inner glow */}
       {isSelected && (
         <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/[0.04] via-transparent to-transparent pointer-events-none rounded-xl" />
       )}
 
-      <div className="pl-3 relative">
-        {/* Name + badge */}
+      <div className="pl-4 pr-4 py-3.5 relative">
+        {/* Top row: name + status badge */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            {(lead.qualityScore ?? 0) >= 70 && (
-              <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0 drop-shadow-[0_0_4px_rgba(251,146,60,0.5)]" strokeWidth={2.5} />
+            {isHot && (
+              <Flame
+                className="w-3.5 h-3.5 text-orange-400 shrink-0 drop-shadow-[0_0_6px_rgba(251,146,60,0.6)]"
+                strokeWidth={2.5}
+              />
             )}
             <h3 className={cn(
               "font-semibold text-sm leading-snug transition-colors duration-150 line-clamp-1",
-              isSelected ? "text-white" : "text-white/75 group-hover:text-white/95"
+              isSelected ? "text-white" : "text-white/85 group-hover:text-white"
             )}>
               {lead.name}
             </h3>
@@ -82,49 +91,66 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
           </span>
         </div>
 
-        {/* Rating + revenue + category */}
+        {/* Metadata row: rating + revenue + category */}
         <div className="flex items-center gap-3 mb-2.5">
           <div className="flex items-center gap-1">
-            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 drop-shadow-[0_0_2px_rgba(234,179,8,0.4)]" />
             <span className="text-xs font-bold text-white font-mono">{lead.rating}</span>
-            <span className="text-[10px] text-white/28 font-mono">({lead.reviews || 0})</span>
+            <span className="text-[10px] text-white/30 font-mono">({lead.reviews || 0})</span>
           </div>
           <div className="flex items-center gap-1">
             <TrendingDown className="w-3 h-3 text-red-400/70" />
-            <span className="text-[10px] font-bold font-mono text-red-400/80">
+            <span className="text-[10px] font-bold font-mono text-red-400/85">
               -${revenueLeak.toLocaleString()}/mo
             </span>
           </div>
           {lead.category && (
-            <span className="text-[9px] text-white/18 uppercase tracking-wider ml-auto truncate">
+            <span className="text-[9px] text-white/20 uppercase tracking-wider ml-auto truncate font-mono">
               {lead.category}
             </span>
           )}
         </div>
 
-        {/* Website */}
+        {/* Website + verification */}
         <div className="flex items-center gap-1.5 mb-2.5">
           {lead.website
-            ? <Globe className="w-3 h-3 text-white/18 shrink-0" />
-            : <AlertTriangle className="w-3 h-3 text-red-400/45 shrink-0" />}
+            ? <Globe className="w-3 h-3 text-white/20 shrink-0" />
+            : <AlertTriangle className="w-3 h-3 text-red-400/50 shrink-0" />}
           <span className={cn(
-            "text-[10px] truncate font-mono",
-            lead.website ? "text-white/22" : "text-red-400/45 italic"
+            "text-[10px] truncate font-mono flex-1",
+            lead.website ? "text-white/25" : "text-red-400/55 italic"
           )}>
             {lead.website
-              ? lead.website.replace(/^https?:\/\//, '').replace(/\?.*/, '').slice(0, 35)
+              ? lead.website.replace(/^https?:\/\//, '').replace(/\?.*/, '').split('/')[0].slice(0, 32)
               : "No website detected"}
           </span>
+          {isVerified && (
+            <span title="Live site audited" className="shrink-0">
+              <ShieldCheck className="w-3 h-3 text-emerald-400/70" strokeWidth={2.5} />
+            </span>
+          )}
         </div>
 
-        {/* 5-point health bar */}
+        {/* Health bar — only when site exists */}
         {lead.status !== "No Website" && (
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
-              <span className="text-[9px] text-white/18 uppercase tracking-wider font-mono">5-pt Health</span>
-              <span className={cn("text-[10px] font-bold font-mono", healthTextColor)}>
-                {healthScore}%
-              </span>
+              <span className="text-[9px] text-white/20 uppercase tracking-wider font-mono">Health</span>
+              <div className="flex items-center gap-1.5">
+                {quality !== undefined && (
+                  <span className={cn(
+                    "text-[9px] font-bold font-mono px-1 py-0.5 rounded",
+                    isHot ? "text-orange-400 bg-orange-500/[0.08]"
+                    : quality >= 50 ? "text-cyan-400/80 bg-cyan-500/[0.05]"
+                    : "text-white/30"
+                  )}>
+                    Q{quality}
+                  </span>
+                )}
+                <span className={cn("text-[10px] font-bold font-mono", healthTextColor)}>
+                  {healthScore}%
+                </span>
+              </div>
             </div>
             <div className="flex gap-[3px]">
               {scores.map((s, i) => (
@@ -136,6 +162,22 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* No-website variant — show quality + opportunity hint */}
+        {lead.status === "No Website" && quality !== undefined && (
+          <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/[0.05]">
+            <span className="text-[9px] text-red-400/70 uppercase tracking-wider font-mono">
+              Opportunity
+            </span>
+            <span className={cn(
+              "text-[9px] font-bold font-mono px-1.5 py-0.5 rounded",
+              isHot ? "text-orange-400 bg-orange-500/[0.10] border border-orange-500/25"
+              : "text-white/45 bg-white/[0.04]"
+            )}>
+              Q{quality}
+            </span>
           </div>
         )}
       </div>
