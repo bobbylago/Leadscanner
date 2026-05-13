@@ -17,10 +17,11 @@ interface LeadListProps {
   multiSelected?: Set<string>
   onToggleMultiSelect?: (id: string) => void
   onSelectAll?: (ids: string[]) => void
+  contactedLeadIds?: Set<string>
 }
 
 type SortKey = "quality" | "leak" | "rating" | "name"
-type StatusFilter = "all" | "No Website" | "Needs AI Chatbot" | "Old Website"
+type StatusFilter = "all" | "No Website" | "Needs AI Chatbot" | "Old Website" | "contacted" | "not-contacted"
 
 const SORTS: { value: SortKey; label: string; icon: React.ReactNode }[] = [
   { value: "quality", label: "Hot",    icon: <Flame className="w-3 h-3" /> },
@@ -32,6 +33,7 @@ const SORTS: { value: SortKey; label: string; icon: React.ReactNode }[] = [
 export function LeadList({
   leads, selectedLead, onSelectLead,
   multiSelectMode, multiSelected, onToggleMultiSelect, onSelectAll,
+  contactedLeadIds,
 }: LeadListProps) {
   const [search, setSearch]           = useState("")
   const hasQualityScores = leads.some(l => l.qualityScore !== undefined)
@@ -50,7 +52,11 @@ export function LeadList({
       const q = search.toLowerCase()
       result = result.filter(l => l.name.toLowerCase().includes(q) || l.category?.toLowerCase().includes(q))
     }
-    if (statusFilter !== "all") {
+    if (statusFilter === "contacted") {
+      result = result.filter(l => contactedLeadIds?.has(l.id))
+    } else if (statusFilter === "not-contacted") {
+      result = result.filter(l => !contactedLeadIds?.has(l.id))
+    } else if (statusFilter !== "all") {
       result = result.filter(l => l.status === statusFilter)
     }
     result.sort((a, b) => {
@@ -62,11 +68,15 @@ export function LeadList({
     return result
   }, [leads, search, sortBy, statusFilter])
 
+  const contactedCount = leads.filter(l => contactedLeadIds?.has(l.id)).length
+
   const filterPills: { value: StatusFilter; label: string; count?: number }[] = [
     { value: "all",              label: "All"       },
+    { value: "not-contacted",    label: "New",      count: leads.length - contactedCount },
     { value: "No Website",       label: "No Site",  count: counts.noSite  },
     { value: "Old Website",      label: "Old Site", count: counts.oldSite },
     { value: "Needs AI Chatbot", label: "Chatbot",  count: counts.chatbot },
+    { value: "contacted",        label: "Sent",     count: contactedCount },
   ]
 
   const allFilteredSelected = processedLeads.length > 0 &&
@@ -194,6 +204,7 @@ export function LeadList({
                     lead={lead}
                     isSelected={!multiSelectMode && selectedLead?.id === lead.id}
                     onClick={() => handleLeadClick(lead)}
+                    isContacted={contactedLeadIds?.has(lead.id)}
                   />
                 </div>
               ))

@@ -11,6 +11,7 @@ import { AuditPanel } from "./audit-panel"
 import { AddLeadDialog } from "./add-lead-dialog"
 import { FindLeadsDialog } from "./find-leads-dialog"
 import { BatchOutreachDialog } from "./batch-outreach-dialog"
+import { loadContacted, type ContactedMap } from "@/lib/contacted-storage"
 import { TrendingDown, Target, Zap, Users, Activity, Plus, Radar, Mail, CheckSquare, Square, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -50,6 +51,28 @@ export function Dashboard() {
   const [showOutreachDialog, setShowOutreachDialog] = useState(false)
   const [multiSelectMode, setMultiSelectMode] = useState(false)
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set())
+  const [contacted, setContacted] = useState<ContactedMap>({})
+
+  // Sync contacted map from localStorage + same-tab and cross-tab updates
+  useEffect(() => {
+    setContacted(loadContacted())
+    const refresh = () => setContacted(loadContacted())
+    window.addEventListener("ls_contacted_changed", refresh)
+    window.addEventListener("storage", (e: StorageEvent) => {
+      if (e.key === "ls_contacted_v1") refresh()
+    })
+    return () => {
+      window.removeEventListener("ls_contacted_changed", refresh)
+      window.removeEventListener("storage", refresh as any)
+    }
+  }, [])
+
+  // Build a Set of contacted lead IDs for fast lookup in render
+  const contactedLeadIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const rec of Object.values(contacted)) set.add(rec.leadId)
+    return set
+  }, [contacted])
   // Map of leadId -> realAudit (cached in-memory for the session)
   const [auditCache, setAuditCache] = useState<Record<string, Lead["realAudit"]>>({})
   const [auditingId, setAuditingId] = useState<string | null>(null)
@@ -347,8 +370,11 @@ export function Dashboard() {
                 <>
                   <Button
                     onClick={() => {
-                      const hotLeads = filteredLeads.filter(l => (l.qualityScore ?? 0) >= 70).map(l => l.id)
-                      setMultiSelected(new Set(hotLeads))
+                      // Hot leads that haven't been contacted yet
+                      const ids = filteredLeads
+                        .filter(l => (l.qualityScore ?? 0) >= 70 && !contactedLeadIds.has(l.id))
+                        .map(l => l.id)
+                      setMultiSelected(new Set(ids))
                     }}
                     size="sm"
                     variant="ghost"
@@ -384,6 +410,7 @@ export function Dashboard() {
                 })
               }}
               onSelectAll={(ids) => setMultiSelected(new Set(ids))}
+              contactedLeadIds={contactedLeadIds}
             />
           </div>
         </div>

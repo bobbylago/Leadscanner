@@ -19,6 +19,10 @@ import {
 import {
   emailPrefixesForCountry, languageForCountry, type LangCode,
 } from "@/lib/country-utils"
+import {
+  loadContacted, markContacted, isContacted, findByLeadId, formatSentAgo,
+  type ContactedMap,
+} from "@/lib/contacted-storage"
 
 interface BatchOutreachDialogProps {
   open: boolean
@@ -45,6 +49,8 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   const [body, setBody]           = useState(getTemplate(detectedLang).body)
   const [prefix, setPrefix]       = useState<string>("info")
   const [senderName, setSenderName] = useState<string>("")
+  const [contacted, setContacted] = useState<ContactedMap>({})
+  const [allowResend, setAllowResend] = useState(false)
   // User edit tracking — so language switch doesn't blow away manual changes
   const [subjectEdited, setSubjectEdited] = useState(false)
   const [bodyEdited, setBodyEdited]       = useState(false)
@@ -71,6 +77,14 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     } catch {}
   }, [])
 
+  // Sync contacted map (cross-tab + same-tab via custom event)
+  useEffect(() => {
+    setContacted(loadContacted())
+    const refresh = () => setContacted(loadContacted())
+    window.addEventListener("ls_contacted_changed", refresh)
+    return () => window.removeEventListener("ls_contacted_changed", refresh)
+  }, [open])
+
   // Save sender name on change
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -80,12 +94,17 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   // Init emails per lead when dialog opens / leads change
   useEffect(() => {
     if (!open) return
+    const map = loadContacted()
     const initial: Record<string, string> = {}
     const initialSkipped = new Set<string>()
     for (const lead of leads) {
       const guess = guessEmail(lead.website, prefix)
       initial[lead.id] = guess
       if (!guess) initialSkipped.add(lead.id)
+      // Auto-skip already-contacted leads (unless allowResend is on)
+      else if (!allowResend && (findByLeadId(map, lead.id) || isContacted(map, { email: guess }))) {
+        initialSkipped.add(lead.id)
+      }
     }
     setEmails(initial)
     setSkipped(initialSkipped)
@@ -97,7 +116,7 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     setBody(getTemplate(detectedLang).body)
     setSubjectEdited(false)
     setBodyEdited(false)
-  }, [open, leads, detectedLang])
+  }, [open, leads, detectedLang, allowResend])
 
   // Switch template when language changes (only if user hasn't edited)
   useEffect(() => {
@@ -127,6 +146,14 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     [leads, skipped, emails]
   )
 
+  // Already-contacted leads in this batch
+  const alreadyContactedLeads = useMemo(() => {
+    return leads.filter(l => {
+      const email = emails[l.id]
+      return findByLeadId(contacted, l.id) || (email && isContacted(contacted, { email }))
+    })
+  }, [leads, emails, contacted])
+
   const previewLead = validLeads[previewIdx] ?? validLeads[0]
   const renderedSubject = previewLead ? renderTemplate(subject, previewLead, { senderName }) : subject
   const renderedBody    = previewLead ? renderTemplate(body, previewLead, { senderName })    : body
@@ -141,8 +168,16 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   }
 
   const openLead = (lead: Lead) => {
+    const email = emails[lead.id] ?? ""
+    const renderedSubject = renderTemplate(subject, lead, { senderName })
     window.open(buildUrlForLead(lead, "gmail"), "_blank", "noopener,noreferrer")
     setSentSet(prev => new Set(prev).add(lead.id))
+    // Persist as contacted so future scans don't double-send
+    if (email.includes("@")) {
+      setContacted(prev => markContacted(prev, {
+        email, leadId: lead.id, leadName: lead.name, subject: renderedSubject,
+      }))
+    }
   }
 
   const handleSequenceNext = () => {
@@ -330,6 +365,34 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                 </div>
               </div>
 
+              {/* Already-contacted warning banner */}
+              {alreadyContactedLeads.length > 0 && (
+                <div className="rounded-xl bg-amber-500/[0.07] border border-amber-500/25 px-3.5 py-2.5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="text-xs font-semibold text-amber-400">
+                      {alreadyContactedLeads.length} lead{alreadyContactedLeads.length !== 1 ? "s" : ""} already contacted
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-white/45 leading-relaxed">
+                    {allowResend
+                      ? "Re-send is enabled. Duplicates will not be skipped."
+                      : "Auto-skipped so you don't accidentally double-send. Toggle below to override."}
+                  </p>
+                  <button
+                    onClick={() => setAllowResend(v => !v)}
+                    className={cn(
+                      "text-[10px] font-mono px-2.5 py-1 rounded-md border transition-all cursor-pointer",
+                      allowResend
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                        : "bg-white/[0.04] text-white/55 border-white/[0.10] hover:text-white"
+                    )}
+                  >
+                    {allowResend ? "✓ Allow re-send" : "Allow re-send"}
+                  </button>
+                </div>
+              )}
+
               {/* Recipient list */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -344,16 +407,27 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                     const isSkipped = skipped.has(lead.id)
                     const email = emails[lead.id] ?? ""
                     const isValid = email.includes("@")
+                    const contactRec = findByLeadId(contacted, lead.id) ?? (email ? contacted[email.toLowerCase().trim()] : null) ?? null
                     return (
                       <div key={lead.id} className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all",
                         isSkipped
                           ? "bg-white/[0.02] border-white/[0.04] opacity-40"
-                          : "bg-white/[0.04] border-white/[0.07]"
+                          : contactRec
+                            ? "bg-amber-500/[0.04] border-amber-500/20"
+                            : "bg-white/[0.04] border-white/[0.07]"
                       )}>
                         <Building2 className="w-3.5 h-3.5 text-white/30 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-white truncate">{lead.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-semibold text-white truncate">{lead.name}</p>
+                            {contactRec && (
+                              <span title={`Sent ${formatSentAgo(contactRec.sentAt)}`}
+                                className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                                Sent {formatSentAgo(contactRec.sentAt)}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[9px] text-white/30 truncate font-mono">
                             {lead.website ? lead.website.replace(/^https?:\/\//, "").split("/")[0] : "no website"}
                           </p>

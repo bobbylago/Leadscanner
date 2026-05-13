@@ -3,15 +3,16 @@
 import { type Lead, getStatusConfig } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, cn } from "@/lib/utils"
 import { formatCurrency } from "@/lib/country-utils"
-import { Star, TrendingDown, Globe, AlertTriangle, Flame, ShieldCheck } from "lucide-react"
+import { Star, TrendingDown, Globe, AlertTriangle, Flame, ShieldCheck, Mail } from "lucide-react"
 
 interface LeadCardProps {
   lead: Lead
   isSelected: boolean
   onClick: () => void
+  isContacted?: boolean
 }
 
-export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
+export function LeadCard({ lead, isSelected, onClick, isContacted }: LeadCardProps) {
   const config = getStatusConfig(lead.status)
   const revenueLeak = calcRevenueLeak(lead)
   const healthScore = calcHealthScore(lead)
@@ -48,6 +49,7 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
       className={cn(
         "w-full text-left rounded-xl border transition-all duration-200 group relative overflow-hidden cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50",
+        isContacted && !isSelected && "opacity-60 hover:opacity-90",
         isSelected
           ? "bg-gradient-to-br from-cyan-500/[0.10] via-slate-900/95 to-slate-950 border-cyan-500/35 shadow-[0_0_28px_rgba(6,182,212,0.14),0_4px_20px_rgba(0,0,0,0.5)]"
           : isHot
@@ -84,12 +86,21 @@ export function LeadCard({ lead, isSelected, onClick }: LeadCardProps) {
               {lead.name}
             </h3>
           </div>
-          <span className={cn(
-            "shrink-0 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border",
-            config.bgColor, config.color, "border-current/20"
-          )}>
-            {config.label}
-          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isContacted && (
+              <span title="Already contacted"
+                className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
+                <Mail className="w-2.5 h-2.5" />
+                Sent
+              </span>
+            )}
+            <span className={cn(
+              "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border",
+              config.bgColor, config.color, "border-current/20"
+            )}>
+              {config.label}
+            </span>
+          </div>
         </div>
 
         {/* Metadata row: rating + revenue + category */}
