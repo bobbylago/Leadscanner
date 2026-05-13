@@ -5,6 +5,78 @@ import {
   inferCountryFromCity, type LangCode,
 } from "./country-utils"
 
+// ── Legal-entity suffixes per language ────────────────────────────
+// "Acme Corp Inc." → "Acme Corp" — these are the things to strip from greetings.
+const LEGAL_SUFFIXES: Record<LangCode, string[]> = {
+  en: ["Inc.", "Inc", "LLC", "L.L.C.", "Ltd.", "Ltd", "Limited", "Corp.", "Corp", "Corporation", "Co.", "Company", "LLP", "PLC", "P.C.", "P.A."],
+  sv: ["AB", "Aktiebolag", "HB", "KB", "Ekonomisk Förening", "Ek. För.", "Stiftelse"],
+  da: ["A/S", "ApS", "I/S", "K/S", "P/S", "IVS"],
+  no: ["AS", "ASA", "ANS", "DA", "BA", "SA"],
+  de: ["GmbH", "AG", "KG", "OHG", "e.K.", "e.V.", "mbH", "UG", "GbR", "Co. KG"],
+  fr: ["SAS", "SARL", "SA", "EURL", "SNC", "SCI", "SCS", "SCA", "SASU", "EI"],
+  es: ["S.A.", "S.L.", "S.A.U.", "S.L.U.", "S.R.L.", "S.C.", "S. Coop."],
+  nl: ["B.V.", "BV", "N.V.", "NV", "V.O.F.", "VOF", "C.V.", "CV"],
+}
+
+/** Strip legal-entity suffixes from a business name. "Acme Corp Inc" → "Acme Corp" */
+export function cleanBusinessName(name: string, lang: LangCode = "en"): string {
+  // Try the lead's language first, then English as a fallback
+  const suffixes = [...(LEGAL_SUFFIXES[lang] ?? []), ...LEGAL_SUFFIXES.en]
+  let cleaned = name.trim()
+  for (const suffix of suffixes) {
+    // Match suffix as a whole word at the end, preceded by space or comma
+    const escaped = suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const rx = new RegExp(`[\\s,]+${escaped}\\s*$`, "i")
+    cleaned = cleaned.replace(rx, "").trim()
+  }
+  return cleaned || name // never return empty
+}
+
+// ── Category translations per language ────────────────────────────
+const CATEGORY_TRANSLATIONS: Record<LangCode, Record<string, string>> = {
+  en: {}, // already English
+  sv: {
+    "Plumbing": "VVS", "Electrician": "elektriker", "HVAC": "värme och ventilation",
+    "Home Services": "hemtjänster", "Dental": "tandvård", "Roofing": "taktäckning",
+    "local business": "lokala företag",
+  },
+  da: {
+    "Plumbing": "VVS", "Electrician": "elektriker", "HVAC": "varme og ventilation",
+    "Home Services": "hjemmeservice", "Dental": "tandlæge", "Roofing": "tagdækning",
+    "local business": "lokale virksomheder",
+  },
+  no: {
+    "Plumbing": "rørlegger", "Electrician": "elektriker", "HVAC": "varme og ventilasjon",
+    "Home Services": "hjemmetjenester", "Dental": "tannlege", "Roofing": "taktekking",
+    "local business": "lokale bedrifter",
+  },
+  de: {
+    "Plumbing": "Klempnerei", "Electrician": "Elektriker", "HVAC": "HLK",
+    "Home Services": "Haushaltsdienste", "Dental": "Zahnärzte", "Roofing": "Dachdeckerei",
+    "local business": "lokale Unternehmen",
+  },
+  fr: {
+    "Plumbing": "plomberie", "Electrician": "électricité", "HVAC": "CVC",
+    "Home Services": "services à domicile", "Dental": "dentaires", "Roofing": "couverture",
+    "local business": "entreprises locales",
+  },
+  es: {
+    "Plumbing": "fontanería", "Electrician": "electricidad", "HVAC": "climatización",
+    "Home Services": "servicios domésticos", "Dental": "dentales", "Roofing": "techado",
+    "local business": "negocios locales",
+  },
+  nl: {
+    "Plumbing": "loodgieterswerk", "Electrician": "elektrotechniek", "HVAC": "HVAC",
+    "Home Services": "huishoudelijke diensten", "Dental": "tandheelkunde", "Roofing": "dakdekkerij",
+    "local business": "lokale bedrijven",
+  },
+}
+
+export function translateCategory(category: string | undefined, lang: LangCode): string {
+  if (!category) return CATEGORY_TRANSLATIONS[lang]?.["local business"] ?? "local business"
+  return CATEGORY_TRANSLATIONS[lang]?.[category] ?? category.toLowerCase()
+}
+
 /** Guess a contact email from a website URL */
 export function guessEmail(website: string | null, prefix: string = "info"): string {
   if (!website) return ""
@@ -43,12 +115,12 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "",
       "I noticed {issues}.",
       "",
-      "Issues like these typically cost local businesses an estimated {revenueLeak}/month in missed bookings and conversions.",
+      "Issues like these typically cost local businesses around {revenueLeak}/month in missed bookings and conversions.",
       "",
       "I've built a working prototype that fixes this — happy to share a quick 2-minute demo specifically for {name}. Worth a look?",
       "",
       "Best,",
-      "[Your name]",
+      "{senderName}",
     ].join("\n"),
   },
   sv: {
@@ -56,7 +128,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
     body: [
       "Hej {name},",
       "",
-      "Jag tittade på lokala {category}-företag i ert område och gjorde en snabb digital granskning av er webbplats.",
+      "Jag tittade på {category} i ert område och gjorde en snabb digital granskning av er webbplats.",
       "",
       "Jag noterade att {issues}.",
       "",
@@ -65,7 +137,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "Jag har byggt en fungerande prototyp som löser det här – kan jag visa en 2-minuters demo specifikt för {name}? Värt en titt?",
       "",
       "Vänliga hälsningar,",
-      "[Ditt namn]",
+      "{senderName}",
     ].join("\n"),
   },
   da: {
@@ -73,7 +145,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
     body: [
       "Hej {name},",
       "",
-      "Jeg kiggede på lokale {category}-virksomheder i jeres område og lavede en hurtig digital analyse af jeres hjemmeside.",
+      "Jeg kiggede på lokale {category} i jeres område og lavede en hurtig digital analyse af jeres hjemmeside.",
       "",
       "Jeg bemærkede at {issues}.",
       "",
@@ -82,7 +154,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "Jeg har bygget en fungerende prototype, der løser dette – kan jeg vise en hurtig 2-minutters demo for {name}? Værd at se?",
       "",
       "Bedste hilsner,",
-      "[Dit navn]",
+      "{senderName}",
     ].join("\n"),
   },
   no: {
@@ -90,7 +162,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
     body: [
       "Hei {name},",
       "",
-      "Jeg så på lokale {category}-bedrifter i området deres og gjorde en rask digital analyse av nettsiden deres.",
+      "Jeg så på lokale {category} i området deres og gjorde en rask digital analyse av nettsiden deres.",
       "",
       "Jeg la merke til at {issues}.",
       "",
@@ -99,7 +171,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "Jeg har bygget en prototype som løser dette – kan jeg vise en 2-minutters demo for {name}? Verdt en titt?",
       "",
       "Vennlig hilsen,",
-      "[Ditt navn]",
+      "{senderName}",
     ].join("\n"),
   },
   de: {
@@ -107,7 +179,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
     body: [
       "Hallo {name}-Team,",
       "",
-      "ich habe mir {category}-Unternehmen in Ihrer Region angesehen und einen schnellen Digital-Audit Ihrer Website durchgeführt.",
+      "ich habe mir {category} in Ihrer Region angesehen und einen schnellen Digital-Audit Ihrer Website durchgeführt.",
       "",
       "Mir ist aufgefallen, dass {issues}.",
       "",
@@ -116,7 +188,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "Ich habe einen funktionierenden Prototyp gebaut, der genau das löst – darf ich eine 2-minütige Demo speziell für {name} zeigen?",
       "",
       "Beste Grüße,",
-      "[Ihr Name]",
+      "{senderName}",
     ].join("\n"),
   },
   fr: {
@@ -124,7 +196,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
     body: [
       "Bonjour l'équipe {name},",
       "",
-      "Je faisais des recherches sur les entreprises {category} de votre région et j'ai effectué un audit digital rapide de votre site.",
+      "Je faisais des recherches sur les entreprises de {category} de votre région et j'ai effectué un audit digital rapide de votre site.",
       "",
       "J'ai remarqué que {issues}.",
       "",
@@ -133,7 +205,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "J'ai créé un prototype fonctionnel qui corrige ce problème — puis-je vous montrer une démo de 2 minutes spécifique à {name} ?",
       "",
       "Cordialement,",
-      "[Votre nom]",
+      "{senderName}",
     ].join("\n"),
   },
   es: {
@@ -150,7 +222,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "He creado un prototipo funcional que soluciona esto — ¿les muestro una demo de 2 minutos específica para {name}?",
       "",
       "Saludos,",
-      "[Su nombre]",
+      "{senderName}",
     ].join("\n"),
   },
   nl: {
@@ -167,7 +239,7 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
       "Ik heb een werkend prototype gebouwd dat dit oplost — zal ik een 2-minuten demo specifiek voor {name} laten zien?",
       "",
       "Met vriendelijke groet,",
-      "[Jouw naam]",
+      "{senderName}",
     ].join("\n"),
   },
 }
@@ -296,28 +368,45 @@ function buildIssuesPhrase(lead: Lead, lang: LangCode): string {
 }
 
 /** Render a template string with {variable} placeholders, country-aware */
-export function renderTemplate(template: string, lead: Lead, opts: { fallbackCity?: string } = {}): string {
+export function renderTemplate(
+  template: string,
+  lead: Lead,
+  opts: { fallbackCity?: string; senderName?: string } = {},
+): string {
   const country = getLeadCountry(lead, opts.fallbackCity)
   const lang = languageForCountry(country)
   const revenueLeak = calcRevenueLeak(lead)
   const healthScore = calcHealthScore(lead)
 
   const vars: Record<string, string> = {
-    name: lead.name,
-    category: lead.category ?? "local business",
+    name: cleanBusinessName(lead.name, lang),
+    category: translateCategory(lead.category, lang),
     website: lead.website ?? "",
     domain: lead.website ? lead.website.replace(/^https?:\/\//, "").replace(/\/.*/, "") : "",
     phone: lead.phone ?? "",
     rating: String(lead.rating),
-    // {reviews} is intentionally NOT exposed — the value is synthetic and citing it
-    // in client outreach is a credibility risk. If a real value is wired up later
-    // (Google Places API), re-add it here.
+    // {reviews} is intentionally NOT exposed — synthetic value, credibility risk.
     revenueLeak: formatCurrency(revenueLeak, country),
     healthScore: String(healthScore),
     issues: buildIssuesPhrase(lead, lang),
+    senderName: opts.senderName?.trim() || senderNamePlaceholder(lang),
   }
 
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`)
+}
+
+/** Placeholder text shown when no sender name has been configured yet */
+function senderNamePlaceholder(lang: LangCode): string {
+  switch (lang) {
+    case "sv": return "[Ditt namn]"
+    case "da": return "[Dit navn]"
+    case "no": return "[Ditt navn]"
+    case "de": return "[Ihr Name]"
+    case "fr": return "[Votre nom]"
+    case "es": return "[Su nombre]"
+    case "nl": return "[Jouw naam]"
+    default:   return "[Your name]"
+  }
 }
 
 /** Build a Gmail compose URL */

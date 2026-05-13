@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo, useState } from "react"
+import { memo, useMemo, useState, useEffect } from "react"
 import { type Lead, getStatusConfig } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, scoreGradient, scoreStroke, cn } from "@/lib/utils"
 import { getTemplate, renderTemplate } from "@/lib/email-utils"
@@ -61,6 +61,20 @@ function MiniBar({ value, gradient }: { value: number; gradient: string }) {
 function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
   const config = getStatusConfig(lead.status)
   const [copied, setCopied] = useState(false)
+  const [senderName, setSenderName] = useState("")
+
+  // Sync sender name from localStorage (shared with batch outreach dialog)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ls_sender_name")
+      if (saved) setSenderName(saved)
+    } catch {}
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "ls_sender_name") setSenderName(e.newValue ?? "")
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [])
 
   // Prefer real audit when available — overrides synthetic scores
   const effectiveAudit = lead.realAudit ?? lead.audit
@@ -76,10 +90,10 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
   const pitchText = useMemo(() => {
     const lang = languageForCountry(lead.country)
     const tpl = getTemplate(lang)
-    const subject = renderTemplate(tpl.subject, lead)
-    const body = renderTemplate(tpl.body, lead)
+    const subject = renderTemplate(tpl.subject, lead, { senderName })
+    const body = renderTemplate(tpl.body, lead, { senderName })
     return `Subject: ${subject}\n\n${body}`
-  }, [lead, overallScore, revenueLeak, signals, verified])
+  }, [lead, overallScore, revenueLeak, signals, verified, senderName])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(pitchText)
@@ -569,11 +583,12 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
 }
 
 // Re-render the audit panel only when its inputs actually change.
-// Compares lead.id and realAudit?.auditedAt — both cheap reference checks.
+// Compares lead.id, realAudit?.auditedAt, isAuditing — country handled by useEffect+localStorage sync.
 export const AuditPanel = memo(AuditPanelInner, (prev, next) =>
   prev.lead.id === next.lead.id
   && prev.lead.realAudit?.auditedAt === next.lead.realAudit?.auditedAt
   && prev.isAuditing === next.isAuditing
+  && prev.lead.country === next.lead.country
 )
 
 function EvidenceRow({ label, ok, detail }: { label: string; ok: boolean; detail?: string }) {

@@ -10,7 +10,7 @@ import type { Lead } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import {
   Mail, ExternalLink, X, Check, ArrowRight, Eye, Send, Copy,
-  Building2, Globe, AlertCircle, Sparkles, ChevronRight, RotateCcw,
+  Building2, Globe, AlertCircle, Sparkles, ChevronRight, RotateCcw, User,
 } from "lucide-react"
 import {
   guessEmail, renderTemplate, buildGmailUrl, buildMailtoUrl,
@@ -44,6 +44,7 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   const [subject, setSubject]     = useState(getTemplate(detectedLang).subject)
   const [body, setBody]           = useState(getTemplate(detectedLang).body)
   const [prefix, setPrefix]       = useState<string>("info")
+  const [senderName, setSenderName] = useState<string>("")
   // User edit tracking — so language switch doesn't blow away manual changes
   const [subjectEdited, setSubjectEdited] = useState(false)
   const [bodyEdited, setBodyEdited]       = useState(false)
@@ -60,6 +61,21 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     // Use first lead's country for prefix suggestions
     return emailPrefixesForCountry(leads[0].country)
   }, [leads])
+
+  // Load sender name from localStorage on first open
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const saved = localStorage.getItem("ls_sender_name")
+      if (saved) setSenderName(saved)
+    } catch {}
+  }, [])
+
+  // Save sender name on change
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try { localStorage.setItem("ls_sender_name", senderName) } catch {}
+  }, [senderName])
 
   // Init emails per lead when dialog opens / leads change
   useEffect(() => {
@@ -112,14 +128,14 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   )
 
   const previewLead = validLeads[previewIdx] ?? validLeads[0]
-  const renderedSubject = previewLead ? renderTemplate(subject, previewLead) : subject
-  const renderedBody    = previewLead ? renderTemplate(body, previewLead)    : body
+  const renderedSubject = previewLead ? renderTemplate(subject, previewLead, { senderName }) : subject
+  const renderedBody    = previewLead ? renderTemplate(body, previewLead, { senderName })    : body
 
   const buildUrlForLead = (lead: Lead, type: "gmail" | "mailto") => {
     const opts = {
       to: emails[lead.id] ?? "",
-      subject: renderTemplate(subject, lead),
-      body: renderTemplate(body, lead),
+      subject: renderTemplate(subject, lead, { senderName }),
+      body: renderTemplate(body, lead, { senderName }),
     }
     return type === "gmail" ? buildGmailUrl(opts) : buildMailtoUrl(opts)
   }
@@ -202,6 +218,20 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
           {/* ── COMPOSE MODE ────────────────────────────── */}
           {mode === "compose" && (
             <div className="px-6 py-5 space-y-5">
+              {/* Sender name — required for {senderName} substitution */}
+              <div className="space-y-2 p-3 rounded-xl bg-cyan-500/[0.04] border border-cyan-500/15">
+                <Label className="text-[10px] text-cyan-400/90 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <User className="w-3 h-3" /> Your name
+                  <span className="text-white/30 normal-case tracking-normal ml-1">· signs every email, saved on this device</span>
+                </Label>
+                <Input
+                  value={senderName}
+                  onChange={e => setSenderName(e.target.value)}
+                  placeholder="e.g. Viggo Pettersson"
+                  className="h-9 bg-white/[0.05] border-white/[0.10] text-white text-sm focus:border-cyan-500/40"
+                />
+              </div>
+
               {/* Template editor */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -453,7 +483,7 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                         <span className="text-white/35 font-mono">To:</span>
                         <span className="text-white font-mono">{emails[cur.id]}</span>
                         <span className="text-white/35 font-mono">Subject:</span>
-                        <span className="text-white font-semibold truncate">{renderTemplate(subject, cur)}</span>
+                        <span className="text-white font-semibold truncate">{renderTemplate(subject, cur, { senderName })}</span>
                       </div>
                     </div>
                   )

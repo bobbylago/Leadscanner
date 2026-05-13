@@ -47,10 +47,36 @@ export function languageForCountry(country?: string | null): LangCode {
   return "en"
 }
 
-/** Format an amount with the country's currency */
+/** BCP-47 locale tag for a country (for number formatting) */
+export function localeForCountry(country?: string | null): string {
+  const c = normaliseCountry(country)
+  if (SEK_COUNTRIES.has(c)) return "sv-SE"
+  if (NOK_COUNTRIES.has(c)) return "nb-NO"
+  if (DKK_COUNTRIES.has(c)) return "da-DK"
+  if (CHF_COUNTRIES.has(c)) return "de-CH"
+  if (GBP_COUNTRIES.has(c)) return "en-GB"
+  if (c === "DE") return "de-DE"
+  if (c === "AT") return "de-AT"
+  if (c === "FR") return "fr-FR"
+  if (c === "ES") return "es-ES"
+  if (c === "IT") return "it-IT"
+  if (c === "NL") return "nl-NL"
+  if (c === "BE") return "nl-BE"
+  if (c === "FI") return "fi-FI"
+  if (c === "PT") return "pt-PT"
+  if (CAD_COUNTRIES.has(c)) return "en-CA"
+  if (AUD_COUNTRIES.has(c)) return "en-AU"
+  if (NZD_COUNTRIES.has(c)) return "en-NZ"
+  return "en-US"
+}
+
+/** Format an amount with the country's currency, using the locale's thousand separator */
 export function formatCurrency(amount: number, country?: string | null): string {
   const c = normaliseCountry(country)
-  const formatted = amount.toLocaleString()
+  // Round to nearest 100 if amount > 1000 — feels more natural in cold emails ("6 200 kr" not "6 188 kr")
+  const rounded = amount >= 1000 ? Math.round(amount / 100) * 100 : amount
+  const locale = localeForCountry(country)
+  const formatted = rounded.toLocaleString(locale)
 
   if (SEK_COUNTRIES.has(c)) return `${formatted} kr`
   if (NOK_COUNTRIES.has(c)) return `${formatted} kr`
