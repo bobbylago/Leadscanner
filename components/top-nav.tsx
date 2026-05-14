@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Download, Radar, Search, MapPin, Shield, Wifi } from "lucide-react"
+import { Download, Radar, Search, Shield, Wifi } from "lucide-react"
+import { CityPicker } from "./city-picker"
 
 interface TopNavProps {
   industry: string
@@ -29,9 +30,8 @@ export function TopNav({
   industry, location, onIndustryChange, onLocationChange,
   onExport, onFindLeads, extraCities = [],
 }: TopNavProps) {
-  const scanned = extraCities.filter(c => !PRESET_CITIES.some(p => p.value === c))
-  const allCities = [...PRESET_CITIES, ...scanned.map(c => ({ label: c, value: c }))]
-  const cityInList = allCities.some(c => c.value === location)
+  // Forward the user's scanned cities to the CityPicker for the "Recently scanned" group
+  const scanned = extraCities
 
   return (
     <header className="h-14 border-b border-white/[0.06] bg-[#050810]/95 backdrop-blur-2xl sticky top-0 z-50 shrink-0 shadow-[0_1px_0_rgba(255,255,255,0.04)]">
@@ -69,31 +69,7 @@ export function TopNav({
             </SelectContent>
           </Select>
 
-          <Select value={cityInList ? location : ""} onValueChange={onLocationChange}>
-            <SelectTrigger className="w-52 h-9 bg-white/[0.04] border-white/[0.08] hover:border-white/15 focus:ring-0 focus:border-cyan-500/35 text-white/80 text-sm transition-colors cursor-pointer">
-              <MapPin className="w-3.5 h-3.5 mr-1.5 text-cyan-400/40 shrink-0" />
-              <SelectValue placeholder={location || "Select city"} />
-            </SelectTrigger>
-            <SelectContent className="bg-[#0d1117] border-white/10 shadow-2xl">
-              {PRESET_CITIES.map(city => (
-                <SelectItem key={city.value} value={city.value} className="text-white/80 text-sm focus:bg-cyan-500/15 focus:text-white cursor-pointer">
-                  {city.label}
-                </SelectItem>
-              ))}
-              {scanned.length > 0 && (
-                <>
-                  <div className="px-2 py-1.5 mt-1 border-t border-white/8">
-                    <p className="text-[9px] text-white/30 uppercase tracking-wider font-mono font-semibold">Scanned Cities</p>
-                  </div>
-                  {scanned.map(city => (
-                    <SelectItem key={city} value={city} className="text-white/80 text-sm focus:bg-cyan-500/15 focus:text-white cursor-pointer">
-                      {city}
-                    </SelectItem>
-                  ))}
-                </>
-              )}
-            </SelectContent>
-          </Select>
+          <CityPicker value={location} onChange={onLocationChange} recentCities={scanned} />
         </div>
 
         {/* Right actions */}

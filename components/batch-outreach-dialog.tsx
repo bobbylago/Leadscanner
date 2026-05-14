@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import {
   Mail, ExternalLink, X, Check, ArrowRight, Eye, Send, Copy,
   Building2, Globe, AlertCircle, Sparkles, ChevronRight, RotateCcw, User,
+  Zap, Keyboard,
 } from "lucide-react"
 import {
   guessEmail, renderTemplate, buildGmailUrl, buildMailtoUrl,
@@ -30,7 +31,7 @@ interface BatchOutreachDialogProps {
   leads: Lead[]
 }
 
-type Mode = "compose" | "preview" | "sequence"
+type Mode = "compose" | "preview" | "sequence" | "blitz"
 
 export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialogProps) {
   // Detect dominant language from selected leads (majority vote)
@@ -198,6 +199,37 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     setTimeout(() => handleSequenceNext(), 200)
   }
 
+  // Keyboard shortcuts for sequence mode (Enter = open & next, S = skip)
+  useEffect(() => {
+    if (!open || mode !== "sequence") return
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore when typing in an input
+      const target = e.target as HTMLElement
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return
+      if (e.key === "Enter") { e.preventDefault(); handleSequenceOpenAndNext() }
+      else if (e.key.toLowerCase() === "s") { e.preventDefault(); handleSequenceSkip() }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [open, mode, sequenceIdx, validLeads])
+
+  // Blitz: open N tabs at once with stagger to avoid popup blocker
+  const [blitzProgress, setBlitzProgress] = useState(0)
+  const [blitzing, setBlitzing] = useState(false)
+
+  const handleBlitz = async (batchSize: number = 5) => {
+    setBlitzing(true)
+    setBlitzProgress(0)
+    const remaining = validLeads.filter(l => !sentSet.has(l.id)).slice(0, batchSize)
+    for (let i = 0; i < remaining.length; i++) {
+      openLead(remaining[i])
+      setBlitzProgress(i + 1)
+      // Small stagger between window.open calls — most browsers handle 5-10 with ~80ms spacing
+      await new Promise(r => setTimeout(r, 100))
+    }
+    setBlitzing(false)
+  }
+
   const handleCopyEmails = () => {
     const list = validLeads.map(l => emails[l.id]).filter(Boolean).join(", ")
     navigator.clipboard.writeText(list)
@@ -228,19 +260,22 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
               {validLeads.length} valid · {skipped.size} skipped
             </span>
             <div className="ml-auto flex items-center gap-1">
-              {(["compose", "preview", "sequence"] as Mode[]).map(m => (
+              {(["compose", "preview", "sequence", "blitz"] as Mode[]).map(m => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
                   disabled={validLeads.length === 0}
                   className={cn(
-                    "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed",
+                    "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1",
                     mode === m
-                      ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                      ? m === "blitz"
+                        ? "bg-orange-500/15 text-orange-400 border border-orange-500/30"
+                        : "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
                       : "bg-white/[0.04] text-white/40 border border-white/[0.06] hover:text-white/70"
                   )}
                 >
-                  {m === "compose" ? "Compose" : m === "preview" ? "Preview" : "Sequence"}
+                  {m === "blitz" && <Zap className="w-2.5 h-2.5" />}
+                  {m === "compose" ? "Compose" : m === "preview" ? "Preview" : m === "sequence" ? "Sequence" : "Blitz"}
                 </button>
               ))}
             </div>
@@ -575,6 +610,113 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                     Open & Next
                   </Button>
                 </div>
+
+                {/* Keyboard hints */}
+                <div className="flex items-center justify-center gap-3 text-[9px] text-white/30 font-mono">
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] text-white/55">↵</kbd>
+                    open & next
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] text-white/55">S</kbd>
+                    skip
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] text-white/55">esc</kbd>
+                    close
+                  </span>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ── BLITZ MODE ──────────────────────────────── */}
+          {mode === "blitz" && (
+            validLeads.length === 0 ? (
+              <div className="px-6 py-12 text-center text-white/40 text-sm">No valid recipients</div>
+            ) : (
+              <div className="px-6 py-5 space-y-4">
+                {/* Warning */}
+                <div className="rounded-xl bg-orange-500/[0.06] border border-orange-500/20 px-3.5 py-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-orange-400 shrink-0" strokeWidth={2.5} />
+                    <span className="text-xs font-bold uppercase tracking-wider text-orange-400">Blitz Mode</span>
+                  </div>
+                  <p className="text-[11px] text-white/55 leading-relaxed">
+                    Opens multiple Gmail compose tabs simultaneously. Your browser may ask you to <span className="text-white font-semibold">allow popups</span> the first time — accept it.
+                  </p>
+                </div>
+
+                {/* Queue preview */}
+                <div className="space-y-2">
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-white/40 font-mono">
+                    Queue · {validLeads.filter(l => !sentSet.has(l.id)).length} pending · {sentSet.size} sent
+                  </h3>
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-white/[0.06] divide-y divide-white/[0.04]">
+                    {validLeads.map((lead, i) => {
+                      const isSent = sentSet.has(lead.id)
+                      return (
+                        <div key={lead.id} className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 text-xs",
+                          isSent ? "bg-emerald-500/[0.04] text-white/40" : "text-white/75"
+                        )}>
+                          <span className="text-[9px] font-mono text-white/25 w-6 shrink-0">{(i + 1).toString().padStart(2, "0")}</span>
+                          <span className="truncate flex-1">{lead.name}</span>
+                          {isSent
+                            ? <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1 shrink-0"><Check className="w-2.5 h-2.5" />Sent</span>
+                            : <span className="text-[9px] font-mono text-white/30 shrink-0">{emails[lead.id]}</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Blitz progress */}
+                {blitzing && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-mono text-white/40">
+                      <span>Opening tab {blitzProgress}…</span>
+                      <span className="text-orange-400">Blitzing</span>
+                    </div>
+                    <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-200" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Batch size buttons */}
+                <div className="space-y-2">
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-white/40 font-mono">
+                    Open in Gmail
+                  </h3>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[3, 5, 10, validLeads.filter(l => !sentSet.has(l.id)).length].map((n, i) => {
+                      const remaining = validLeads.filter(l => !sentSet.has(l.id)).length
+                      const capped = Math.min(n, remaining)
+                      const isAll = i === 3
+                      if (capped === 0) return null
+                      return (
+                        <Button
+                          key={i}
+                          onClick={() => handleBlitz(capped)}
+                          disabled={blitzing || remaining === 0}
+                          className={cn(
+                            "h-9 font-bold text-xs transition-all cursor-pointer disabled:opacity-30",
+                            isAll
+                              ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-[0_0_16px_rgba(251,146,60,0.25)] hover:scale-[1.02]"
+                              : "bg-white/[0.05] border border-white/[0.10] text-white hover:bg-white/[0.10]"
+                          )}
+                        >
+                          <Zap className="w-3 h-3 mr-1" strokeWidth={2.5} />
+                          {isAll ? `All ${capped}` : capped}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-[10px] text-white/30 leading-relaxed">
+                    Each click opens that many Gmail compose tabs at once. Tip: start with 3 to make sure popups are allowed, then crank to All.
+                  </p>
+                </div>
               </div>
             )
           )}
@@ -594,11 +736,16 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                 className="border border-white/10 text-white/70 hover:text-white hover:bg-white/[0.04] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
                 <Eye className="w-4 h-4 mr-1.5" /> Preview
               </Button>
+              <Button onClick={() => { setMode("blitz") }} variant="ghost"
+                disabled={validLeads.length === 0}
+                className="border border-orange-500/25 bg-orange-500/[0.06] text-orange-400 hover:bg-orange-500/15 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                <Zap className="w-4 h-4 mr-1.5" strokeWidth={2.5} /> Blitz
+              </Button>
               <Button onClick={() => { setSequenceIdx(0); setMode("sequence") }}
                 disabled={validLeads.length === 0}
                 className="bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:scale-[1.01] transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
                 <Send className="w-4 h-4 mr-1.5" />
-                Start Outreach ({validLeads.length})
+                Sequence ({validLeads.length})
               </Button>
             </div>
           </div>
