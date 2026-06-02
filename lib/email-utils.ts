@@ -32,6 +32,24 @@ export function cleanBusinessName(name: string, lang: LangCode = "en"): string {
   return cleaned || name // never return empty
 }
 
+export function normalizeSenderName(name: string | undefined): string {
+  const trimmed = name?.trim()
+  if (!trimmed) return ""
+  if (/^\[[^\]]+\]$/.test(trimmed)) return trimmed
+
+  return trimmed
+    .split(/\s+/)
+    .map(part => part
+      .split(/([-'])/)
+      .map(piece => /^[a-zA-Z]/.test(piece)
+        ? piece.charAt(0).toUpperCase() + piece.slice(1).toLowerCase()
+        : piece
+      )
+      .join("")
+    )
+    .join(" ")
+}
+
 // ── Category translations per language ────────────────────────────
 const CATEGORY_TRANSLATIONS: Record<LangCode, Record<string, string>> = {
   en: {}, // already English
@@ -90,6 +108,76 @@ export function guessEmail(website: string | null, prefix: string = "info"): str
   }
 }
 
+function domainFromWebsite(website: string | null): string {
+  if (!website) return ""
+  try {
+    const url = new URL(website.startsWith("http") ? website : `https://${website}`)
+    return url.hostname.toLowerCase().replace(/^www\./, "")
+  } catch {
+    return ""
+  }
+}
+
+function normalizeEmail(value: string): string {
+  let decoded = value
+  try { decoded = decodeURIComponent(decoded) } catch {}
+  return decoded
+    .replace(/^mailto:/i, "")
+    .split(/[?#]/)[0]
+    .trim()
+    .replace(/^["'<(\[]+|[>"'),;:\]]+$/g, "")
+    .toLowerCase()
+}
+
+function isUsableContactEmail(email: string): boolean {
+  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)) return false
+  if (email.length > 96) return false
+  if (/\.(?:png|jpe?g|gif|webp|svg|css|js|json|ico|pdf)$/i.test(email)) return false
+  const [local, domain] = email.split("@")
+  if (!local || !domain) return false
+  if (/^[a-f0-9]{16,}$/i.test(local)) return false
+  if (/^(?:no-?reply|do-?not-?reply|donotreply|abuse|postmaster)$/i.test(local)) return false
+  return true
+}
+
+const PREFERRED_CONTACT_MAILBOXES = [
+  "info", "contact", "hello", "office", "admin", "support", "sales",
+  "reception", "frontdesk", "booking", "appointments", "care", "intake",
+  "admissions", "jobs", "careers", "hr", "kontakt", "mail",
+]
+
+function emailPreferenceScore(email: string, websiteDomain: string): number {
+  const [local, domain] = email.split("@")
+  let score = 0
+  if (websiteDomain && (domain === websiteDomain || domain.endsWith(`.${websiteDomain}`))) score += 60
+  const mailboxIndex = PREFERRED_CONTACT_MAILBOXES.indexOf(local)
+  if (mailboxIndex >= 0) score += 40 - mailboxIndex
+  if (/^[a-z]+[._-][a-z]+$/.test(local)) score += 8
+  return score
+}
+
+export function getDiscoveredEmailsForLead(lead: Lead): string[] {
+  const websiteDomain = domainFromWebsite(lead.website)
+  const seen = new Set<string>()
+  const emails: string[] = []
+
+  for (const raw of lead.realAudit?.signals.emails ?? []) {
+    const email = normalizeEmail(raw)
+    if (!isUsableContactEmail(email) || seen.has(email)) continue
+    seen.add(email)
+    emails.push(email)
+  }
+
+  return emails.sort((a, b) =>
+    emailPreferenceScore(b, websiteDomain) - emailPreferenceScore(a, websiteDomain)
+    || a.localeCompare(b)
+  )
+}
+
+export function bestEmailForLead(lead: Lead, prefix: string = "info"): string {
+  return getDiscoveredEmailsForLead(lead)[0] ?? guessEmail(lead.website, prefix)
+}
+
 /** Get email prefixes appropriate for the lead's country */
 export function getEmailPrefixesForLead(lead: Lead, fallbackCity?: string): readonly string[] {
   const country = lead.country ?? (fallbackCity ? inferCountryFromCity(fallbackCity) : undefined)
@@ -107,136 +195,136 @@ type TemplatePack = { subject: string; body: string }
 
 const TEMPLATES: Record<LangCode, TemplatePack> = {
   en: {
-    subject: "Quick question about {name}'s online presence",
+    subject: "Quick fix for {name}",
     body: [
-      "Hi {name} team,",
+      "Hi {name},",
       "",
-      "I was researching {category} businesses in your area and ran a digital health audit on your site.",
+      "I noticed there isn't a clear instant quote path for after-hours inquiries.",
       "",
-      "I noticed {issues}.",
+      "That can mean a customer waits, then calls someone else.",
       "",
-      "Issues like these typically cost local businesses around {revenueLeak}/month in missed bookings and conversions.",
+      "I set up AI follow-up that texts back, collects the job details, and helps book the next step.",
       "",
-      "I've built a working prototype that fixes this — happy to share a quick 2-minute demo specifically for {name}. Worth a look?",
+      "Want me to send a 2-minute demo?",
       "",
       "Best,",
       "{senderName}",
     ].join("\n"),
   },
   sv: {
-    subject: "Snabb fråga om {name}s digitala närvaro",
+    subject: "Snabb ide for {name}",
     body: [
       "Hej {name},",
       "",
-      "Jag tittade på {category} i ert område och gjorde en snabb digital granskning av er webbplats.",
+      "Jag tittade pa {category} i ert omrade och sag nagra saker pa er webbplats som kan gora det svarare for besokare att bli bokningar eller forfragningar.",
       "",
-      "Jag noterade att {issues}.",
+      "Det viktigaste jag sag: {issues}.",
       "",
-      "Den här typen av problem brukar kosta lokala företag ungefär {revenueLeak}/månad i missade bokningar och konverteringar.",
+      "Jag hjalper lokala foretag att gora sadana svaga punkter tydligare: battre kontaktvagar, snabbare sidor och enklare uppfoljning.",
       "",
-      "Jag har byggt en fungerande prototyp som löser det här – kan jag visa en 2-minuters demo specifikt för {name}? Värt en titt?",
+      "Ar det vart att jag skickar en snabb 2-minuters audit for {name} med de konkreta forbattrigar jag skulle foresla?",
       "",
-      "Vänliga hälsningar,",
+      "Vanliga halsningar,",
       "{senderName}",
     ].join("\n"),
   },
   da: {
-    subject: "Hurtigt spørgsmål om {name}s online tilstedeværelse",
+    subject: "Hurtig ide til {name}",
     body: [
       "Hej {name},",
       "",
-      "Jeg kiggede på lokale {category} i jeres område og lavede en hurtig digital analyse af jeres hjemmeside.",
+      "Jeg kiggede pa lokale {category} i jeres omrade og sa et par ting pa jeres hjemmeside, som kan gore det svaerere for besogende at blive til bookinger eller henvendelser.",
       "",
-      "Jeg bemærkede at {issues}.",
+      "Det vigtigste jeg sa: {issues}.",
       "",
-      "Den slags problemer koster typisk lokale virksomheder omkring {revenueLeak}/måned i tabte bookinger og konverteringer.",
+      "Jeg hjaelper lokale virksomheder med at gore den slags svage punkter til tydeligere kontaktveje, hurtigere sider og bedre opfolgning.",
       "",
-      "Jeg har bygget en fungerende prototype, der løser dette – kan jeg vise en hurtig 2-minutters demo for {name}? Værd at se?",
+      "Vil det vaere relevant, hvis jeg sender en hurtig 2-minutters audit for {name} med de konkrete forbedringer, jeg ville foresla?",
       "",
       "Bedste hilsner,",
       "{senderName}",
     ].join("\n"),
   },
   no: {
-    subject: "Kort spørsmål om {name}s digitale tilstedeværelse",
+    subject: "Rask ide for {name}",
     body: [
       "Hei {name},",
       "",
-      "Jeg så på lokale {category} i området deres og gjorde en rask digital analyse av nettsiden deres.",
+      "Jeg sa pa lokale {category} i omradet deres og la merke til noen ting pa nettsiden som kan gjore det vanskeligere for besokende a bli til bookinger eller henvendelser.",
       "",
-      "Jeg la merke til at {issues}.",
+      "Det viktigste jeg sa: {issues}.",
       "",
-      "Slike problemer koster vanligvis lokale bedrifter rundt {revenueLeak}/måned i tapte bookinger og konverteringer.",
+      "Jeg hjelper lokale bedrifter med a gjore slike svake punkter til tydeligere kontaktveier, raskere sider og bedre oppfolging.",
       "",
-      "Jeg har bygget en prototype som løser dette – kan jeg vise en 2-minutters demo for {name}? Verdt en titt?",
+      "Vil det vaere nyttig om jeg sender en rask 2-minutters audit for {name} med de konkrete forbedringene jeg ville foreslatt?",
       "",
       "Vennlig hilsen,",
       "{senderName}",
     ].join("\n"),
   },
   de: {
-    subject: "Kurze Frage zur Online-Präsenz von {name}",
+    subject: "Kurze Idee fur {name}",
     body: [
-      "Hallo {name}-Team,",
+      "Hallo {name},",
       "",
-      "ich habe mir {category} in Ihrer Region angesehen und einen schnellen Digital-Audit Ihrer Website durchgeführt.",
+      "ich habe mir {category} in Ihrer Region angesehen und ein paar Punkte auf Ihrer Website bemerkt, die es Besuchern schwerer machen konnten, eine Anfrage oder Buchung auszulosen.",
       "",
-      "Mir ist aufgefallen, dass {issues}.",
+      "Der wichtigste Punkt: {issues}.",
       "",
-      "Solche Probleme kosten lokale Unternehmen typischerweise rund {revenueLeak}/Monat an verlorenen Buchungen und Conversions.",
+      "Ich helfe lokalen Unternehmen dabei, solche Schwachstellen in klarere Kontaktwege, schnellere Seiten und bessere Nachverfolgung umzuwandeln.",
       "",
-      "Ich habe einen funktionierenden Prototyp gebaut, der genau das löst – darf ich eine 2-minütige Demo speziell für {name} zeigen?",
+      "Soll ich Ihnen einen kurzen 2-Minuten-Audit fur {name} mit den konkreten Verbesserungen schicken, die ich vorschlagen wurde?",
       "",
-      "Beste Grüße,",
+      "Beste Grusse,",
       "{senderName}",
     ].join("\n"),
   },
   fr: {
-    subject: "Petite question concernant la présence en ligne de {name}",
+    subject: "Petite idee pour {name}",
     body: [
-      "Bonjour l'équipe {name},",
+      "Bonjour {name},",
       "",
-      "Je faisais des recherches sur les entreprises de {category} de votre région et j'ai effectué un audit digital rapide de votre site.",
+      "Je regardais des entreprises de {category} dans votre region et j'ai remarque quelques points sur votre site qui peuvent rendre plus difficile la conversion des visiteurs en demandes ou reservations.",
       "",
-      "J'ai remarqué que {issues}.",
+      "Le principal point que j'ai vu : {issues}.",
       "",
-      "Ce type de problème coûte généralement aux entreprises locales environ {revenueLeak}/mois en réservations et conversions perdues.",
+      "J'aide les entreprises locales a transformer ce type de faiblesse en parcours de contact plus clairs, pages plus rapides et meilleur suivi.",
       "",
-      "J'ai créé un prototype fonctionnel qui corrige ce problème — puis-je vous montrer une démo de 2 minutes spécifique à {name} ?",
+      "Serait-il utile que je vous envoie un audit rapide de 2 minutes pour {name}, avec les ameliorations concretes que je proposerais ?",
       "",
       "Cordialement,",
       "{senderName}",
     ].join("\n"),
   },
   es: {
-    subject: "Consulta rápida sobre la presencia online de {name}",
+    subject: "Idea rapida para {name}",
     body: [
-      "Hola equipo de {name},",
+      "Hola {name},",
       "",
-      "Estuve investigando empresas de {category} en su zona y realicé una auditoría digital rápida de su sitio web.",
+      "Estuve revisando empresas de {category} en su zona y note algunos puntos en su sitio web que podrian hacer mas dificil convertir visitantes en reservas o consultas.",
       "",
-      "Noté que {issues}.",
+      "El punto principal que vi: {issues}.",
       "",
-      "Este tipo de problemas suele costarle a los negocios locales unos {revenueLeak}/mes en reservas y conversiones perdidas.",
+      "Ayudo a negocios locales a convertir este tipo de puntos debiles en rutas de contacto mas claras, paginas mas rapidas y mejor seguimiento.",
       "",
-      "He creado un prototipo funcional que soluciona esto — ¿les muestro una demo de 2 minutos específica para {name}?",
+      "Valdria la pena que les envie una auditoria rapida de 2 minutos para {name} con las mejoras concretas que sugeriria?",
       "",
       "Saludos,",
       "{senderName}",
     ].join("\n"),
   },
   nl: {
-    subject: "Korte vraag over de online aanwezigheid van {name}",
+    subject: "Kort idee voor {name}",
     body: [
-      "Hallo {name} team,",
+      "Hallo {name},",
       "",
-      "Ik keek naar lokale {category}-bedrijven in jullie regio en deed een snelle digitale audit van jullie website.",
+      "Ik keek naar lokale {category}-bedrijven in jullie regio en zag een paar punten op jullie website die het lastiger kunnen maken om bezoekers om te zetten in aanvragen of boekingen.",
       "",
-      "Ik merkte op dat {issues}.",
+      "Het belangrijkste punt dat ik zag: {issues}.",
       "",
-      "Dit soort problemen kost lokale bedrijven gemiddeld zo'n {revenueLeak}/maand aan gemiste boekingen en conversies.",
+      "Ik help lokale bedrijven om zulke zwakke plekken om te zetten in duidelijkere contactroutes, snellere pagina's en betere opvolging.",
       "",
-      "Ik heb een werkend prototype gebouwd dat dit oplost — zal ik een 2-minuten demo specifiek voor {name} laten zien?",
+      "Zal ik een korte audit van 2 minuten voor {name} sturen met de concrete verbeteringen die ik zou voorstellen?",
       "",
       "Met vriendelijke groet,",
       "{senderName}",
@@ -248,13 +336,13 @@ const TEMPLATES: Record<LangCode, TemplatePack> = {
 
 const ISSUE_PHRASES: Record<LangCode, Record<string, string>> = {
   en: {
-    noHttps:   "your site isn't using HTTPS (Chrome flags it as 'Not Secure')",
-    noViewport:"there's no mobile viewport meta tag, so it renders incorrectly on phones",
-    noBot:     "there's no chatbot or booking system, so after-hours leads go unanswered",
-    noSchema:  "there's no schema.org markup, so Google can't show rich local results",
-    slow:      "the homepage takes {sec}s to respond, and 53% of mobile users bounce after 3s",
-    noTitle:   "the site is missing core SEO tags (title or meta description)",
-    fallback:  "the site is missing key conversion infrastructure",
+    noHttps:   "the contact path could be clearer for visitors",
+    noViewport:"the contact path could be easier on phones",
+    noBot:     "there's no clear instant quote or booking path for after-hours inquiries",
+    noSchema:  "the site could make the service area and contact path clearer",
+    slow:      "the site may respond slowly when someone is trying to request service",
+    noTitle:   "the quote path could be clearer from the website",
+    fallback:  "there isn't a clear instant quote path",
     noSite:    "your business has no website yet",
     oldSite:   "your current website appears outdated",
     needsBot:  "the site has no automated lead capture",
@@ -384,12 +472,13 @@ export function renderTemplate(
     website: lead.website ?? "",
     domain: lead.website ? lead.website.replace(/^https?:\/\//, "").replace(/\/.*/, "") : "",
     phone: lead.phone ?? "",
-    rating: String(lead.rating),
+    rating: lead.rating > 0 ? String(lead.rating) : "",
     // {reviews} is intentionally NOT exposed — synthetic value, credibility risk.
     revenueLeak: formatCurrency(revenueLeak, country),
-    healthScore: String(healthScore),
+    // -1 means "not audited yet" — expose blank rather than a misleading number.
+    healthScore: healthScore >= 0 ? String(healthScore) : "",
     issues: buildIssuesPhrase(lead, lang),
-    senderName: opts.senderName?.trim() || senderNamePlaceholder(lang),
+    senderName: normalizeSenderName(opts.senderName) || senderNamePlaceholder(lang),
   }
 
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`)

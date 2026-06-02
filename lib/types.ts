@@ -1,5 +1,20 @@
 export type Priority = "Low" | "Medium" | "High"
 
+/** Placeholder audit used before a real website audit has run. All zeros — the
+ *  UI must gate on `lead.realAudit` to decide whether to show audit scores. */
+export const EMPTY_AUDIT = {
+  seo: 0,
+  mobileFriendliness: 0,
+  chatbotPresence: 0,
+  pageSpeed: 0,
+  socialPresence: 0,
+} as const
+
+/** A lead has real, verified audit data only once `realAudit` is populated. */
+export function isAudited(lead: { realAudit?: unknown }): boolean {
+  return !!lead.realAudit
+}
+
 export interface AuditSignals {
   reachable: boolean
   httpStatus: number | null
@@ -18,6 +33,11 @@ export interface AuditSignals {
   chatbotProvider: string | null
   bookingProvider: string | null
   analyticsProvider: string | null
+  hasContactForm: boolean
+  hasPhoneLink: boolean
+  hasEmailLink: boolean
+  emails: string[]
+  hasAddressSignal: boolean
   socialLinks: string[]
   socialLinkCount: number
   responseTimeMs: number
@@ -45,12 +65,14 @@ export interface Lead {
   priority?: Priority
   mapPos: { top: string; left: string }
   isCustom?: boolean
-  /** 0-100, set by lead-finder when scanned. Higher = better target. */
+  /** 0-100, set by lead-finder when scanned. Higher = stronger target fit. */
   qualityScore?: number
   /** Set by lead-finder if website verification ran */
   websiteVerified?: boolean
   /** ISO 3166 country code (e.g. "US", "SE", "GB") */
   country?: string
+  /** Where this lead came from. Server-only scans prefer Google Places when configured. */
+  source?: "google-places" | "public-data"
   audit: {
     seo: number
     mobileFriendliness: number
@@ -78,7 +100,7 @@ export const statusConfig: Record<string, { label: string; bgColor: string; colo
     dot: "bg-cyan-400",
   },
   "No Website": {
-    label: "No Website",
+    label: "No Site Found",
     bgColor: "bg-red-500/15",
     color: "text-red-400",
     dot: "bg-red-400",
@@ -113,6 +135,7 @@ export const INDUSTRIES = [
   "Electrician",
   "HVAC",
   "Home Services",
+  "Home Care Agencies",
   "Dental",
   "Roofing",
 ] as const

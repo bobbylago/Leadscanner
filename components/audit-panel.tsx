@@ -1,7 +1,7 @@
 "use client"
 
 import { memo, useMemo, useState, useEffect } from "react"
-import { type Lead, getStatusConfig } from "@/lib/types"
+import { type Lead, getStatusConfig, EMPTY_AUDIT } from "@/lib/types"
 import { calcRevenueLeak, calcHealthScore, scoreGradient, scoreStroke, cn } from "@/lib/utils"
 import { getTemplate, renderTemplate } from "@/lib/email-utils"
 import { languageForCountry, formatCurrency } from "@/lib/country-utils"
@@ -49,6 +49,27 @@ function ScoreRing({ score, size = 76 }: { score: number; size?: number }) {
   )
 }
 
+function PendingRing({ auditing, size = 76 }: { auditing?: boolean; size?: number }) {
+  const r = size * 0.37
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="absolute inset-0">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={size * 0.07} />
+      </svg>
+      <div className="relative text-center z-10">
+        {auditing ? (
+          <Loader2 className="w-4 h-4 text-cyan-400 animate-spin mx-auto" />
+        ) : (
+          <div className="text-base font-black text-white/40 leading-none font-mono">—</div>
+        )}
+        <div className="text-[8px] text-white/35 uppercase tracking-wider mt-0.5 font-mono">
+          {auditing ? "Scanning" : "Health"}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MiniBar({ value, gradient }: { value: number; gradient: string }) {
   return (
     <div className="h-[5px] w-full bg-white/[0.06] rounded-full overflow-hidden mt-1.5">
@@ -76,16 +97,14 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
     return () => window.removeEventListener("storage", onStorage)
   }, [])
 
-  // Prefer real audit when available — overrides synthetic scores
-  const effectiveAudit = lead.realAudit ?? lead.audit
+  // Audit scores are shown ONLY from a real audit. `effectiveAudit` falls back
+  // to zeros purely so helper functions don't crash — score UI is gated on `verified`.
+  const effectiveAudit = lead.realAudit ?? EMPTY_AUDIT
   const verified = !!lead.realAudit
   const signals = lead.realAudit?.signals
 
-  // Build a "verified" lead for score calcs
-  const auditedLead = useMemo<Lead>(() => ({ ...lead, audit: effectiveAudit }), [lead, effectiveAudit])
-
-  const overallScore = useMemo(() => calcHealthScore(auditedLead), [auditedLead])
-  const revenueLeak  = useMemo(() => calcRevenueLeak(auditedLead),  [auditedLead])
+  const overallScore = useMemo(() => calcHealthScore(lead), [lead])
+  const revenueLeak  = useMemo(() => calcRevenueLeak(lead),  [lead])
 
   const pitchText = useMemo(() => {
     const lang = languageForCountry(lead.country)
@@ -93,7 +112,7 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
     const subject = renderTemplate(tpl.subject, lead, { senderName })
     const body = renderTemplate(tpl.body, lead, { senderName })
     return `Subject: ${subject}\n\n${body}`
-  }, [lead, overallScore, revenueLeak, signals, verified, senderName])
+  }, [lead, senderName])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(pitchText)
@@ -130,8 +149,7 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
       if (signals) {
         const issues: string[] = []
         if (!signals.hasViewport) issues.push("no mobile viewport meta")
-        if (!signals.usesModernFramework) issues.push("no modern framework detected")
-        if (!signals.hasManifest) issues.push("no PWA manifest")
+        if (!signals.usesModernFramework && !signals.hasManifest) issues.push("few modern responsive signals")
         return issues.length === 0
           ? "Fully mobile-optimised stack"
           : issues.join(" · ")
@@ -144,9 +162,11 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
 
     const chatbotTip = () => {
       if (signals) {
-        if (signals.chatbotProvider) return `Detected: ${signals.chatbotProvider}`
-        if (signals.bookingProvider) return `No chatbot. Booking system: ${signals.bookingProvider}`
-        return "No chatbot, no booking system — 24/7 leads are slipping through"
+        if (signals.chatbotProvider) return `Chat detected: ${signals.chatbotProvider}`
+        if (signals.bookingProvider) return `Booking system: ${signals.bookingProvider}`
+        if (signals.hasContactForm) return "Contact form detected, but no booking or chat"
+        if (signals.hasPhoneLink || signals.hasEmailLink) return "Basic click-to-contact only"
+        return "No booking, chat, form, or click-to-contact detected"
       }
       const v = effectiveAudit.chatbotPresence
       if (v < 15) return "No automation detected"
@@ -180,9 +200,9 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
     return [
       { label: "SEO Score",            value: effectiveAudit.seo,                icon: Search,     gradient: scoreGradient(effectiveAudit.seo),                tip: seoTip()     },
       { label: "Mobile Friendliness",  value: effectiveAudit.mobileFriendliness, icon: Smartphone, gradient: scoreGradient(effectiveAudit.mobileFriendliness), tip: mobileTip()  },
-      { label: "AI Chatbot Presence",  value: effectiveAudit.chatbotPresence,    icon: Bot,        gradient: scoreGradient(effectiveAudit.chatbotPresence),    tip: chatbotTip() },
+      { label: "Conversion Readiness", value: effectiveAudit.chatbotPresence,    icon: Bot,        gradient: scoreGradient(effectiveAudit.chatbotPresence),    tip: chatbotTip() },
       { label: "Page Speed",           value: effectiveAudit.pageSpeed,          icon: Gauge,      gradient: scoreGradient(effectiveAudit.pageSpeed),          tip: speedTip()   },
-      { label: "Social Presence",      value: effectiveAudit.socialPresence,     icon: Share2,     gradient: scoreGradient(effectiveAudit.socialPresence),     tip: socialTip()  },
+      { label: "Trust Signals",        value: effectiveAudit.socialPresence,     icon: Share2,     gradient: scoreGradient(effectiveAudit.socialPresence),     tip: socialTip()  },
     ]
   }, [effectiveAudit, signals])
 
@@ -202,9 +222,12 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
         recs.push({ icon: Smartphone, title: "Add Mobile Viewport", priority: "critical",
           desc: "Missing <meta name='viewport'> — site renders as a desktop layout on phones. Mobile users will bounce." })
       }
-      if (!signals.chatbotProvider && !signals.bookingProvider) {
-        recs.push({ icon: Bot, title: "Deploy AI Chatbot or Booking", priority: "high",
-          desc: "No chatbot or booking system detected. 60%+ of leads arrive after hours — they go unanswered." })
+      if (!signals.chatbotProvider && !signals.bookingProvider && !signals.hasContactForm) {
+        recs.push({ icon: Bot, title: "Add Booking or Contact Capture", priority: "high",
+          desc: "No booking system, chat, or contact form detected. Give visitors a clear way to request service after hours." })
+      } else if (!signals.chatbotProvider && !signals.bookingProvider) {
+        recs.push({ icon: Bot, title: "Upgrade Contact Capture", priority: "medium",
+          desc: "A contact path exists, but no instant booking or chat was detected. Add one to reduce missed leads." })
       }
       if (!signals.hasMetaDescription || !signals.hasTitle) {
         recs.push({ icon: Search, title: "Fix Core SEO Meta Tags", priority: "high",
@@ -226,24 +249,19 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
         recs.push({ icon: Share2, title: "Link Social Profiles", priority: "low",
           desc: "No social media links on the site. Add them to build trust and reach." })
       }
-    } else {
-      // Pre-audit fallback (synthetic)
-      if (lead.status === "Old Website") {
-        recs.push({ icon: Wrench, title: "Rebuild or Modernise Website", priority: "high",
-          desc: "Old sites hurt credibility and mobile conversion. Relaunch with a modern, fast, HTTPS stack." })
-      }
-      if ((effectiveAudit.chatbotPresence ?? 0) < 15) {
-        recs.push({ icon: Bot, title: "Deploy AI Chatbot", priority: "high",
-          desc: "Capture and qualify leads 24/7. Most bookings happen outside business hours — you're losing them." })
-      }
+    } else if (lead.status === "Old Website") {
+      // Status-based (real signal: site responded over plain HTTP) — safe pre-audit.
+      recs.push({ icon: Wrench, title: "Rebuild or Modernise Website", priority: "high",
+        desc: "Old sites hurt credibility and mobile conversion. Relaunch with a modern, fast, HTTPS stack." })
     }
+    // No synthetic, score-based recommendations before a real audit has run.
 
-    if (recs.length === 0) {
+    if (signals && recs.length === 0) {
       recs.push({ icon: Zap, title: "Advanced CRM Automation", priority: "growth",
         desc: "Business is mature digitally. Recommend follow-up sequences, upsell automation and Google Ads." })
     }
     return recs
-  }, [lead, signals, effectiveAudit])
+  }, [lead, signals])
 
   const priorityStyle: Record<string, string> = {
     critical: "text-red-400 bg-red-500/[0.08] border-red-500/20",
@@ -291,7 +309,7 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
             </div>
           </div>
           <div className="flex items-start gap-1.5 shrink-0">
-            <ScoreRing score={overallScore} />
+            {verified ? <ScoreRing score={overallScore} /> : <PendingRing auditing={isAuditing} />}
             <Button variant="ghost" size="icon" onClick={onClose}
               className="w-8 h-8 text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer">
               <X className="w-4 h-4" />
@@ -320,18 +338,18 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
         {/* ── OVERVIEW ── */}
         <TabsContent value="overview" className="flex-1 overflow-auto px-4 py-4 space-y-4 mt-0">
 
-          {/* Revenue leak */}
+          {/* Estimated opportunity */}
           <div className="p-4 rounded-2xl bg-red-500/[0.07] border border-red-500/20 shadow-[0_0_24px_rgba(239,68,68,0.06)]">
             <div className="flex items-center gap-2 mb-2">
               <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-red-400 font-mono">Monthly Revenue Leak</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-red-400 font-mono">Pipeline Potential Estimate</span>
             </div>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="text-3xl font-black text-white font-mono">{formatCurrency(revenueLeak, lead.country)}</span>
               <span className="text-sm text-white/30">/month</span>
             </div>
             <p className="text-[10px] text-white/30 font-mono">
-              Est. from review volume × visitor conversion gap
+              Conservative estimate from review volume and conversion gaps
             </p>
           </div>
 
@@ -339,16 +357,20 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
           <div className="space-y-2">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/25 font-mono">Contact & Info</h3>
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 shrink-0" />
-                <span className="text-sm font-bold text-white font-mono">{lead.rating}</span>
-                <span className="text-xs text-white/35 font-mono">({lead.reviews} reviews)</span>
-                <div className="ml-auto flex gap-px">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={cn("w-3 h-3", i < Math.round(lead.rating) ? "text-yellow-500 fill-yellow-500" : "text-white/10")} />
-                  ))}
+              {lead.rating > 0 && (
+                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
+                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                  <span className="text-sm font-bold text-white font-mono">{lead.rating}</span>
+                  {lead.reviews > 0 && (
+                    <span className="text-xs text-white/35 font-mono">({lead.reviews} reviews)</span>
+                  )}
+                  <div className="ml-auto flex gap-px">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className={cn("w-3 h-3", i < Math.round(lead.rating) ? "text-yellow-500 fill-yellow-500" : "text-white/10")} />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               {lead.phone && (
                 <a href={`tel:${lead.phone}`}
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:border-cyan-500/25 hover:bg-cyan-500/[0.04] transition-all duration-150 group cursor-pointer">
@@ -366,7 +388,7 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
                   </a>
                 ) : (
                   <span className="flex items-center gap-1.5 text-sm text-red-400/80 italic">
-                    <AlertTriangle className="w-3.5 h-3.5" /> No website detected
+                    <AlertTriangle className="w-3.5 h-3.5" /> No site found
                   </span>
                 )}
               </div>
@@ -380,25 +402,43 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
             </div>
           </div>
 
-          {/* Quick 5-point grid */}
+          {/* Quick 5-point grid — only once a real audit has run */}
           <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.07]">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3.5 font-mono">5-Point Audit</h3>
-            <div className="space-y-2.5">
-              {auditItems.map(item => (
-                <div key={item.label} className="flex items-center gap-3">
-                  <item.icon className="w-3.5 h-3.5 text-white/30 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between text-[10px] mb-0.5">
-                      <span className="text-white/50">{item.label}</span>
-                      <span className={cn("font-bold font-mono",
-                        item.value >= 70 ? "text-emerald-400" : item.value >= 40 ? "text-orange-400" : "text-red-400"
-                      )}>{item.value}%</span>
+            {verified ? (
+              <div className="space-y-2.5">
+                {auditItems.map(item => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <item.icon className="w-3.5 h-3.5 text-white/30 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between text-[10px] mb-0.5">
+                        <span className="text-white/50">{item.label}</span>
+                        <span className={cn("font-bold font-mono",
+                          item.value >= 70 ? "text-emerald-400" : item.value >= 40 ? "text-orange-400" : "text-red-400"
+                        )}>{item.value}%</span>
+                      </div>
+                      <MiniBar value={item.value} gradient={item.gradient} />
                     </div>
-                    <MiniBar value={item.value} gradient={item.gradient} />
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 py-1 text-white/40">
+                {lead.website ? (
+                  <>
+                    <Loader2 className={cn("w-3.5 h-3.5 shrink-0", isAuditing && "animate-spin text-cyan-400")} />
+                    <span className="text-[11px] font-mono">
+                      {isAuditing ? "Auditing the live site…" : "Open this lead to run a live audit"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-red-400/70" />
+                    <span className="text-[11px] font-mono">No site found to audit - that is the pitch</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -422,6 +462,8 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
                 <EvidenceRow label="Canonical URL"   ok={signals.hasCanonical} />
                 <EvidenceRow label="Schema markup"   ok={signals.hasSchemaMarkup} />
                 <EvidenceRow label="H1 tag"          ok={signals.h1Count === 1} detail={signals.h1Count !== 1 ? `${signals.h1Count} found` : undefined} />
+                <EvidenceRow label="Contact form"    ok={signals.hasContactForm} />
+                <EvidenceRow label="Click-to-call"   ok={signals.hasPhoneLink} />
                 <EvidenceRow label="Modern framework" ok={signals.usesModernFramework} />
                 <EvidenceRow label="PWA manifest"    ok={signals.hasManifest} />
               </div>
@@ -472,7 +514,7 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
           {!signals && !lead.website && (
             <div className="rounded-2xl bg-red-500/[0.05] border border-red-500/20 p-4 text-center">
               <AlertTriangle className="w-6 h-6 text-red-400 mx-auto mb-2" />
-              <p className="text-xs text-white/70 font-semibold">No website to audit</p>
+              <p className="text-xs text-white/70 font-semibold">No site found to audit</p>
               <p className="text-[10px] text-white/35 mt-1">This business has zero digital presence — the entire pitch.</p>
             </div>
           )}
@@ -500,7 +542,17 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
             </div>
           )}
 
-          {auditItems.map(item => (
+          {/* Not audited yet (has website, audit not running) */}
+          {!signals && lead.website && !isAuditing && (
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 text-center">
+              <Search className="w-5 h-5 text-white/30 mx-auto mb-2" />
+              <p className="text-xs text-white/55 font-mono">Audit not available yet</p>
+              <p className="text-[10px] text-white/30 mt-1">Reopen this lead to run the live website audit.</p>
+            </div>
+          )}
+
+          {/* Score breakdown — shown only from a real audit */}
+          {verified && auditItems.map(item => (
             <div key={item.label} className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -525,16 +577,22 @@ function AuditPanelInner({ lead, onClose, isAuditing }: AuditPanelProps) {
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/30 flex items-center gap-2 font-mono">
               <BarChart3 className="w-3.5 h-3.5" /> Strategic Recommendations
             </h3>
-            {recommendations.map((rec, i) => (
-              <div key={i} className={cn("flex items-start gap-3 p-3.5 rounded-xl border", priorityStyle[rec.priority] ?? "bg-white/[0.04] border-white/[0.08]")}>
-                <rec.icon className="w-4 h-4 shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-white leading-tight">{rec.title}</p>
-                  <p className="text-[10px] text-white/45 mt-1 leading-relaxed">{rec.desc}</p>
+            {recommendations.length > 0 ? (
+              recommendations.map((rec, i) => (
+                <div key={i} className={cn("flex items-start gap-3 p-3.5 rounded-xl border", priorityStyle[rec.priority] ?? "bg-white/[0.04] border-white/[0.08]")}>
+                  <rec.icon className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white leading-tight">{rec.title}</p>
+                    <p className="text-[10px] text-white/45 mt-1 leading-relaxed">{rec.desc}</p>
+                  </div>
+                  <span className="text-[8px] font-bold uppercase tracking-wider shrink-0 opacity-50 mt-0.5 font-mono">{rec.priority}</span>
                 </div>
-                <span className="text-[8px] font-bold uppercase tracking-wider shrink-0 opacity-50 mt-0.5 font-mono">{rec.priority}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-[10px] text-white/30 leading-relaxed font-mono">
+                Recommendations appear after the live site audit completes.
+              </p>
+            )}
           </div>
         </TabsContent>
 

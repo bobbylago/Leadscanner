@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { type Lead } from "@/lib/types"
 import { calcHealthScore, cn } from "@/lib/utils"
+import { getHighValueLeadProfile } from "@/lib/lead-scoring"
 import { Activity, Crosshair, ZoomIn, ZoomOut, RotateCcw, Compass, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -28,18 +29,19 @@ function rand(seed: number): number {
 }
 
 function markerColor(lead: Lead) {
-  if (lead.status === "No Website")  return { fill: "#ef4444", glow: "rgba(239,68,68,0.55)" }
-  if (lead.status === "Old Website") return { fill: "#f97316", glow: "rgba(249,115,22,0.55)" }
-  if (lead.isCustom)                  return { fill: "#a78bfa", glow: "rgba(167,139,250,0.55)" }
-  return { fill: "#06b6d4", glow: "rgba(6,182,212,0.55)" }
+  if (lead.status === "No Website")  return { fill: "#f87171", glow: "rgba(248,113,113,0.24)" }
+  if (lead.status === "Old Website") return { fill: "#fb923c", glow: "rgba(251,146,60,0.24)" }
+  if (lead.isCustom)                  return { fill: "#a78bfa", glow: "rgba(167,139,250,0.24)" }
+  return { fill: "#22d3ee", glow: "rgba(34,211,238,0.24)" }
 }
 
 /** Marker — size based on quality, shape by status, with quality halo */
 function Marker({ lead, isSelected }: { lead: Lead; isSelected: boolean }) {
   const { fill, glow } = markerColor(lead)
   const health = calcHealthScore(lead)
-  const quality = lead.qualityScore ?? 50
-  const isHot = quality >= 70
+  const valueProfile = getHighValueLeadProfile(lead)
+  const quality = valueProfile.score
+  const isHot = valueProfile.tier === "Hot"
 
   const isNoSite  = lead.status === "No Website"
   const isOldSite = lead.status === "Old Website"
@@ -58,8 +60,7 @@ function Marker({ lead, isSelected }: { lead: Lead; isSelected: boolean }) {
         <div className="absolute rounded-full"
           style={{
             width: size * 3, height: size * 3,
-            backgroundColor: fill, opacity: 0.06,
-            animation: "pulse-glow 3s cubic-bezier(0.4,0,0.6,1) infinite",
+            backgroundColor: fill, opacity: 0.05,
           }} />
       )}
 
@@ -67,8 +68,7 @@ function Marker({ lead, isSelected }: { lead: Lead; isSelected: boolean }) {
       <div className="absolute rounded-full"
         style={{
           width: size * 2, height: size * 2,
-          border: `1px solid ${fill}`, opacity: 0.18,
-          animation: "pulse-glow 2.5s ease-in-out infinite",
+          border: `1px solid ${fill}`, opacity: 0.14,
         }} />
 
       {/* Shape */}
@@ -79,7 +79,7 @@ function Marker({ lead, isSelected }: { lead: Lead; isSelected: boolean }) {
             width: size, height: size,
             backgroundColor: fill,
             border: "1.5px solid rgba(255,255,255,0.75)",
-            boxShadow: `0 0 12px ${glow}, 0 0 24px ${fill}40, inset 0 0 4px rgba(255,255,255,0.3)`,
+            boxShadow: `0 0 10px ${glow}`,
             transform: "rotate(45deg)",
             borderRadius: "2px",
           }}
@@ -91,7 +91,7 @@ function Marker({ lead, isSelected }: { lead: Lead; isSelected: boolean }) {
             width: size, height: size,
             backgroundColor: fill,
             border: "1.5px solid rgba(255,255,255,0.75)",
-            boxShadow: `0 0 12px ${glow}, 0 0 24px ${fill}40, inset 0 0 4px rgba(255,255,255,0.3)`,
+            boxShadow: `0 0 10px ${glow}`,
             borderRadius: "3px",
           }}
         />
@@ -102,7 +102,7 @@ function Marker({ lead, isSelected }: { lead: Lead; isSelected: boolean }) {
             width: size, height: size,
             backgroundColor: fill,
             border: "1.5px solid rgba(255,255,255,0.75)",
-            boxShadow: `0 0 12px ${glow}, 0 0 24px ${fill}40, inset 0 0 4px rgba(255,255,255,0.3)`,
+            boxShadow: `0 0 10px ${glow}`,
           }}
         >
           <div className="absolute inset-[28%] rounded-full bg-white/50" />
@@ -111,13 +111,13 @@ function Marker({ lead, isSelected }: { lead: Lead; isSelected: boolean }) {
 
       {/* Hot-lead flame badge — top-right of marker */}
       {isHot && !isSelected && (
-        <Flame className="absolute -top-1.5 -right-1.5 w-3 h-3 text-orange-300 drop-shadow-[0_0_4px_rgba(251,146,60,0.7)]" strokeWidth={2.5} />
+        <Flame className="absolute -top-1.5 -right-1.5 w-3 h-3 text-orange-300" strokeWidth={2.5} />
       )}
 
       {/* Health score on selected */}
       {isSelected && (
-        <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-950/95 border border-cyan-500/30 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white font-mono shadow-[0_0_8px_rgba(6,182,212,0.3)]">
-          {health}% · Q{quality}
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#0b0f16]/95 border border-white/[0.12] rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white font-mono">
+          {health}% · HV{quality}
         </div>
       )}
     </div>
@@ -203,7 +203,7 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
   const handleReset = () => { setOffset({ x: 0, y: 0 }); setZoom(1) }
 
   const countByStatus = (s: string) => leads.filter(l => l.status === s).length
-  const hotCount = leads.filter(l => (l.qualityScore ?? 0) >= 70).length
+  const hotCount = leads.filter(l => getHighValueLeadProfile(l).tier === "Hot").length
 
   return (
     <div
@@ -217,11 +217,11 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
       onMouseUp={() => setIsDragging(false)}
       onMouseLeave={() => setIsDragging(false)}
       style={{
-        background: "radial-gradient(ellipse at center, #0b1424 0%, #050811 60%, #02050b 100%)",
+        background: "radial-gradient(ellipse at center, #0b111b 0%, #070b12 62%, #05070c 100%)",
       }}
     >
       {/* ── Layer 1: Topographic contours ────────────────────── */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.10 }}>
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.055 }}>
         <defs>
           <filter id="topoBlur">
             <feGaussianBlur stdDeviation="0.6" />
@@ -236,7 +236,7 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
                 cx="50%" cy="50%"
                 rx={r} ry={r * 0.7}
                 fill="none"
-                stroke="rgba(6,182,212,0.6)"
+                stroke="rgba(148,163,184,0.55)"
                 strokeWidth="0.5"
                 strokeDasharray="2 4"
               />
@@ -246,10 +246,10 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
       </svg>
 
       {/* ── Layer 2: Dot grid ────────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.18 }}>
+      <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.08 }}>
         <div className="w-full h-full" style={{
-          backgroundImage: "radial-gradient(rgba(6,182,212,0.45) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
+          backgroundImage: "radial-gradient(rgba(148,163,184,0.35) 1px, transparent 1px)",
+          backgroundSize: "36px 36px",
         }} />
       </div>
 
@@ -260,12 +260,12 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
           {/* Roads */}
           {roads.map((r, i) => (
             <line key={`road-${i}`} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2}
-              stroke="rgba(6,182,212,0.4)" strokeWidth="0.25" opacity={r.o} />
+              stroke="rgba(148,163,184,0.36)" strokeWidth="0.25" opacity={r.o} />
           ))}
           {/* Blocks */}
           {blocks.map((b, i) => (
             <rect key={`block-${i}`} x={b.x} y={b.y} width={b.w} height={b.h}
-              fill="rgba(6,182,212,0.5)" opacity={b.o} />
+              fill="rgba(148,163,184,0.35)" opacity={b.o} />
           ))}
         </svg>
       </div>
@@ -277,15 +277,15 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
             className="absolute rounded-full border"
             style={{
               width: r * 2, height: r * 2,
-              borderColor: `rgba(6,182,212,${0.10 - i * 0.015})`,
+              borderColor: `rgba(148,163,184,${0.09 - i * 0.014})`,
               borderWidth: 1,
             }}
           />
         ))}
         {/* Center crosshair */}
         <div className="absolute w-3 h-3">
-          <div className="absolute top-1/2 left-0 w-full h-px bg-cyan-400/50" />
-          <div className="absolute left-1/2 top-0 w-px h-full bg-cyan-400/50" />
+          <div className="absolute top-1/2 left-0 w-full h-px bg-white/25" />
+          <div className="absolute left-1/2 top-0 w-px h-full bg-white/25" />
         </div>
       </div>
 
@@ -294,27 +294,27 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
         <div className="absolute"
           style={{
             width: "200%", aspectRatio: "1",
-            background: "conic-gradient(from 0deg, transparent 0deg, rgba(6,182,212,0.06) 50deg, rgba(6,182,212,0.18) 70deg, transparent 80deg)",
-            animation: "spin 12s linear infinite",
+            background: "conic-gradient(from 0deg, transparent 0deg, rgba(34,211,238,0.035) 52deg, rgba(34,211,238,0.09) 70deg, transparent 82deg)",
+            animation: "spin 18s linear infinite",
             transformOrigin: "center",
           }}
         />
       </div>
 
       {/* ── Layer 6: Scan line ──────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.7 }}>
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent"
-          style={{ animation: "scan-line 7s ease-in-out infinite", boxShadow: "0 0 8px rgba(6,182,212,0.3)" }} />
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.25 }}>
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-cyan-400/35 to-transparent"
+          style={{ animation: "scan-line 10s ease-in-out infinite" }} />
       </div>
 
       {/* ── Layer 7: Vignette ──────────────────────────────── */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at center, transparent 30%, rgba(2,5,11,0.85) 100%)" }} />
+        style={{ background: "radial-gradient(ellipse at center, transparent 38%, rgba(5,7,12,0.78) 100%)" }} />
 
       {/* ── Layer 8: Corner brackets ───────────────────────── */}
       {(["tl", "tr", "bl", "br"] as const).map(c => (
         <div key={c} className={cn(
-          "absolute w-4 h-4 border-cyan-500/30 z-10 pointer-events-none",
+           "absolute w-4 h-4 border-white/18 z-10 pointer-events-none",
           c === "tl" && "top-3 left-3 border-l-2 border-t-2",
           c === "tr" && "top-3 right-3 border-r-2 border-t-2",
           c === "bl" && "bottom-3 left-3 border-l-2 border-b-2",
@@ -340,10 +340,9 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
 
                 {/* Tooltip */}
                 <div className={cn(
-                  "absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-2 rounded-xl",
-                  "bg-slate-950/98 border border-cyan-500/20 shadow-2xl",
+                  "absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-2 rounded-lg",
+                  "bg-[#0b0f16]/98 border border-white/[0.12]",
                   "whitespace-nowrap pointer-events-none z-50 transition-all duration-150",
-                  "shadow-[0_4px_20px_rgba(0,0,0,0.6),0_0_12px_rgba(6,182,212,0.08)]",
                   isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                 )}>
                   <p className="text-xs font-bold text-white">{lead.name}</p>
@@ -352,19 +351,30 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
                       lead.status === "No Website"  ? "text-red-400" :
                       lead.status === "Old Website" ? "text-orange-400" : "text-cyan-400"
                     )}>{lead.status}</span>
-                    <span className="text-[10px] text-white/20">·</span>
-                    <span className="text-[10px] text-white/55">★ {lead.rating}</span>
-                    <span className="text-[10px] text-white/20">·</span>
-                    <span className="text-[10px] text-white/55">{calcHealthScore(lead)}%</span>
-                    {lead.qualityScore !== undefined && (
+                    {lead.rating > 0 && (
                       <>
                         <span className="text-[10px] text-white/20">·</span>
-                        <span className={cn(
-                          "text-[10px] font-bold",
-                          lead.qualityScore >= 70 ? "text-orange-400" : "text-white/55"
-                        )}>Q{lead.qualityScore}</span>
+                        <span className="text-[10px] text-white/55">★ {lead.rating}</span>
                       </>
                     )}
+                    {calcHealthScore(lead) >= 0 && (
+                      <>
+                        <span className="text-[10px] text-white/20">·</span>
+                        <span className="text-[10px] text-white/55">{calcHealthScore(lead)}%</span>
+                      </>
+                    )}
+                    {(() => {
+                      const profile = getHighValueLeadProfile(lead)
+                      return (
+                        <>
+                          <span className="text-[10px] text-white/20">·</span>
+                          <span className={cn(
+                            "text-[10px] font-bold",
+                            profile.tier === "Hot" ? "text-orange-400" : "text-white/55"
+                          )}>HV{profile.score}</span>
+                        </>
+                      )
+                    })()}
                   </div>
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-950 border-r border-b border-cyan-500/20 rotate-45" />
                 </div>
@@ -376,18 +386,17 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
 
       {/* ── HUD: Top-left — Live scan + coords ──────────────── */}
       <div className="absolute top-4 left-4 z-30 space-y-1.5">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950/90 backdrop-blur-sm border border-cyan-500/15 shadow-[0_0_12px_rgba(6,182,212,0.06)]">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#0b0f16]/88 backdrop-blur-sm border border-white/[0.08]">
           <div className="relative w-2 h-2">
-            <div className="absolute inset-0 rounded-full bg-cyan-400 animate-ping opacity-60" />
             <div className="absolute inset-0 rounded-full bg-cyan-400" />
           </div>
-          <span className="text-[10px] font-bold text-white tracking-wider font-mono">LIVE SCAN</span>
+          <span className="text-[10px] font-bold text-white/75 tracking-wider font-mono">MAP VIEW</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950/85 backdrop-blur-sm border border-white/[0.06]">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0b0f16]/82 backdrop-blur-sm border border-white/[0.07]">
           <Compass className="w-3 h-3 text-cyan-400/45" />
           <span className="text-[9px] text-white/40 font-mono tracking-wide">{coordsLabel}</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950/85 backdrop-blur-sm border border-white/[0.06]">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0b0f16]/82 backdrop-blur-sm border border-white/[0.07]">
           <Crosshair className="w-3 h-3 text-cyan-400/45" />
           <span className="text-[9px] text-white/40 font-mono">ZOOM {(zoom * 100).toFixed(0)}%</span>
         </div>
@@ -401,7 +410,7 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
           { icon: RotateCcw, fn: handleReset,            title: "Reset"    },
         ].map(({ icon: Icon, fn, title }, i) => (
           <Button key={i} variant="ghost" size="icon" onClick={fn} title={title}
-            className="w-8 h-8 bg-slate-950/90 backdrop-blur-sm border border-white/[0.08] text-white/45 hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/25 transition-all cursor-pointer">
+            className="w-8 h-8 rounded-md bg-[#0b0f16]/88 backdrop-blur-sm border border-white/[0.09] text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer">
             <Icon className="w-3.5 h-3.5" />
           </Button>
         ))}
@@ -409,9 +418,9 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
 
       {/* ── Legend ─────────────────────────────────────── */}
       <div className="absolute bottom-4 left-4 z-30">
-        <div className="flex flex-col gap-1.5 px-3.5 py-3 rounded-xl bg-slate-950/95 backdrop-blur-sm border border-white/[0.07] shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+        <div className="flex flex-col gap-1.5 px-3.5 py-3 rounded-lg bg-[#0b0f16]/92 backdrop-blur-sm border border-white/[0.08]">
           <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest mb-0.5 font-mono">Targets</span>
-          <LegendItem shape="diamond" color="#ef4444" label="No Website"   count={countByStatus("No Website")} />
+          <LegendItem shape="diamond" color="#ef4444" label="No Site Found" count={countByStatus("No Website")} />
           <LegendItem shape="square"  color="#f97316" label="Old Website"  count={countByStatus("Old Website")} />
           <LegendItem shape="circle"  color="#06b6d4" label="Needs Chatbot" count={countByStatus("Needs AI Chatbot")} />
           {leads.some(l => l.isCustom) && (
@@ -431,15 +440,15 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
       </div>
 
       {/* ── Bottom stats ───────────────────────────────── */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 px-5 py-2.5 rounded-2xl bg-slate-950/95 backdrop-blur-sm border border-white/[0.07] shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 px-5 py-2.5 rounded-lg bg-[#0b0f16]/92 backdrop-blur-sm border border-white/[0.08]">
         <div className="flex items-center gap-2">
           <Activity className="w-3 h-3 text-cyan-400/50" />
           <span className="text-[10px] text-white/35 uppercase tracking-wider font-mono">Targets</span>
         </div>
         <span className="text-lg font-black text-white font-mono">{leads.length}</span>
         <div className="w-px h-5 bg-white/[0.08]" />
-        <span className="text-[10px] text-white/35 uppercase tracking-wider font-mono">Avg Loss</span>
-        <span className="text-sm font-black text-red-400 font-mono">
+        <span className="text-[10px] text-white/35 uppercase tracking-wider font-mono">Avg Gap</span>
+        <span className="text-sm font-black text-orange-300 font-mono">
           {leads.length > 0
             ? Math.round(leads.reduce((s, l) => s + (calcHealthScore(l) === 0 ? 1 : 100 - calcHealthScore(l)), 0) / leads.length)
             : 0}%

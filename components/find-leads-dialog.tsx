@@ -3,11 +3,15 @@
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { CityPicker } from "@/components/city-picker"
 import { type Lead, INDUSTRIES } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { getHighValueLeadProfile } from "@/lib/lead-scoring"
+import { authedFetch } from "@/lib/api-client"
+import type { BillingStatus } from "@/lib/billing-types"
 import { Radar, MapPin, Loader2, CheckCircle2, AlertCircle, Plus, Globe, Phone, Check, Flame } from "lucide-react"
 
 type Phase = "idle" | "scanning" | "done" | "error"
@@ -20,13 +24,19 @@ interface ScanStats {
   finalCount: number
   websitesVerified: number
   websitesDead: number
+  dataSource?: string
+  googleQueries?: number
+  googleRawPlaces?: number
+  googleUniquePlaces?: number
+  fallbackUsed?: boolean
+  warning?: string
 }
 
 const SCAN_MESSAGES = [
-  "Querying OpenStreetMap...",
-  "Discovering local businesses...",
+  "Querying Google Places and public maps...",
+  "Discovering businesses in this market...",
   "Checking website statuses...",
-  "Calculating health scores...",
+  "Ranking high-value targets...",
   "Building lead profiles...",
   "Analyzing digital presence...",
   "Finalizing results...",
@@ -37,11 +47,14 @@ interface FindLeadsDialogProps {
   onClose: () => void
   onAdd: (leads: Lead[], city: string, center?: { lat: number; lon: number }) => void
   currentCity: string
+  onLimitReached?: (status: BillingStatus) => void
+  onBillingUpdate?: (status: BillingStatus) => void
 }
 
-export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeadsDialogProps) {
+export function FindLeadsDialog({ open, onClose, onAdd, currentCity, onLimitReached, onBillingUpdate }: FindLeadsDialogProps) {
   const [city, setCity] = useState(currentCity)
   const [industry, setIndustry] = useState("Plumbing")
+  const [deepScan, setDeepScan] = useState(true)
   const [phase, setPhase] = useState<Phase>("idle")
   const [leads, setLeads] = useState<Lead[]>([])
   const [visible, setVisible] = useState<Lead[]>([])
@@ -86,21 +99,30 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
     msgTimer.current = setInterval(() => setMsgIdx(i => (i + 1) % SCAN_MESSAGES.length), 1400)
 
     try {
-      const res = await fetch(
-        `/api/scan-leads?city=${encodeURIComponent(city.trim())}&industry=${encodeURIComponent(industry)}`
-      )
+      const params = new URLSearchParams({
+        city: city.trim(),
+        industry,
+        deep: String(deepScan),
+        limit: deepScan ? "150" : "50",
+      })
+      const res = await authedFetch(`/api/scan-leads?${params.toString()}`)
       clearInterval(progressTimer.current!)
       clearInterval(msgTimer.current!)
 
       const data = await res.json()
+      if (res.status === 402 && data.billing) {
+        onLimitReached?.(data.billing)
+        return
+      }
       if (!res.ok) throw new Error(data.error || 'Scan failed')
+      if (data.billing) onBillingUpdate?.(data.billing)
 
       setProgress(100)
       setCenter(data.center)
       setStats(data.stats ?? null)
       setLeads(data.leads)
-      // Auto-select only hot leads (quality > 50) by default
-      const hotLeads = data.leads.filter((l: Lead) => (l.qualityScore ?? 0) > 50)
+      // Auto-select the highest-value targets by default.
+      const hotLeads = data.leads.filter((l: Lead) => getHighValueLeadProfile(l).score >= 54)
       const toSelect = hotLeads.length > 0 ? hotLeads : data.leads
       setSelected(new Set(toSelect.map((l: Lead) => l.id)))
       setPhase("done")
@@ -109,16 +131,21 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
       data.leads.forEach((lead: Lead, i: number) => {
         setTimeout(() => setVisible(prev => [...prev, lead]), i * 60)
       })
-    } catch (e: any) {
+    } catch (e: unknown) {
       clearInterval(progressTimer.current!)
       clearInterval(msgTimer.current!)
-      setError(e.message || "Scan failed. Try a different city name.")
+      setError(e instanceof Error ? e.message : "Scan failed. Try a different city name.")
       setPhase("error")
     }
   }
 
   const toggleLead = (id: string) =>
-    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setSelected(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
 
   const toggleAll = () =>
     setSelected(selected.size === leads.length ? new Set() : new Set(leads.map(l => l.id)))
@@ -137,6 +164,8 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
   const statusLabel = (status: string) =>
     status === "Needs AI Chatbot" ? "No Chatbot" : status
 
+  const hotLeadCount = leads.filter(lead => getHighValueLeadProfile(lead).tier === "Hot").length
+
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
       <DialogContent className="bg-slate-900 border-white/10 text-white max-w-lg flex flex-col p-0 overflow-hidden"
@@ -146,9 +175,9 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
             <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center shrink-0">
               <Radar className="w-4 h-4 text-cyan-400" />
             </div>
-            Find Real Leads
+            Find leads
             <span className="ml-auto text-[9px] font-normal text-white/30 bg-white/5 px-2 py-0.5 rounded-md border border-white/8">
-              OpenStreetMap
+              Live scan
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -161,14 +190,13 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                 <Label className="text-xs text-white/55 flex items-center gap-1.5">
                   <MapPin className="w-3 h-3" /> City or Location
                 </Label>
-                <Input
+                <CityPicker
                   value={city}
-                  onChange={e => setCity(e.target.value)}
-                  placeholder="e.g. Austin, TX  |  London, UK  |  Tokyo"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-cyan-500/40"
-                  onKeyDown={e => { if (e.key === "Enter" && city.trim()) handleScan() }}
+                  onChange={setCity}
+                  className="w-full"
+                  triggerClassName="w-full h-10 rounded-lg bg-white/5 border-white/10 text-white/80"
                 />
-                <p className="text-[10px] text-white/30">Any city worldwide — real business data from OpenStreetMap</p>
+                <p className="text-[10px] text-white/30">Any city worldwide. Results are based on available public business data.</p>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-white/55">Industry</Label>
@@ -184,10 +212,19 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                 </Select>
               </div>
               <div className="rounded-xl bg-white/3 border border-white/6 px-3.5 py-3 text-[10px] text-white/40 space-y-1">
-                <p className="font-semibold text-white/50">How it works</p>
-                <p>• Searches OpenStreetMap for real registered businesses</p>
-                <p>• Returns name, phone, and website for each business</p>
-                <p>• Calculates digital health score based on web presence</p>
+                <p className="font-semibold text-white/50">What you get</p>
+                <p>- Google Places results when configured, with public-data fallback</p>
+                <p>- Website, phone, and public profile data when available</p>
+                <p>- A high-value target score and outreach angle for each lead</p>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-cyan-500/[0.055] border border-cyan-500/15 px-3.5 py-3">
+                <div>
+                  <Label className="text-xs text-white/75">Deep Scan</Label>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-white/38">
+                    Wider area and keyword fallback. Lead-credit and plan caps apply.
+                  </p>
+                </div>
+                <Switch checked={deepScan} onCheckedChange={setDeepScan} />
               </div>
             </div>
           )}
@@ -226,6 +263,9 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
               <div className="text-center space-y-2">
                 <p className="text-sm font-bold text-white">Scanning {city.split(",")[0]}…</p>
                 <p className="text-[11px] text-cyan-400/70 font-mono h-4">{SCAN_MESSAGES[msgIdx]}</p>
+                {deepScan && (
+                  <p className="text-[10px] text-white/30">Deep Scan is checking a wider market and keyword fallbacks.</p>
+                )}
               </div>
 
               <div className="w-full space-y-1.5">
@@ -255,7 +295,8 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
               <div className="flex items-center gap-2.5 py-2.5 px-3.5 rounded-xl bg-emerald-500/8 border border-emerald-500/15">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="text-xs text-white/70 flex-1">
-                  <span className="font-bold text-white">{leads.length}</span> qualified{" "}
+                  <span className="font-bold text-white">{hotLeadCount}</span> hot /{" "}
+                  <span className="font-bold text-white">{leads.length}</span> ranked{" "}
                   <span className="text-cyan-400 font-semibold">{industry}</span> leads in{" "}
                   <span className="font-bold text-white">{city.split(",")[0]}</span>
                 </span>
@@ -268,7 +309,13 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
               {/* Scan stats — show pipeline */}
               {stats && (
                 <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3.5 py-2.5">
-                  <div className="text-[9px] text-white/30 uppercase tracking-wider font-mono mb-1.5">Scan Pipeline</div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="text-[9px] text-white/30 uppercase tracking-wider font-mono">Scan Pipeline</div>
+                    <span className="ml-auto text-[9px] text-cyan-400/80 font-mono">
+                      {stats.dataSource ?? "Public data"}
+                      {stats.googleQueries ? ` · ${stats.googleQueries} Google queries` : ""}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1 text-[10px] font-mono text-white/55 flex-wrap">
                     <span>{stats.rawElements} found</span>
                     <span className="text-white/15">→</span>
@@ -284,6 +331,11 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                       </>
                     )}
                   </div>
+                  {stats.warning && (
+                    <div className="mt-1.5 text-[10px] leading-relaxed text-orange-300/75">
+                      {stats.warning}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -294,7 +346,9 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
               )}
 
               <div className="space-y-1.5 pb-1">
-                {visible.map(lead => (
+                {visible.map(lead => {
+                  const valueProfile = getHighValueLeadProfile(lead)
+                  return (
                   <button
                     key={lead.id}
                     onClick={() => toggleLead(lead.id)}
@@ -318,7 +372,7 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="text-xs font-semibold text-white truncate">{lead.name}</p>
-                        {(lead.qualityScore ?? 0) >= 70 && (
+                        {valueProfile.tier === "Hot" && (
                           <Flame className="w-3 h-3 text-orange-400 shrink-0" strokeWidth={2.5} />
                         )}
                       </div>
@@ -328,7 +382,7 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                             <span className="text-[9px] text-white/30 truncate font-mono">
                               {lead.website.replace(/^https?:\/\//, '').split('/')[0]}
                             </span></>
-                          : <span className="text-[9px] text-white/25 italic">No website</span>
+                          : <span className="text-[9px] text-white/25 italic">No site found</span>
                         }
                         {lead.phone && (
                           <><span className="text-[9px] text-white/15">·</span>
@@ -345,19 +399,18 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
                       )}>
                         {statusLabel(lead.status)}
                       </span>
-                      {lead.qualityScore !== undefined && (
-                        <span className={cn(
-                          "text-[8px] font-mono font-bold",
-                          lead.qualityScore >= 70 ? "text-orange-400"
-                          : lead.qualityScore >= 50 ? "text-cyan-400"
-                          : "text-white/25"
-                        )}>
-                          Q{lead.qualityScore}
-                        </span>
-                      )}
+                      <span className={cn(
+                        "text-[8px] font-mono font-bold",
+                        valueProfile.tier === "Hot" ? "text-orange-400"
+                        : valueProfile.tier === "Warm" ? "text-cyan-400"
+                        : "text-white/25"
+                      )}>
+                        HV{valueProfile.score}
+                      </span>
                     </div>
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
@@ -369,7 +422,7 @@ export function FindLeadsDialog({ open, onClose, onAdd, currentCity }: FindLeads
             <Button onClick={handleScan} disabled={!city.trim()}
               className="w-full bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:scale-[1.02] transition-all disabled:opacity-35">
               <Radar className="w-4 h-4 mr-2" />
-              Scan for Real Leads
+              {deepScan ? "Deep Scan for Leads" : "Scan for Real Leads"}
             </Button>
           )}
           {phase === "scanning" && (

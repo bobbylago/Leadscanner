@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { type Lead, INDUSTRIES, STATUSES } from "@/lib/types"
-import { generateAuditScores } from "@/lib/utils"
+import { type Lead, INDUSTRIES, STATUSES, EMPTY_AUDIT } from "@/lib/types"
 import { Plus, Globe, Phone, Star, Building2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -15,7 +14,6 @@ interface AddLeadDialogProps {
   open: boolean
   onClose: () => void
   onAdd: (lead: Lead) => void
-  currentCity: string
 }
 
 const EMPTY_FORM = {
@@ -28,7 +26,7 @@ const EMPTY_FORM = {
   status: "Needs AI Chatbot",
 }
 
-export function AddLeadDialog({ open, onClose, onAdd, currentCity }: AddLeadDialogProps) {
+export function AddLeadDialog({ open, onClose, onAdd }: AddLeadDialogProps) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -75,7 +73,7 @@ export function AddLeadDialog({ open, onClose, onAdd, currentCity }: AddLeadDial
         top: `${Math.max(6, Math.min(93, top))}%`,
         left: `${Math.max(6, Math.min(93, left))}%`,
       },
-      audit: generateAuditScores(partial),
+      audit: { ...EMPTY_AUDIT },
     }
 
     onAdd(newLead)

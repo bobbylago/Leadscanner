@@ -10,9 +10,11 @@ interface CityPickerProps {
   value: string
   onChange: (city: string) => void
   recentCities?: string[]
+  className?: string
+  triggerClassName?: string
 }
 
-export function CityPicker({ value, onChange, recentCities = [] }: CityPickerProps) {
+export function CityPicker({ value, onChange, recentCities = [], className, triggerClassName }: CityPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -55,13 +57,14 @@ export function CityPicker({ value, onChange, recentCities = [] }: CityPickerPro
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={cn("relative", className)}>
       <button
         onClick={() => setOpen(o => !o)}
         className={cn(
           "flex items-center gap-1.5 h-9 px-3 rounded-md border w-52 text-sm transition-colors cursor-pointer",
           "bg-white/[0.04] border-white/[0.08] hover:border-white/15 text-white/80",
-          open && "border-cyan-500/35"
+          open && "border-cyan-500/35",
+          triggerClassName
         )}
       >
         <MapPin className="w-3.5 h-3.5 text-cyan-400/40 shrink-0" />
@@ -70,7 +73,7 @@ export function CityPicker({ value, onChange, recentCities = [] }: CityPickerPro
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1 left-0 z-[60] w-[360px] bg-[#0d1117] border border-white/[0.12] rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute top-full mt-1 left-0 z-[60] w-[min(360px,calc(100vw-2rem))] bg-[#0d1117] border border-white/[0.12] rounded-xl shadow-2xl overflow-hidden">
           {/* Search input */}
           <div className="p-2 border-b border-white/[0.07]">
             <div className="relative">
@@ -97,7 +100,7 @@ export function CityPicker({ value, onChange, recentCities = [] }: CityPickerPro
                 onClick={submit}
                 className="w-full mt-1.5 flex items-center justify-center gap-2 py-2 rounded-md bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 text-[11px] font-bold hover:bg-cyan-500/15 transition-colors cursor-pointer"
               >
-                Use "{query.trim()}"
+                Use &quot;{query.trim()}&quot;
               </button>
             )}
           </div>

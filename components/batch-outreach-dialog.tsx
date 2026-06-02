@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useCallback, useState, useMemo, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,14 +9,17 @@ import { Textarea } from "@/components/ui/textarea"
 import type { Lead } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import {
-  Mail, ExternalLink, X, Check, ArrowRight, Eye, Send, Copy,
-  Building2, Globe, AlertCircle, Sparkles, ChevronRight, RotateCcw, User,
-  Zap, Keyboard,
+  Mail, ExternalLink, X, Check, Eye, Send, Copy,
+  Building2, AlertCircle, Sparkles, RotateCcw, User,
+  Zap, Loader2,
 } from "lucide-react"
 import {
-  guessEmail, renderTemplate, buildGmailUrl, buildMailtoUrl,
-  getTemplate, getEmailPrefixesForLead, ALL_LANGUAGES, languageName,
+  guessEmail, bestEmailForLead, getDiscoveredEmailsForLead,
+  renderTemplate, buildGmailUrl, buildMailtoUrl,
+  getTemplate, ALL_LANGUAGES, languageName,
 } from "@/lib/email-utils"
+import { authedFetch } from "@/lib/api-client"
+import type { GeneratedOutreach, OutreachTone } from "@/lib/gemini-outreach"
 import {
   emailPrefixesForCountry, languageForCountry, type LangCode,
 } from "@/lib/country-utils"
@@ -32,6 +35,17 @@ interface BatchOutreachDialogProps {
 }
 
 type Mode = "compose" | "preview" | "sequence" | "blitz"
+type GeneratedMap = Record<string, GeneratedOutreach>
+
+const GENERATED_OUTREACH_KEY = "ls_generated_outreach_v9"
+
+function loadGeneratedOutreach(): GeneratedMap {
+  try { return JSON.parse(localStorage.getItem(GENERATED_OUTREACH_KEY) || "{}") } catch { return {} }
+}
+
+function saveGeneratedOutreach(data: GeneratedMap) {
+  try { localStorage.setItem(GENERATED_OUTREACH_KEY, JSON.stringify(data)) } catch {}
+}
 
 export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialogProps) {
   // Detect dominant language from selected leads (majority vote)
@@ -61,6 +75,15 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   const [previewIdx, setPreviewIdx] = useState(0)
   const [sentSet, setSentSet]     = useState<Set<string>>(new Set())
   const [sequenceIdx, setSequenceIdx] = useState(0)
+  const [tone, setTone] = useState<OutreachTone>("direct")
+  const [generatedOutreach, setGeneratedOutreach] = useState<GeneratedMap>({})
+  const [generatingId, setGeneratingId] = useState<string | null>(null)
+  const [bulkGenerating, setBulkGenerating] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
+  const [generationError, setGenerationError] = useState("")
+  const [blitzProgress, setBlitzProgress] = useState(0)
+  const [blitzing, setBlitzing] = useState(false)
+  const [blitzBlocked, setBlitzBlocked] = useState(0)
 
   // Country-aware email prefix list — picks Swedish "kontakt@" for SE leads, etc.
   const availablePrefixes = useMemo(() => {
@@ -95,11 +118,13 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   // Init emails per lead when dialog opens / leads change
   useEffect(() => {
     if (!open) return
+    setGeneratedOutreach(loadGeneratedOutreach())
+    setGenerationError("")
     const map = loadContacted()
     const initial: Record<string, string> = {}
     const initialSkipped = new Set<string>()
     for (const lead of leads) {
-      const guess = guessEmail(lead.website, prefix)
+      const guess = bestEmailForLead(lead, prefix)
       initial[lead.id] = guess
       if (!guess) initialSkipped.add(lead.id)
       // Auto-skip already-contacted leads (unless allowResend is on)
@@ -111,13 +136,18 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     setSkipped(initialSkipped)
     setSentSet(new Set())
     setSequenceIdx(0)
+    setBulkGenerating(false)
+    setBulkProgress(null)
+    setBlitzProgress(0)
+    setBlitzBlocked(0)
+    setBlitzing(false)
     setMode("compose")
     setLang(detectedLang)
     setSubject(getTemplate(detectedLang).subject)
     setBody(getTemplate(detectedLang).body)
     setSubjectEdited(false)
     setBodyEdited(false)
-  }, [open, leads, detectedLang, allowResend])
+  }, [open, leads, detectedLang, allowResend, prefix])
 
   // Switch template when language changes (only if user hasn't edited)
   useEffect(() => {
@@ -125,7 +155,7 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     const tpl = getTemplate(lang)
     if (!subjectEdited) setSubject(tpl.subject)
     if (!bodyEdited) setBody(tpl.body)
-  }, [lang, open])
+  }, [bodyEdited, lang, open, subjectEdited])
 
   // Rebuild emails when prefix changes
   useEffect(() => {
@@ -136,7 +166,8 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
         const cur = next[lead.id]
         const allPrefixes = [...availablePrefixes, "info","contact","hello","office","team","admin"]
         const guessedAny = allPrefixes.some(p => guessEmail(lead.website, p) === cur)
-        if (guessedAny || !cur) next[lead.id] = guessEmail(lead.website, prefix)
+        const discoveredAny = cur ? getDiscoveredEmailsForLead(lead).includes(cur) : false
+        if (guessedAny || discoveredAny || !cur) next[lead.id] = bestEmailForLead(lead, prefix)
       }
       return next
     })
@@ -147,6 +178,13 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     [leads, skipped, emails]
   )
 
+  const generatedCount = useMemo(
+    () => validLeads.filter(lead => !!generatedOutreach[lead.id]).length,
+    [generatedOutreach, validLeads],
+  )
+
+  const remainingToGenerate = Math.max(0, validLeads.length - generatedCount)
+
   // Already-contacted leads in this batch
   const alreadyContactedLeads = useMemo(() => {
     return leads.filter(l => {
@@ -156,22 +194,29 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   }, [leads, emails, contacted])
 
   const previewLead = validLeads[previewIdx] ?? validLeads[0]
-  const renderedSubject = previewLead ? renderTemplate(subject, previewLead, { senderName }) : subject
-  const renderedBody    = previewLead ? renderTemplate(body, previewLead, { senderName })    : body
+  const subjectForLead = useCallback((lead: Lead) =>
+    generatedOutreach[lead.id]?.subject ?? renderTemplate(subject, lead, { senderName })
+  , [generatedOutreach, senderName, subject])
 
-  const buildUrlForLead = (lead: Lead, type: "gmail" | "mailto") => {
+  const bodyForLead = useCallback((lead: Lead) =>
+    generatedOutreach[lead.id]?.body ?? renderTemplate(body, lead, { senderName })
+  , [body, generatedOutreach, senderName])
+
+  const renderedSubject = previewLead ? subjectForLead(previewLead) : subject
+  const renderedBody    = previewLead ? bodyForLead(previewLead) : body
+
+  const buildUrlForLead = useCallback((lead: Lead, type: "gmail" | "mailto") => {
     const opts = {
       to: emails[lead.id] ?? "",
-      subject: renderTemplate(subject, lead, { senderName }),
-      body: renderTemplate(body, lead, { senderName }),
+      subject: subjectForLead(lead),
+      body: bodyForLead(lead),
     }
     return type === "gmail" ? buildGmailUrl(opts) : buildMailtoUrl(opts)
-  }
+  }, [bodyForLead, emails, subjectForLead])
 
-  const openLead = (lead: Lead) => {
+  const markLeadOpened = useCallback((lead: Lead) => {
     const email = emails[lead.id] ?? ""
-    const renderedSubject = renderTemplate(subject, lead, { senderName })
-    window.open(buildUrlForLead(lead, "gmail"), "_blank", "noopener,noreferrer")
+    const renderedSubject = subjectForLead(lead)
     setSentSet(prev => new Set(prev).add(lead.id))
     // Persist as contacted so future scans don't double-send
     if (email.includes("@")) {
@@ -179,25 +224,104 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
         email, leadId: lead.id, leadName: lead.name, subject: renderedSubject,
       }))
     }
+  }, [emails, subjectForLead])
+
+  const openLead = useCallback((lead: Lead) => {
+    setGenerationError("")
+    const popup = window.open("about:blank", "_blank")
+    if (!popup) {
+      setGenerationError("Popup blocked. Allow popups for this site, then try again.")
+      return false
+    }
+
+    try { popup.opener = null } catch {}
+    popup.location.href = buildUrlForLead(lead, "gmail")
+    markLeadOpened(lead)
+    return true
+  }, [buildUrlForLead, markLeadOpened])
+
+  const requestGeneratedOutreach = useCallback(async (lead: Lead): Promise<GeneratedOutreach> => {
+    const res = await authedFetch("/api/outreach/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lead,
+        senderName,
+        tone,
+        subjectTemplate: subject,
+        bodyTemplate: body,
+      }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(data?.error || "Could not generate outreach")
+    return { subject: data.subject, body: data.body }
+  }, [body, senderName, subject, tone])
+
+  const saveGeneratedForLead = useCallback((lead: Lead, generated: GeneratedOutreach) => {
+    setGeneratedOutreach(prev => {
+      const next = {
+        ...prev,
+        [lead.id]: generated,
+      }
+      saveGeneratedOutreach(next)
+      return next
+    })
+  }, [])
+
+  const generateForLead = async (lead: Lead) => {
+    setGeneratingId(lead.id)
+    setGenerationError("")
+
+    try {
+      saveGeneratedForLead(lead, await requestGeneratedOutreach(lead))
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : "Could not generate outreach")
+    } finally {
+      setGeneratingId(null)
+    }
   }
 
-  const handleSequenceNext = () => {
+  const generateAllSelected = async () => {
+    if (bulkGenerating || validLeads.length === 0) return
+
+    setBulkGenerating(true)
+    setGenerationError("")
+    setBulkProgress({ done: 0, total: validLeads.length })
+
+    try {
+      for (let i = 0; i < validLeads.length; i++) {
+        const lead = validLeads[i]
+        setGeneratingId(lead.id)
+        const generated = await requestGeneratedOutreach(lead)
+        saveGeneratedForLead(lead, generated)
+        setBulkProgress({ done: i + 1, total: validLeads.length })
+      }
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : "Could not generate every selected lead")
+    } finally {
+      setGeneratingId(null)
+      setBulkGenerating(false)
+      setTimeout(() => setBulkProgress(null), 1200)
+    }
+  }
+
+  const handleSequenceNext = useCallback(() => {
     if (sequenceIdx >= validLeads.length - 1) {
       setMode("compose")
       return
     }
     setSequenceIdx(sequenceIdx + 1)
-  }
+  }, [sequenceIdx, validLeads.length])
 
-  const handleSequenceSkip = () => {
+  const handleSequenceSkip = useCallback(() => {
     handleSequenceNext()
-  }
+  }, [handleSequenceNext])
 
-  const handleSequenceOpenAndNext = () => {
+  const handleSequenceOpenAndNext = useCallback(() => {
     const lead = validLeads[sequenceIdx]
     if (lead) openLead(lead)
     setTimeout(() => handleSequenceNext(), 200)
-  }
+  }, [handleSequenceNext, openLead, sequenceIdx, validLeads])
 
   // Keyboard shortcuts for sequence mode (Enter = open & next, S = skip)
   useEffect(() => {
@@ -211,21 +335,34 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [open, mode, sequenceIdx, validLeads])
+  }, [handleSequenceOpenAndNext, handleSequenceSkip, mode, open])
 
-  // Blitz: open N tabs at once with stagger to avoid popup blocker
-  const [blitzProgress, setBlitzProgress] = useState(0)
-  const [blitzing, setBlitzing] = useState(false)
-
-  const handleBlitz = async (batchSize: number = 5) => {
+  // Blitz opens tabs immediately from the user click to avoid popup blockers.
+  const handleBlitz = (batchSize: number = 5) => {
     setBlitzing(true)
     setBlitzProgress(0)
+    setBlitzBlocked(0)
+    setGenerationError("")
     const remaining = validLeads.filter(l => !sentSet.has(l.id)).slice(0, batchSize)
+    let opened = 0
+    let blocked = 0
     for (let i = 0; i < remaining.length; i++) {
-      openLead(remaining[i])
-      setBlitzProgress(i + 1)
-      // Small stagger between window.open calls — most browsers handle 5-10 with ~80ms spacing
-      await new Promise(r => setTimeout(r, 100))
+      const lead = remaining[i]
+      const popup = window.open("about:blank", "_blank")
+      if (!popup) {
+        blocked += 1
+        continue
+      }
+
+      try { popup.opener = null } catch {}
+      popup.location.href = buildUrlForLead(lead, "gmail")
+      markLeadOpened(lead)
+      opened += 1
+    }
+    setBlitzProgress(opened)
+    setBlitzBlocked(blocked)
+    if (blocked > 0) {
+      setGenerationError(`${blocked} Gmail tab${blocked === 1 ? "" : "s"} were blocked. Allow popups for this site and try Blitz again.`)
     }
     setBlitzing(false)
   }
@@ -238,7 +375,8 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
   const toggleSkip = (id: string) => {
     setSkipped(prev => {
       const n = new Set(prev)
-      n.has(id) ? n.delete(id) : n.add(id)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
       return n
     })
   }
@@ -306,7 +444,7 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 font-mono">Template</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 font-mono">Template + AI personalization</h3>
                   <button
                     onClick={() => {
                       const tpl = getTemplate(lang)
@@ -317,6 +455,62 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                   >
                     <RotateCcw className="w-3 h-3" /> Reset
                   </button>
+                </div>
+                <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.045] p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-violet-300" />
+                    <span className="text-xs font-bold text-white">Gemini per-lead personalization</span>
+                    <span className="ml-auto text-[10px] text-white/35 font-mono">
+                      cached after generation
+                    </span>
+                  </div>
+                  <p className="text-[10px] leading-relaxed text-white/45">
+                    Templates stay as the fallback. Generate one lead, or generate every selected lead before Sequence or Blitz.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(["direct", "friendly", "premium"] as OutreachTone[]).map(option => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setTone(option)}
+                        className={cn(
+                          "rounded-md border px-2.5 py-1 text-[10px] font-bold capitalize transition-colors",
+                          tone === option
+                            ? "border-violet-300/40 bg-violet-300/15 text-violet-200"
+                            : "border-white/[0.08] bg-white/[0.035] text-white/45 hover:text-white"
+                        )}
+                      >
+                        {option === "premium" ? "Premium agency" : option}
+                      </button>
+                    ))}
+                    <Button
+                      type="button"
+                      onClick={generateAllSelected}
+                      disabled={bulkGenerating || validLeads.length === 0}
+                      className="ml-auto h-7 rounded-md bg-violet-300 px-2.5 text-[10px] font-black text-slate-950 hover:bg-violet-200 disabled:opacity-45"
+                    >
+                      {bulkGenerating ? (
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-1.5 h-3 w-3" />
+                      )}
+                      Generate all ({validLeads.length})
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/38">
+                    <span className="font-mono">{generatedCount}/{validLeads.length} AI scripts ready</span>
+                    {remainingToGenerate > 0 && (
+                      <span>{remainingToGenerate} still using template fallback</span>
+                    )}
+                    {bulkProgress && (
+                      <span className="text-violet-200 font-mono">
+                        generating {bulkProgress.done}/{bulkProgress.total}
+                      </span>
+                    )}
+                  </div>
+                  {generationError && (
+                    <p className="text-[10px] text-red-300">{generationError}</p>
+                  )}
                 </div>
                 {/* Language picker */}
                 <div className="space-y-2">
@@ -442,6 +636,7 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                     const isSkipped = skipped.has(lead.id)
                     const email = emails[lead.id] ?? ""
                     const isValid = email.includes("@")
+                    const foundOnSite = getDiscoveredEmailsForLead(lead).includes(email.toLowerCase().trim())
                     const contactRec = findByLeadId(contacted, lead.id) ?? (email ? contacted[email.toLowerCase().trim()] : null) ?? null
                     return (
                       <div key={lead.id} className={cn(
@@ -465,6 +660,7 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                           </div>
                           <p className="text-[9px] text-white/30 truncate font-mono">
                             {lead.website ? lead.website.replace(/^https?:\/\//, "").split("/")[0] : "no website"}
+                            {foundOnSite && <span className="ml-1.5 text-emerald-300/80">found on site</span>}
                           </p>
                         </div>
                         <Input
@@ -517,6 +713,34 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                   >Next →</button>
                 </div>
               </div>
+
+              <div className="flex flex-col gap-2 rounded-xl border border-violet-500/20 bg-violet-500/[0.045] px-3 py-2 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-white">
+                    {generatedOutreach[previewLead.id] ? "AI personalized email ready" : "Generate a unique email for this lead"}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-white/40">
+                    Tone: {tone === "premium" ? "Premium agency" : tone}
+                  </p>
+                </div>
+                <Button
+                  onClick={() => generateForLead(previewLead)}
+                  disabled={generatingId === previewLead.id}
+                  className="h-8 shrink-0 bg-violet-400 text-slate-950 text-xs font-bold hover:bg-violet-300 disabled:opacity-50"
+                >
+                  {generatingId === previewLead.id ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  {generatedOutreach[previewLead.id] ? "Regenerate" : "Generate with Gemini"}
+                </Button>
+              </div>
+              {generationError && (
+                <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                  {generationError}
+                </div>
+              )}
 
               <div className="rounded-xl bg-[#0d1117] border border-white/[0.08] p-4 space-y-3">
                 <div className="grid grid-cols-[80px_1fr] gap-x-3 gap-y-1.5 text-xs">
@@ -592,8 +816,31 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                         <span className="text-white/35 font-mono">To:</span>
                         <span className="text-white font-mono">{emails[cur.id]}</span>
                         <span className="text-white/35 font-mono">Subject:</span>
-                        <span className="text-white font-semibold truncate">{renderTemplate(subject, cur, { senderName })}</span>
+                        <span className="text-white font-semibold truncate">{subjectForLead(cur)}</span>
                       </div>
+                      <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-white/[0.025] px-2.5 py-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-white/70">
+                            {generatedOutreach[cur.id] ? "AI personalized" : "Template fallback"}
+                          </p>
+                          <p className="text-[9px] text-white/35 truncate">
+                            {generatedOutreach[cur.id] ? "This lead will use its generated copy." : "Generate with Gemini before opening if you want a unique email."}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => generateForLead(cur)}
+                          disabled={generatingId === cur.id}
+                          className="shrink-0 rounded-md border border-violet-300/25 bg-violet-300/10 px-2.5 py-1 text-[10px] font-bold text-violet-200 transition-colors hover:bg-violet-300/15 disabled:opacity-50"
+                        >
+                          {generatingId === cur.id ? "Generating..." : generatedOutreach[cur.id] ? "Regenerate" : "Generate AI"}
+                        </button>
+                      </div>
+                      {generationError && generatingId !== cur.id && (
+                        <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-2.5 py-2 text-[10px] text-red-200">
+                          {generationError}
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
@@ -641,10 +888,33 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-orange-400 shrink-0" strokeWidth={2.5} />
                     <span className="text-xs font-bold uppercase tracking-wider text-orange-400">Blitz Mode</span>
+                    <span className="ml-auto text-[10px] font-mono text-white/40">
+                      {generatedCount}/{validLeads.length} AI scripts ready
+                    </span>
                   </div>
                   <p className="text-[11px] text-white/55 leading-relaxed">
-                    Opens multiple Gmail compose tabs simultaneously. Your browser may ask you to <span className="text-white font-semibold">allow popups</span> the first time — accept it.
+                    Opens Gmail compose tabs immediately using the generated email for each lead. Your browser may ask you to <span className="text-white font-semibold">allow popups</span> the first time.
                   </p>
+                  <Button
+                    type="button"
+                    onClick={generateAllSelected}
+                    disabled={bulkGenerating || validLeads.length === 0}
+                    className="h-8 w-full rounded-md bg-violet-300 text-xs font-black text-slate-950 hover:bg-violet-200 disabled:opacity-45"
+                  >
+                    {bulkGenerating ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {bulkGenerating && bulkProgress
+                      ? `Generating ${bulkProgress.done}/${bulkProgress.total}`
+                      : `Generate AI scripts for all ${validLeads.length}`}
+                  </Button>
+                  {remainingToGenerate > 0 && !bulkGenerating && (
+                    <p className="text-[10px] text-white/35">
+                      {remainingToGenerate} lead{remainingToGenerate === 1 ? "" : "s"} will use the template unless you generate first.
+                    </p>
+                  )}
                 </div>
 
                 {/* Queue preview */}
@@ -672,11 +942,13 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
                 </div>
 
                 {/* Blitz progress */}
-                {blitzing && (
+                {(blitzing || blitzProgress > 0 || blitzBlocked > 0) && (
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[10px] font-mono text-white/40">
-                      <span>Opening tab {blitzProgress}…</span>
-                      <span className="text-orange-400">Blitzing</span>
+                      <span>{blitzProgress} opened{blitzBlocked > 0 ? ` · ${blitzBlocked} blocked` : ""}</span>
+                      <span className={blitzBlocked > 0 ? "text-red-300" : "text-orange-400"}>
+                        {blitzing ? "Blitzing" : blitzBlocked > 0 ? "Allow popups" : "Ready"}
+                      </span>
                     </div>
                     <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-200" />

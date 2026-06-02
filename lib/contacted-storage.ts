@@ -4,6 +4,8 @@
  * (different lead IDs) still gets deduped.
  */
 
+import { supabase } from "./supabase-client"
+
 const STORAGE_KEY = "ls_contacted_v1"
 
 export interface ContactRecord {
@@ -59,31 +61,128 @@ export function isContacted(map: ContactedMap, opts: { email?: string; leadId?: 
 export function markContacted(map: ContactedMap, record: Omit<ContactRecord, "sentAt">): ContactedMap {
   const key = normaliseEmail(record.email)
   if (!key) return map
-  const next = { ...map, [key]: { ...record, sentAt: Date.now() } }
+  const full = { ...record, email: key, sentAt: Date.now() }
+  const next = { ...map, [key]: full }
   saveContacted(next)
+  void upsertContactedRemote(full)
   return next
 }
 
 /** Remove a contact record */
 export function unmarkContacted(map: ContactedMap, opts: { email?: string; leadId?: string }): ContactedMap {
   const next = { ...map }
+  const emails: string[] = []
   if (opts.email) {
     const key = normaliseEmail(opts.email)
+    if (next[key]) emails.push(key)
     delete next[key]
   }
   if (opts.leadId) {
     for (const [k, v] of Object.entries(next)) {
-      if (v.leadId === opts.leadId) delete next[k]
+      if (v.leadId === opts.leadId) { emails.push(k); delete next[k] }
     }
   }
   saveContacted(next)
+  for (const e of emails) void deleteContactedRemote(e)
   return next
 }
 
 /** Clear every contact record */
 export function clearAllContacted(): ContactedMap {
   saveContacted({})
+  void clearContactedRemote()
   return {}
+}
+
+// ── Supabase sync (best-effort; localStorage stays the source for instant UI) ──
+
+async function currentUserId(): Promise<string | null> {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getUser()
+  return data.user?.id ?? null
+}
+
+/** Load this account's contacted records from Supabase, keyed by email. */
+export async function loadContactedRemote(): Promise<ContactedMap> {
+  if (!supabase) return {}
+  const userId = await currentUserId()
+  if (!userId) return {}
+
+  const { data, error } = await supabase
+    .from("contacted")
+    .select("email, lead_id, lead_name, subject, sent_at")
+    .limit(5000)
+
+  if (error || !data) return {}
+  const map: ContactedMap = {}
+  for (const row of data) {
+    const key = normaliseEmail(row.email)
+    if (!key) continue
+    map[key] = {
+      email: key,
+      leadId: row.lead_id ?? "",
+      leadName: row.lead_name ?? "",
+      subject: row.subject ?? undefined,
+      sentAt: row.sent_at ? new Date(row.sent_at).getTime() : Date.now(),
+    }
+  }
+  return map
+}
+
+async function upsertContactedRemote(record: ContactRecord): Promise<void> {
+  if (!supabase) return
+  const userId = await currentUserId()
+  if (!userId) return
+  await supabase.from("contacted").upsert({
+    user_id: userId,
+    email: record.email,
+    lead_id: record.leadId || null,
+    lead_name: record.leadName || null,
+    subject: record.subject ?? null,
+    sent_at: new Date(record.sentAt).toISOString(),
+  }, { onConflict: "user_id,email" })
+}
+
+/** Push local-only records to Supabase (used to reconcile after loading remote). */
+export async function pushContactedRemote(records: ContactRecord[]): Promise<void> {
+  if (!supabase || records.length === 0) return
+  const userId = await currentUserId()
+  if (!userId) return
+  await supabase.from("contacted").upsert(
+    records.map(r => ({
+      user_id: userId,
+      email: r.email,
+      lead_id: r.leadId || null,
+      lead_name: r.leadName || null,
+      subject: r.subject ?? null,
+      sent_at: new Date(r.sentAt).toISOString(),
+    })),
+    { onConflict: "user_id,email" },
+  )
+}
+
+async function deleteContactedRemote(email: string): Promise<void> {
+  if (!supabase) return
+  const userId = await currentUserId()
+  if (!userId) return
+  await supabase.from("contacted").delete().eq("user_id", userId).eq("email", email)
+}
+
+async function clearContactedRemote(): Promise<void> {
+  if (!supabase) return
+  const userId = await currentUserId()
+  if (!userId) return
+  await supabase.from("contacted").delete().eq("user_id", userId)
+}
+
+/** Merge two maps, preferring the most recently sent record per email. */
+export function mergeContacted(a: ContactedMap, b: ContactedMap): ContactedMap {
+  const out: ContactedMap = { ...a }
+  for (const [k, v] of Object.entries(b)) {
+    const existing = out[k]
+    if (!existing || v.sentAt > existing.sentAt) out[k] = v
+  }
+  return out
 }
 
 /** Format a "sent X days ago" string */
