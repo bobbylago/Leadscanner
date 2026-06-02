@@ -86,7 +86,7 @@ export function LeadCard({ lead, isSelected, onClick, isContacted }: LeadCardPro
               {lead.name}
             </h3>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex max-w-[48%] flex-wrap items-center justify-end gap-1.5 shrink-0 sm:max-w-none">
             {isContacted && (
               <span title="Already contacted"
                 className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
@@ -104,7 +104,7 @@ export function LeadCard({ lead, isSelected, onClick, isContacted }: LeadCardPro
         </div>
 
         {/* Metadata row: rating + revenue + category */}
-        <div className="flex items-center gap-3 mb-2.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2.5">
           {lead.rating > 0 && (
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
@@ -121,7 +121,7 @@ export function LeadCard({ lead, isSelected, onClick, isContacted }: LeadCardPro
             </span>
           </div>
           {lead.category && (
-            <span className="text-[9px] text-white/20 uppercase tracking-wider ml-auto truncate font-mono">
+            <span className="text-[9px] text-white/20 uppercase tracking-wider sm:ml-auto truncate font-mono">
               {lead.category}
             </span>
           )}

@@ -19,6 +19,7 @@ import {
   getTemplate, ALL_LANGUAGES, languageName,
 } from "@/lib/email-utils"
 import { authedFetch } from "@/lib/api-client"
+import type { BillingStatus } from "@/lib/billing-types"
 import type { GeneratedOutreach, OutreachTone } from "@/lib/gemini-outreach"
 import {
   emailPrefixesForCountry, languageForCountry, type LangCode,
@@ -32,6 +33,8 @@ interface BatchOutreachDialogProps {
   open: boolean
   onClose: () => void
   leads: Lead[]
+  onBillingUpdate?: (status: BillingStatus) => void
+  onLimitReached?: (status: BillingStatus) => void
 }
 
 type Mode = "compose" | "preview" | "sequence" | "blitz"
@@ -47,7 +50,13 @@ function saveGeneratedOutreach(data: GeneratedMap) {
   try { localStorage.setItem(GENERATED_OUTREACH_KEY, JSON.stringify(data)) } catch {}
 }
 
-export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialogProps) {
+export function BatchOutreachDialog({
+  open,
+  onClose,
+  leads,
+  onBillingUpdate,
+  onLimitReached,
+}: BatchOutreachDialogProps) {
   // Detect dominant language from selected leads (majority vote)
   const detectedLang = useMemo<LangCode>(() => {
     if (!leads.length) return "en"
@@ -253,9 +262,13 @@ export function BatchOutreachDialog({ open, onClose, leads }: BatchOutreachDialo
       }),
     })
     const data = await res.json().catch(() => null)
+    if (res.status === 402 && data?.billing) {
+      onLimitReached?.(data.billing)
+    }
     if (!res.ok) throw new Error(data?.error || "Could not generate outreach")
+    if (data?.billing) onBillingUpdate?.(data.billing)
     return { subject: data.subject, body: data.body }
-  }, [body, senderName, subject, tone])
+  }, [body, onBillingUpdate, onLimitReached, senderName, subject, tone])
 
   const saveGeneratedForLead = useCallback((lead: Lead, generated: GeneratedOutreach) => {
     setGeneratedOutreach(prev => {

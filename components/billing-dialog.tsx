@@ -14,6 +14,7 @@ const PLANS = [
     name: "Starter",
     price: "$39",
     credits: "300 lead credits/mo",
+    scripts: "300 AI scripts/mo",
     featured: false,
     card: "border-emerald-500/25 bg-emerald-500/[0.045]",
     glow: "shadow-[0_0_20px_rgba(16,185,129,0.08)]",
@@ -25,6 +26,7 @@ const PLANS = [
     name: "Pro",
     price: "$79",
     credits: "1,500 lead credits/mo",
+    scripts: "1,500 AI scripts/mo",
     featured: true,
     card: "border-cyan-500/35 bg-cyan-500/[0.06]",
     glow: "shadow-[0_0_24px_rgba(6,182,212,0.12)]",
@@ -36,6 +38,7 @@ const PLANS = [
     name: "Agency",
     price: "$149",
     credits: "5,000 lead credits/mo",
+    scripts: "5,000 AI scripts/mo",
     featured: false,
     card: "border-violet-500/30 bg-violet-500/[0.05]",
     glow: "shadow-[0_0_22px_rgba(139,92,246,0.10)]",
@@ -127,17 +130,23 @@ export function BillingDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 flex items-center justify-between">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 grid gap-4 sm:grid-cols-3">
           <div>
             <p className="text-xs text-white/40 uppercase tracking-wider font-mono">Current Plan</p>
             <p className={cn("text-lg font-black capitalize", PLAN_TEXT_COLORS[status.plan])}>
               {isLoadingStatus ? "Free" : status.plan}
             </p>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <p className="text-xs text-white/40 uppercase tracking-wider font-mono">Lead credits</p>
             <p className="text-sm font-bold">
               {isLoadingStatus ? "..." : `${status.scansUsed} / ${status.scanLimit}`}
+            </p>
+          </div>
+          <div className="sm:text-right">
+            <p className="text-xs text-white/40 uppercase tracking-wider font-mono">AI scripts</p>
+            <p className="text-sm font-bold">
+              {isLoadingStatus ? "..." : `${status.outreachUsed} / ${status.outreachLimit}`}
             </p>
           </div>
         </div>
@@ -162,6 +171,7 @@ export function BillingDialog({
                   <span className="text-xs text-white/35 font-medium">/mo</span>
                 </p>
                 <p className="text-xs text-white/45 mt-1">{plan.credits}</p>
+                <p className="text-xs text-white/45 mt-1">{plan.scripts}</p>
                 <p className="text-[11px] text-white/35 mt-1">Google Places data included</p>
               </div>
               <Button

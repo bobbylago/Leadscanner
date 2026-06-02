@@ -7,6 +7,9 @@ export interface BillingStatus {
   scanLimit: number
   scansUsed: number
   scansRemaining: number
+  outreachLimit: number
+  outreachUsed: number
+  outreachRemaining: number
   currentPeriodEnd?: string | null
 }
 
@@ -17,6 +20,9 @@ export const FREE_BILLING_STATUS: BillingStatus = {
   scanLimit: 50,
   scansUsed: 0,
   scansRemaining: 50,
+  outreachLimit: 10,
+  outreachUsed: 0,
+  outreachRemaining: 10,
   currentPeriodEnd: null,
 }
 

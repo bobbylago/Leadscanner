@@ -22,6 +22,14 @@ export const PLAN_LIMITS: Record<PlanName | "free", number> = {
   agency: 5000,
 }
 
+// Monthly AI script credits. One generated outreach email spends one credit.
+export const OUTREACH_LIMITS: Record<PlanName | "free", number> = {
+  free: 10,
+  starter: 300,
+  pro: 1500,
+  agency: 5000,
+}
+
 export function planFromPriceId(priceId: string | null | undefined): PlanName | "free" {
   const entry = Object.entries(STRIPE_PRICE_IDS).find(([, value]) => value && value === priceId)
   return (entry?.[0] as PlanName | undefined) ?? "free"

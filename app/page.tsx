@@ -59,10 +59,10 @@ const proof = [
 ]
 
 const plans = [
-  { name: "Free", price: "$0", scans: "50 lead credits/mo", cta: "Start free", color: "text-zinc-300", recommended: false },
-  { name: "Starter", price: "$39", scans: "300 lead credits/mo", cta: "Choose Starter", color: "text-emerald-300", recommended: false },
-  { name: "Pro", price: "$79", scans: "1,500 lead credits/mo", cta: "Choose Pro", color: "text-cyan-300", recommended: true },
-  { name: "Agency", price: "$149", scans: "5,000 lead credits/mo", cta: "Choose Agency", color: "text-violet-300", recommended: false },
+  { name: "Free", price: "$0", scans: "50 lead credits/mo", scripts: "10 AI scripts/mo", cta: "Start free", color: "text-zinc-300", recommended: false },
+  { name: "Starter", price: "$39", scans: "300 lead credits/mo", scripts: "300 AI scripts/mo", cta: "Choose Starter", color: "text-emerald-300", recommended: false },
+  { name: "Pro", price: "$79", scans: "1,500 lead credits/mo", scripts: "1,500 AI scripts/mo", cta: "Choose Pro", color: "text-cyan-300", recommended: true },
+  { name: "Agency", price: "$149", scans: "5,000 lead credits/mo", scripts: "5,000 AI scripts/mo", cta: "Choose Agency", color: "text-violet-300", recommended: false },
 ]
 
 function Logo() {
@@ -362,6 +362,10 @@ export default function LandingPage() {
                 <div className="mt-4 flex items-center gap-2 text-sm text-white/58">
                   <Zap className="h-4 w-4 text-cyan-300" />
                   {plan.scans}
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-sm text-white/50">
+                  <Mail className="h-4 w-4 text-white/30" />
+                  {plan.scripts}
                 </div>
                 <div className="mt-3 flex items-center gap-2 text-sm text-white/50">
                   <Lock className="h-4 w-4 text-white/30" />

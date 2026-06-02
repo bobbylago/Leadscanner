@@ -190,14 +190,21 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
     return arr
   }, [citySeed])
 
-  const onMouseDown = (e: React.MouseEvent) => {
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("button")) return
     setIsDragging(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
     setStartPos({ x: e.clientX - offset.x, y: e.clientY - offset.y })
   }
-  const onMouseMove = (e: React.MouseEvent) => {
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging) return
     setOffset({ x: e.clientX - startPos.x, y: e.clientY - startPos.y })
+  }
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
   }
   const handleZoom = (d: "in" | "out") => setZoom(p => d === "in" ? Math.min(p + 0.25, 3) : Math.max(p - 0.25, 0.5))
   const handleReset = () => { setOffset({ x: 0, y: 0 }); setZoom(1) }
@@ -209,13 +216,14 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
     <div
       ref={containerRef}
       className={cn(
-        "relative h-full w-full overflow-hidden select-none",
+        "relative h-full w-full overflow-hidden select-none touch-none",
         isDragging ? "cursor-grabbing" : "cursor-grab"
       )}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={() => setIsDragging(false)}
-      onMouseLeave={() => setIsDragging(false)}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onPointerLeave={() => setIsDragging(false)}
       style={{
         background: "radial-gradient(ellipse at center, #0b111b 0%, #070b12 62%, #05070c 100%)",
       }}
@@ -385,25 +393,25 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
       </div>
 
       {/* ── HUD: Top-left — Live scan + coords ──────────────── */}
-      <div className="absolute top-4 left-4 z-30 space-y-1.5">
+      <div className="absolute top-3 left-3 z-30 space-y-1.5 sm:top-4 sm:left-4">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#0b0f16]/88 backdrop-blur-sm border border-white/[0.08]">
           <div className="relative w-2 h-2">
             <div className="absolute inset-0 rounded-full bg-cyan-400" />
           </div>
           <span className="text-[10px] font-bold text-white/75 tracking-wider font-mono">MAP VIEW</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0b0f16]/82 backdrop-blur-sm border border-white/[0.07]">
+        <div className="hidden items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0b0f16]/82 backdrop-blur-sm border border-white/[0.07] sm:flex">
           <Compass className="w-3 h-3 text-cyan-400/45" />
           <span className="text-[9px] text-white/40 font-mono tracking-wide">{coordsLabel}</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0b0f16]/82 backdrop-blur-sm border border-white/[0.07]">
+        <div className="hidden items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0b0f16]/82 backdrop-blur-sm border border-white/[0.07] sm:flex">
           <Crosshair className="w-3 h-3 text-cyan-400/45" />
           <span className="text-[9px] text-white/40 font-mono">ZOOM {(zoom * 100).toFixed(0)}%</span>
         </div>
       </div>
 
       {/* ── Zoom controls ────────────────────────────────── */}
-      <div className="absolute top-4 right-4 z-30 flex flex-col gap-1">
+      <div className="absolute top-3 right-3 z-30 flex flex-col gap-1 sm:top-4 sm:right-4">
         {[
           { icon: ZoomIn,   fn: () => handleZoom("in"),  title: "Zoom in"  },
           { icon: ZoomOut,  fn: () => handleZoom("out"), title: "Zoom out" },
@@ -417,7 +425,7 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
       </div>
 
       {/* ── Legend ─────────────────────────────────────── */}
-      <div className="absolute bottom-4 left-4 z-30">
+      <div className="absolute bottom-4 left-4 z-30 hidden sm:block">
         <div className="flex flex-col gap-1.5 px-3.5 py-3 rounded-lg bg-[#0b0f16]/92 backdrop-blur-sm border border-white/[0.08]">
           <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest mb-0.5 font-mono">Targets</span>
           <LegendItem shape="diamond" color="#ef4444" label="No Site Found" count={countByStatus("No Website")} />
@@ -440,7 +448,7 @@ export function MapView({ leads, selectedLead, onSelectLead, currentCity, mapCen
       </div>
 
       {/* ── Bottom stats ───────────────────────────────── */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 px-5 py-2.5 rounded-lg bg-[#0b0f16]/92 backdrop-blur-sm border border-white/[0.08]">
+      <div className="absolute bottom-4 left-1/2 z-30 hidden -translate-x-1/2 items-center gap-4 rounded-lg border border-white/[0.08] bg-[#0b0f16]/92 px-5 py-2.5 backdrop-blur-sm sm:flex">
         <div className="flex items-center gap-2">
           <Activity className="w-3 h-3 text-cyan-400/50" />
           <span className="text-[10px] text-white/35 uppercase tracking-wider font-mono">Targets</span>

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Radar, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase-client"
+import { clientDeviceId } from "@/lib/api-client"
 
 interface LoginScreenProps {
   onLogin: () => void
@@ -42,7 +43,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       const authPromise = fetch("/api/auth/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, email, password }),
+        body: JSON.stringify({
+          mode,
+          email,
+          password,
+          signupDeviceId: mode === "sign-up" ? clientDeviceId() : undefined,
+        }),
       })
 
       const timeoutPromise = new Promise<never>((_, reject) => {

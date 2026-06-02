@@ -7,7 +7,7 @@ website audit, and generate personalized cold-outreach with one click.
 - **Find** - query Google Places when configured, with OpenStreetMap (Overpass + Nominatim) fallback for businesses in a city/industry.
 - **Audit** - fetch each site and score SEO, mobile readiness, conversion paths, speed, and trust signals from real HTML.
 - **Outreach** - turn the audit into a tailored email via Google Gemini, localized by country.
-- **Billing** - Stripe subscriptions with monthly scan quotas (Free / Starter / Pro / Agency).
+- **Billing** - Stripe subscriptions with monthly lead and AI script quotas (Free / Starter / Pro / Agency).
 
 ## Tech stack
 
@@ -47,6 +47,7 @@ All variables live in `.env.local` (never commit it). See `.env.example`.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Public anon key (browser auth)                             |
 | `SUPABASE_SERVICE_ROLE_KEY`     | yes      | Server-only; used by billing/scan/webhook routes           |
 | `NEXT_PUBLIC_APP_URL`           | yes      | Canonical origin, e.g. `https://laggardscan.com` (used for SEO, Stripe redirects) |
+| `SIGNUP_GUARD_SALT`             | no       | Extra secret used to hash free-account guard claims         |
 | `STRIPE_SECRET_KEY`             | yes      | Stripe secret key                                          |
 | `STRIPE_WEBHOOK_SECRET`         | yes      | From the Stripe webhook endpoint                           |
 | `STRIPE_STARTER_PRICE_ID`       | yes      | Price ID for the Starter plan                              |
@@ -61,10 +62,11 @@ All variables live in `.env.local` (never commit it). See `.env.example`.
 ## Database setup (Supabase)
 
 Run [`supabase/schema.sql`](supabase/schema.sql) against your project (SQL editor or
-`supabase db push`). It creates four tables - `saved_scans`, `subscriptions`,
-`usage_events`, and `contacted` - all with Row Level Security scoped to `auth.uid()`.
-Subscription and usage rows are **read-only** for users (writes happen server-side
-with the service-role key); `saved_scans` and `contacted` are user-managed via RLS.
+`supabase db push`). It creates `saved_scans`, `subscriptions`, `usage_events`,
+`free_account_claims`, and `contacted`. User-owned rows are protected with Row
+Level Security scoped to `auth.uid()`. Subscription, usage, and free-account claim
+rows are written server-side with the service-role key; `saved_scans` and
+`contacted` are user-managed via RLS.
 
 ## Stripe setup
 
@@ -102,6 +104,11 @@ lib/
 - **Rate limiting** - `lib/rate-limit.ts` throttles auth, scan, audit, and outreach
   routes. It is in-memory (best-effort per instance); back it with Redis/Upstash for
   hard global limits on multi-instance deploys.
+- **Usage quotas** - lead scans and Gemini outreach generations are recorded in
+  `usage_events` and enforced monthly per plan.
+- **Free-account abuse guard** - signup and protected usage routes record hashed
+  email/network/browser claims in `free_account_claims` to stop easy repeat free-tier
+  resets.
 - **Auth** - every sensitive route validates a Supabase bearer token; the Stripe
   webhook verifies its signature.
 - Security headers are set in `next.config.mjs`. A Content-Security-Policy is left

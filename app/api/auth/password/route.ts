@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit"
+import { checkFreeAccountAllowed, recordFreeAccountClaim } from "@/lib/signup-guard"
 
 export async function POST(req: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -24,12 +25,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Enter a valid email and password." }, { status: 400 })
   }
 
+  if (mode === "sign-up") {
+    const guard = await checkFreeAccountAllowed(supabase, {
+      email,
+      req,
+      deviceId: body?.signupDeviceId,
+    })
+    if (!guard.allowed) {
+      return NextResponse.json({ error: guard.error }, { status: 409 })
+    }
+  }
+
   const result = mode === "sign-in"
     ? await supabase.auth.signInWithPassword({ email, password })
     : await supabase.auth.signUp({ email, password })
 
   if (result.error) {
     return NextResponse.json({ error: result.error.message }, { status: 400 })
+  }
+
+  if (mode === "sign-up" && result.data.user?.id) {
+    await recordFreeAccountClaim(supabase, {
+      userId: result.data.user.id,
+      email,
+      req,
+      deviceId: body?.signupDeviceId,
+    })
   }
 
   if (!result.data.session) {

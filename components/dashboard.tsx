@@ -625,7 +625,7 @@ export function Dashboard({ userId }: DashboardProps) {
   }, [contactedLeadIds, outreachQueue])
 
   return (
-    <div className="h-screen flex flex-col bg-[#080b10] text-white overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-[#080b10] text-white overflow-hidden">
       <TopNav
         industry={industry} location={location}
         onIndustryChange={setIndustry}
@@ -639,10 +639,10 @@ export function Dashboard({ userId }: DashboardProps) {
       />
 
       {/* Stats Bar */}
-      <div className="px-5 py-3 bg-[#0b0f16] border-b border-white/[0.07] flex items-center gap-3 overflow-x-auto shrink-0">
+      <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-[#0b0f16] border-b border-white/[0.07] flex items-center gap-2 sm:gap-3 overflow-x-auto shrink-0">
         <StatCard icon={<TrendingDown className="w-3.5 h-3.5 text-red-400" />} label="Pipeline Potential"
           value={`$${stats.totalRevenueLeak.toLocaleString()}`} sub="/mo" accent="red" />
-        <div className="w-px h-8 bg-white/[0.08] shrink-0" />
+        <div className="hidden sm:block w-px h-8 bg-white/[0.08] shrink-0" />
         <StatCard icon={<Users className="w-3.5 h-3.5 text-cyan-400" />} label="Total Leads"
           value={filteredLeads.length.toString()} accent="neutral" />
         <StatCard icon={<Flame className="w-3.5 h-3.5 text-orange-400" />} label="Hot Targets"
@@ -669,12 +669,12 @@ export function Dashboard({ userId }: DashboardProps) {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 min-w-0 flex flex-col bg-[#080b10]">
-          <div className="px-5 py-4 border-b border-white/[0.07] bg-[#0b0f16] shrink-0">
-            <div className="flex items-center justify-between gap-4">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-[#080b10]">
+          <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-white/[0.07] bg-[#0b0f16] shrink-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-sm font-black text-white">Prospecting workspace</h1>
                   <span className="rounded-md border border-white/[0.09] bg-white/[0.035] px-2 py-0.5 text-xs font-mono text-white/55">
                     {filteredLeads.length} leads
@@ -685,12 +685,12 @@ export function Dashboard({ userId }: DashboardProps) {
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-white/42">
+                <p className="mt-1 hidden text-xs text-white/42 sm:block">
                   Pick a lead, review the website gaps, then generate outreach.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:shrink-0 sm:pb-0">
                 <div className="flex items-center rounded-md border border-white/[0.09] bg-white/[0.03] p-0.5">
                   <button
                     onClick={() => setViewMode("leads")}
@@ -720,15 +720,16 @@ export function Dashboard({ userId }: DashboardProps) {
                       onClick={handleExportQueue}
                       disabled={queueStats.readyCount === 0}
                       variant="ghost"
-                      className="h-9 px-3 rounded-md border border-emerald-400/18 bg-emerald-400/[0.055] text-emerald-200 hover:bg-emerald-400/[0.09] hover:text-emerald-100 text-xs font-bold gap-1.5 disabled:opacity-35"
+                      className="h-9 shrink-0 px-3 rounded-md border border-emerald-400/18 bg-emerald-400/[0.055] text-emerald-200 hover:bg-emerald-400/[0.09] hover:text-emerald-100 text-xs font-bold gap-1.5 disabled:opacity-35"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Export Queue
+                      <span className="hidden min-[420px]:inline">Export Queue</span>
+                      <span className="min-[420px]:hidden">Export</span>
                     </Button>
                     <Button
                       onClick={() => { setMultiSelectMode(true); setSelectedLead(null); setViewMode("leads") }}
                       variant="ghost"
-                      className="h-9 px-3 rounded-md border border-white/[0.09] bg-white/[0.035] text-white/62 hover:bg-white/[0.06] hover:text-white text-xs font-bold gap-1.5"
+                      className="h-9 shrink-0 px-3 rounded-md border border-white/[0.09] bg-white/[0.035] text-white/62 hover:bg-white/[0.06] hover:text-white text-xs font-bold gap-1.5"
                     >
                       <Mail className="w-3.5 h-3.5" />
                       Outreach
@@ -747,21 +748,21 @@ export function Dashboard({ userId }: DashboardProps) {
                     <Button
                       onClick={selectOutreachQueue}
                       variant="ghost"
-                      className="h-9 px-3 rounded-md border border-orange-400/20 bg-orange-400/[0.08] text-orange-300 hover:bg-orange-400/12 text-xs font-bold"
+                      className="h-9 shrink-0 px-3 rounded-md border border-orange-400/20 bg-orange-400/[0.08] text-orange-300 hover:bg-orange-400/12 text-xs font-bold"
                     >
                       Select queue
                     </Button>
                     <Button
                       onClick={() => setShowOutreachDialog(true)}
                       disabled={multiSelected.size === 0}
-                      className="h-9 px-3 rounded-md bg-cyan-400 text-slate-950 hover:bg-cyan-300 text-xs font-black disabled:opacity-35"
+                      className="h-9 shrink-0 px-3 rounded-md bg-cyan-400 text-slate-950 hover:bg-cyan-300 text-xs font-black disabled:opacity-35"
                     >
                       Compose ({multiSelected.size})
                     </Button>
                     <Button
                       onClick={() => { setMultiSelectMode(false); setMultiSelected(new Set()) }}
                       variant="ghost"
-                      className="h-9 px-3 rounded-md border border-white/[0.09] bg-white/[0.035] text-white/55 hover:bg-white/[0.06] hover:text-white text-xs font-bold"
+                      className="h-9 shrink-0 px-3 rounded-md border border-white/[0.09] bg-white/[0.035] text-white/55 hover:bg-white/[0.06] hover:text-white text-xs font-bold"
                     >
                       <X className="w-3.5 h-3.5 mr-1.5" />
                       Cancel
@@ -772,14 +773,14 @@ export function Dashboard({ userId }: DashboardProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-3 px-5 py-3 border-b border-white/[0.06] bg-[#090d13] shrink-0">
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto px-3 sm:px-5 py-2.5 sm:py-3 border-b border-white/[0.06] bg-[#090d13] shrink-0">
             {[
               ["1", "Choose market", `${location.split(",")[0]} / ${industry === "All Industries" ? "all industries" : industry}`],
               ["2", "Find leads", `${filteredLeads.length} businesses found`],
               ["3", "Review gaps", selectedLead ? selectedLead.name : "Choose a lead"],
               ["4", "Send outreach", multiSelectMode ? `${multiSelected.size} selected` : "Use Outreach"],
             ].map(([step, title, body]) => (
-              <div key={step} className="rounded-md border border-white/[0.08] bg-white/[0.025] px-3 py-2">
+              <div key={step} className="min-w-[150px] flex-1 rounded-md border border-white/[0.08] bg-white/[0.025] px-3 py-2">
                 <div className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded bg-cyan-400/[0.12] text-[10px] font-black text-cyan-200">
                     {step}
@@ -792,8 +793,8 @@ export function Dashboard({ userId }: DashboardProps) {
           </div>
 
           {filteredLeads.length > 0 && (
-            <div className="px-5 py-3 border-b border-white/[0.06] bg-emerald-400/[0.035] shrink-0">
-              <div className="flex flex-col gap-2 rounded-md border border-emerald-400/14 bg-[#07110f]/70 px-3 py-2.5 sm:flex-row sm:items-center">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-white/[0.06] bg-emerald-400/[0.035] shrink-0">
+              <div className="flex flex-col gap-2 rounded-md border border-emerald-400/14 bg-[#07110f]/70 px-3 py-2.5 md:flex-row md:items-center">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-black text-white">Campaign queue</span>
@@ -807,7 +808,7 @@ export function Dashboard({ userId }: DashboardProps) {
                       top score {queueStats.topScore}
                     </span>
                   </div>
-                  <p className="mt-1 text-[10px] text-white/38">
+                  <p className="mt-1 hidden text-[10px] text-white/38 sm:block">
                     Sorted by high-value fit, found email, no instant response path, site quality, and whether you already contacted them.
                     {bulkAuditStatus && (
                       <span className="ml-1 text-cyan-300">
@@ -816,7 +817,7 @@ export function Dashboard({ userId }: DashboardProps) {
                     )}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
                   <Button
                     onClick={handleFindEmails}
                     disabled={!!bulkAuditStatus || filteredLeads.every(lead => !lead.website)}
@@ -839,7 +840,7 @@ export function Dashboard({ userId }: DashboardProps) {
             </div>
           )}
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
             {filteredLeads.length === 0 ? (
               <div className="h-full flex items-center justify-center px-6">
                 <div className="max-w-xl text-center">
@@ -967,6 +968,13 @@ export function Dashboard({ userId }: DashboardProps) {
         open={showOutreachDialog}
         onClose={() => setShowOutreachDialog(false)}
         leads={filteredLeads.filter(l => multiSelected.has(l.id))}
+        onBillingUpdate={setBillingStatus}
+        onLimitReached={(status) => {
+          setBillingStatus(status)
+          setBillingHeadline("Monthly AI script limit reached")
+          setShowOutreachDialog(false)
+          setShowBillingDialog(true)
+        }}
       />
 
       <BillingDialog
@@ -1003,7 +1011,7 @@ function StatCard({ icon, label, value, sub, accent }: {
 }) {
   return (
     <div className={cn(
-      "flex items-center gap-2.5 px-3 py-2 rounded-md border shrink-0 transition-colors",
+      "flex min-w-[112px] items-center gap-2 px-2.5 py-2 rounded-md border shrink-0 transition-colors sm:min-w-0 sm:gap-2.5 sm:px-3",
       accent === "red"
         ? "bg-red-500/[0.055] border-red-500/18"
         : "bg-white/[0.028] border-white/[0.08]"

@@ -108,7 +108,7 @@ export function LeadList({
         </div>
       </div>
 
-      <div className="px-3 pb-2 flex items-center gap-2">
+      <div className="px-3 pb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto">
           {filterPills.map(f => (
             <button
@@ -134,14 +134,14 @@ export function LeadList({
           ))}
         </div>
 
-        <div className="flex items-center gap-px bg-white/[0.03] rounded-md border border-white/[0.08] p-0.5 shrink-0">
+        <div className="flex w-full items-center justify-between gap-px bg-white/[0.03] rounded-md border border-white/[0.08] p-0.5 sm:w-auto sm:justify-start sm:shrink-0">
           {SORTS.map(s => (
             <button
               key={s.value}
               onClick={() => setSortBy(s.value)}
               title={s.label}
               className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-colors duration-150 cursor-pointer font-mono",
+                "flex flex-1 items-center justify-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-colors duration-150 cursor-pointer font-mono sm:flex-none",
                 sortBy === s.value
                   ? "bg-white/[0.10] text-white"
                   : "text-white/25 hover:text-white/55"

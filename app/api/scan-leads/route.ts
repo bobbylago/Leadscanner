@@ -3,6 +3,7 @@ import { findLeads } from '@/lib/lead-finder'
 import { getAuthenticatedUser } from '@/lib/auth-server'
 import { getBillingStatus, reserveScanUsage, releaseScanUsage, updateScanUsage } from '@/lib/billing'
 import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
+import { ensureFreeAccountAllowedForUsage } from '@/lib/signup-guard'
 
 export const maxDuration = 60
 
@@ -43,6 +44,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const billing = await getBillingStatus(supabase, user.id)
+    const freeGuard = await ensureFreeAccountAllowedForUsage(supabase, req, {
+      userId: user.id,
+      email: user.email,
+      plan: billing.plan,
+    })
+    if (!freeGuard.allowed) {
+      return NextResponse.json({ error: freeGuard.error }, { status: 409 })
+    }
+
     if (billing.scansRemaining <= 0) {
       return NextResponse.json({
         error: 'Monthly lead credit limit reached',

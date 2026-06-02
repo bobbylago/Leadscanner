@@ -66,6 +66,36 @@ for select
 to authenticated
 using (auth.uid() = user_id);
 
+create table if not exists public.free_account_claims (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  email_hash text not null,
+  ip_hash text,
+  device_hash text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.free_account_claims add column if not exists user_id uuid references auth.users(id) on delete set null;
+alter table public.free_account_claims add column if not exists email_hash text;
+alter table public.free_account_claims add column if not exists ip_hash text;
+alter table public.free_account_claims add column if not exists device_hash text;
+alter table public.free_account_claims add column if not exists created_at timestamptz not null default now();
+
+create unique index if not exists free_account_claims_user_id_key
+on public.free_account_claims(user_id)
+where user_id is not null;
+
+create unique index if not exists free_account_claims_email_hash_key
+on public.free_account_claims(email_hash);
+
+create index if not exists free_account_claims_ip_hash_created_at_idx
+on public.free_account_claims(ip_hash, created_at desc);
+
+create index if not exists free_account_claims_device_hash_created_at_idx
+on public.free_account_claims(device_hash, created_at desc);
+
+alter table public.free_account_claims enable row level security;
+
 create table if not exists public.contacted (
   user_id uuid not null references auth.users(id) on delete cascade,
   email text not null,
