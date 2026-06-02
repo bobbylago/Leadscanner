@@ -55,6 +55,10 @@ interface BillingDialogProps {
   headline?: string
 }
 
+async function readJson(res: Response) {
+  return res.json().catch(() => null)
+}
+
 export function BillingDialog({
   open,
   onClose,
@@ -72,14 +76,19 @@ export function BillingDialog({
   const loadStatus = useCallback(async () => {
     setIsLoadingStatus(true)
     setError("")
-    const res = await authedFetch("/api/billing/status")
-    if (res.ok) {
-      setStatus(await res.json())
-    } else {
-      const data = await res.json().catch(() => null)
-      setError(data?.error || "Could not load billing status. Showing Free plan.")
+    try {
+      const res = await authedFetch("/api/billing/status")
+      const data = await readJson(res)
+      if (res.ok) {
+        setStatus(data)
+      } else {
+        setError(data?.error || "Could not load billing status. Showing Free plan.")
+      }
+    } catch {
+      setError("Could not reach billing. Check the deployment environment variables.")
+    } finally {
+      setIsLoadingStatus(false)
     }
-    setIsLoadingStatus(false)
   }, [setStatus])
 
   useEffect(() => {
@@ -89,35 +98,45 @@ export function BillingDialog({
   const openCheckout = async (plan: string) => {
     setLoadingPlan(plan)
     setError("")
-    const res = await authedFetch("/api/billing/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan }),
-    })
-    const data = await res.json()
-    setLoadingPlan(null)
+    try {
+      const res = await authedFetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      })
+      const data = await readJson(res)
 
-    if (!res.ok || !data.url) {
-      setError(data.error || "Could not start checkout")
-      return
+      if (!res.ok || !data?.url) {
+        setError(data?.error || "Could not start checkout. Check Stripe price IDs and redeploy Vercel.")
+        return
+      }
+
+      window.location.assign(data.url)
+    } catch {
+      setError("Could not start checkout. Check Stripe environment variables and redeploy Vercel.")
+    } finally {
+      setLoadingPlan(null)
     }
-
-    window.location.assign(data.url)
   }
 
   const openPortal = async () => {
     setLoadingPlan("portal")
     setError("")
-    const res = await authedFetch("/api/billing/portal", { method: "POST" })
-    const data = await res.json()
-    setLoadingPlan(null)
+    try {
+      const res = await authedFetch("/api/billing/portal", { method: "POST" })
+      const data = await readJson(res)
 
-    if (!res.ok || !data.url) {
-      setError(data.error || "Could not open billing portal")
-      return
+      if (!res.ok || !data?.url) {
+        setError(data?.error || "Could not open billing portal. Make sure Stripe Customer Portal is configured.")
+        return
+      }
+
+      window.location.assign(data.url)
+    } catch {
+      setError("Could not open billing portal. Make sure Stripe Customer Portal is configured.")
+    } finally {
+      setLoadingPlan(null)
     }
-
-    window.location.assign(data.url)
   }
 
   return (
