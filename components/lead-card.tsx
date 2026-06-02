@@ -69,9 +69,9 @@ export function LeadCard({ lead, isSelected, onClick, isContacted }: LeadCardPro
         <div className="absolute inset-0 bg-cyan-400/[0.025] pointer-events-none rounded-lg" />
       )}
 
-      <div className="pl-4 pr-4 py-3.5 relative">
+      <div className="pl-4 pr-4 py-2.5 sm:py-3.5 relative">
         {/* Top row: name + status badge */}
-        <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-start justify-between gap-2 mb-1.5 sm:mb-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             {isHot && (
               <Flame
@@ -104,7 +104,7 @@ export function LeadCard({ lead, isSelected, onClick, isContacted }: LeadCardPro
         </div>
 
         {/* Metadata row: rating + revenue + category */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 sm:mb-2.5">
           {lead.rating > 0 && (
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
@@ -128,7 +128,7 @@ export function LeadCard({ lead, isSelected, onClick, isContacted }: LeadCardPro
         </div>
 
         {/* Website + verification */}
-        <div className="flex items-center gap-1.5 mb-2.5">
+        <div className="flex items-center gap-1.5 mb-2 sm:mb-2.5">
           {lead.website
             ? <Globe className="w-3 h-3 text-white/20 shrink-0" />
             : <AlertTriangle className="w-3 h-3 text-red-400/50 shrink-0" />}

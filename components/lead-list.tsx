@@ -96,19 +96,19 @@ export function LeadList({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-3 pt-3 pb-2">
+      <div className="px-3 pt-2 pb-1.5 sm:pt-3 sm:pb-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25 pointer-events-none" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search businesses..."
-            className="pl-8 h-9 rounded-md text-xs bg-white/[0.035] border-white/[0.09] focus:border-cyan-500/35 focus:bg-white/[0.05] text-white placeholder:text-white/25 transition-colors font-mono"
+            className="pl-8 h-8 sm:h-9 rounded-md text-xs bg-white/[0.035] border-white/[0.09] focus:border-cyan-500/35 focus:bg-white/[0.05] text-white placeholder:text-white/25 transition-colors font-mono"
           />
         </div>
       </div>
 
-      <div className="px-3 pb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="px-3 pb-1.5 sm:pb-2 flex items-center gap-2">
         <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto">
           {filterPills.map(f => (
             <button
@@ -134,14 +134,14 @@ export function LeadList({
           ))}
         </div>
 
-        <div className="flex w-full items-center justify-between gap-px bg-white/[0.03] rounded-md border border-white/[0.08] p-0.5 sm:w-auto sm:justify-start sm:shrink-0">
+        <div className="flex shrink-0 items-center gap-px bg-white/[0.03] rounded-md border border-white/[0.08] p-0.5">
           {SORTS.map(s => (
             <button
               key={s.value}
               onClick={() => setSortBy(s.value)}
               title={s.label}
               className={cn(
-                "flex flex-1 items-center justify-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-colors duration-150 cursor-pointer font-mono sm:flex-none",
+                "flex items-center justify-center gap-1 px-1.5 py-1 rounded-md text-[10px] font-bold transition-colors duration-150 cursor-pointer font-mono sm:px-2",
                 sortBy === s.value
                   ? "bg-white/[0.10] text-white"
                   : "text-white/25 hover:text-white/55"
@@ -154,7 +154,7 @@ export function LeadList({
         </div>
       </div>
 
-      <div className="px-3 pb-1.5 flex items-center justify-between">
+      <div className="hidden px-3 pb-1.5 sm:flex items-center justify-between">
         <span className="text-[10px] text-white/20 font-mono">
           {processedLeads.length} / {leads.length} targets
         </span>

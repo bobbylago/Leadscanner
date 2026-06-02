@@ -639,7 +639,7 @@ export function Dashboard({ userId }: DashboardProps) {
       />
 
       {/* Stats Bar */}
-      <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-[#0b0f16] border-b border-white/[0.07] flex items-center gap-2 sm:gap-3 overflow-x-auto shrink-0">
+      <div className="hidden px-5 py-3 bg-[#0b0f16] border-b border-white/[0.07] sm:flex items-center gap-3 overflow-x-auto shrink-0">
         <StatCard icon={<TrendingDown className="w-3.5 h-3.5 text-red-400" />} label="Pipeline Potential"
           value={`$${stats.totalRevenueLeak.toLocaleString()}`} sub="/mo" accent="red" />
         <div className="hidden sm:block w-px h-8 bg-white/[0.08] shrink-0" />
@@ -671,8 +671,8 @@ export function Dashboard({ userId }: DashboardProps) {
 
       <div className="flex-1 min-h-0 flex overflow-hidden">
         <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-[#080b10]">
-          <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-white/[0.07] bg-[#0b0f16] shrink-0">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-4 border-b border-white/[0.07] bg-[#0b0f16] shrink-0">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-sm font-black text-white">Prospecting workspace</h1>
@@ -690,7 +690,7 @@ export function Dashboard({ userId }: DashboardProps) {
                 </p>
               </div>
 
-              <div className="flex w-full items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto sm:shrink-0 sm:pb-0">
+              <div className="flex w-full items-center gap-2 overflow-x-auto sm:w-auto sm:shrink-0">
                 <div className="flex items-center rounded-md border border-white/[0.09] bg-white/[0.03] p-0.5">
                   <button
                     onClick={() => setViewMode("leads")}
@@ -773,7 +773,7 @@ export function Dashboard({ userId }: DashboardProps) {
             </div>
           </div>
 
-          <div className="flex gap-2 sm:gap-3 overflow-x-auto px-3 sm:px-5 py-2.5 sm:py-3 border-b border-white/[0.06] bg-[#090d13] shrink-0">
+          <div className="hidden sm:flex gap-3 overflow-x-auto px-5 py-3 border-b border-white/[0.06] bg-[#090d13] shrink-0">
             {[
               ["1", "Choose market", `${location.split(",")[0]} / ${industry === "All Industries" ? "all industries" : industry}`],
               ["2", "Find leads", `${filteredLeads.length} businesses found`],
@@ -793,7 +793,7 @@ export function Dashboard({ userId }: DashboardProps) {
           </div>
 
           {filteredLeads.length > 0 && (
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-white/[0.06] bg-emerald-400/[0.035] shrink-0">
+            <div className="hidden px-5 py-3 border-b border-white/[0.06] bg-emerald-400/[0.035] shrink-0 sm:block">
               <div className="flex flex-col gap-2 rounded-md border border-emerald-400/14 bg-[#07110f]/70 px-3 py-2.5 md:flex-row md:items-center">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
