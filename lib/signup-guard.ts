@@ -121,7 +121,7 @@ export async function checkFreeAccountAllowed(
     if ((deviceCheck.data ?? []).length > 0) {
       return {
         allowed: false,
-        error: "A free account was already created from this browser. Sign in to that account to keep using your credits.",
+        error: "Free credits have already been claimed. Sign in to the original account to keep using them.",
       }
     }
   }
