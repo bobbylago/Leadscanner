@@ -141,87 +141,89 @@ export function BillingDialog({
 
   return (
     <Dialog open={open} onOpenChange={value => { if (!value) onClose() }}>
-      <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <CreditCard className="w-5 h-5 text-cyan-400" />
-            {headline}
+      <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[calc(100dvh-1rem)] overflow-hidden p-0 gap-0">
+        <DialogHeader className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-6">
+          <DialogTitle className="flex items-center gap-2 pr-8 text-white">
+            <CreditCard className="w-5 h-5 text-cyan-400 shrink-0" />
+            <span className="truncate">{headline}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 grid gap-4 sm:grid-cols-3">
-          <div>
-            <p className="text-xs text-white/40 uppercase tracking-wider font-mono">Current Plan</p>
-            <p className={cn("text-lg font-black capitalize", PLAN_TEXT_COLORS[status.plan])}>
-              {isLoadingStatus ? "Free" : status.plan}
-            </p>
-          </div>
-          <div className="sm:text-right">
-            <p className="text-xs text-white/40 uppercase tracking-wider font-mono">Lead credits</p>
-            <p className="text-sm font-bold">
-              {isLoadingStatus ? "..." : `${status.scansUsed} / ${status.scanLimit}`}
-            </p>
-          </div>
-          <div className="sm:text-right">
-            <p className="text-xs text-white/40 uppercase tracking-wider font-mono">AI scripts</p>
-            <p className="text-sm font-bold">
-              {isLoadingStatus ? "..." : `${status.outreachUsed} / ${status.outreachLimit}`}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-3">
-          {PLANS.map(plan => (
-            <div
-              key={plan.id}
-              className={cn(
-                "rounded-xl border p-4 space-y-4 transition-all",
-                plan.card,
-                plan.glow
-              )}
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className={cn("font-black", plan.text)}>{plan.name}</p>
-                  {plan.featured && <Zap className={cn("w-3.5 h-3.5", plan.text)} />}
-                </div>
-                <p className={cn("text-2xl font-black mt-1", plan.text)}>
-                  {plan.price}
-                  <span className="text-xs text-white/35 font-medium">/mo</span>
-                </p>
-                <p className="text-xs text-white/45 mt-1">{plan.credits}</p>
-                <p className="text-xs text-white/45 mt-1">{plan.scripts}</p>
-                <p className="text-[11px] text-white/35 mt-1">Google Places data included</p>
-              </div>
-              <Button
-                onClick={() => openCheckout(plan.id)}
-                disabled={loadingPlan !== null || status.plan === plan.id}
-                className={cn("w-full font-bold disabled:opacity-40", plan.button)}
-              >
-                {loadingPlan === plan.id && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {status.plan === plan.id ? "Current" : "Upgrade"}
-              </Button>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 space-y-4">
+          <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-3 sm:p-4 grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider font-mono">Current Plan</p>
+              <p className={cn("text-lg font-black capitalize", PLAN_TEXT_COLORS[status.plan])}>
+                {isLoadingStatus ? "Free" : status.plan}
+              </p>
             </div>
-          ))}
+            <div className="sm:text-right">
+              <p className="text-xs text-white/40 uppercase tracking-wider font-mono">Lead credits</p>
+              <p className="text-sm font-bold">
+                {isLoadingStatus ? "..." : `${status.scansUsed} / ${status.scanLimit}`}
+              </p>
+            </div>
+            <div className="sm:text-right">
+              <p className="text-xs text-white/40 uppercase tracking-wider font-mono">AI scripts</p>
+              <p className="text-sm font-bold">
+                {isLoadingStatus ? "..." : `${status.outreachUsed} / ${status.outreachLimit}`}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            {PLANS.map(plan => (
+              <div
+                key={plan.id}
+                className={cn(
+                  "rounded-xl border p-4 space-y-4 transition-all",
+                  plan.card,
+                  plan.glow
+                )}
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className={cn("font-black", plan.text)}>{plan.name}</p>
+                    {plan.featured && <Zap className={cn("w-3.5 h-3.5", plan.text)} />}
+                  </div>
+                  <p className={cn("text-2xl font-black mt-1", plan.text)}>
+                    {plan.price}
+                    <span className="text-xs text-white/35 font-medium">/mo</span>
+                  </p>
+                  <p className="text-xs text-white/45 mt-1">{plan.credits}</p>
+                  <p className="text-xs text-white/45 mt-1">{plan.scripts}</p>
+                  <p className="text-[11px] text-white/35 mt-1">Google Places data included</p>
+                </div>
+                <Button
+                  onClick={() => openCheckout(plan.id)}
+                  disabled={loadingPlan !== null || status.plan === plan.id}
+                  className={cn("w-full font-bold disabled:opacity-40", plan.button)}
+                >
+                  {loadingPlan === plan.id && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {status.plan === plan.id ? "Current" : "Upgrade"}
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {status.plan !== "free" && (
+            <Button
+              onClick={openPortal}
+              disabled={loadingPlan !== null}
+              variant="ghost"
+              className="w-full border border-white/10 text-white/65 hover:text-white sm:w-auto"
+            >
+              {loadingPlan === "portal" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Manage Subscription
+            </Button>
+          )}
+
+          {error && (
+            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
         </div>
-
-        {status.plan !== "free" && (
-          <Button
-            onClick={openPortal}
-            disabled={loadingPlan !== null}
-            variant="ghost"
-            className="border border-white/10 text-white/65 hover:text-white"
-          >
-            {loadingPlan === "portal" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Manage Subscription
-          </Button>
-        )}
-
-        {error && (
-          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
       </DialogContent>
     </Dialog>
   )
