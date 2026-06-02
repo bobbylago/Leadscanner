@@ -448,7 +448,7 @@ export function BatchOutreachDialog({
                 <Input
                   value={senderName}
                   onChange={e => setSenderName(e.target.value)}
-                  placeholder="e.g. Viggo Pettersson"
+                  placeholder="e.g. Jordan Lee"
                   className="h-9 bg-white/[0.05] border-white/[0.10] text-white text-sm focus:border-cyan-500/40"
                 />
               </div>
