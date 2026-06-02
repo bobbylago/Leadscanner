@@ -14,6 +14,7 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  allowedDevOrigins: ["127.0.0.1"],
   // tsc --noEmit is clean, so let the build enforce types rather than ignore them.
   typescript: {
     ignoreBuildErrors: false,
