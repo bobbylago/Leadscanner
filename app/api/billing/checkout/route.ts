@@ -1,11 +1,34 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAuthenticatedUser } from "@/lib/auth-server"
 import { appUrl, STRIPE_PRICE_IDS, stripe, type PlanName } from "@/lib/stripe"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 const PLAN_LABELS: Record<PlanName, string> = {
   starter: "Starter",
   pro: "Pro",
   agency: "Agency",
+}
+
+function isMissingStripeCustomer(error: unknown) {
+  const record = error as { code?: unknown; message?: unknown; raw?: { code?: unknown; message?: unknown } }
+  const code = String(record?.code ?? record?.raw?.code ?? "")
+  const message = String(record?.message ?? record?.raw?.message ?? "")
+  return code === "resource_missing" && /No such customer/i.test(message)
+}
+
+async function resetStaleStripeCustomer(supabase: SupabaseClient, userId: string) {
+  await supabase
+    .from("subscriptions")
+    .update({
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      stripe_price_id: null,
+      plan: "free",
+      status: "free",
+      current_period_end: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
 }
 
 export async function POST(req: NextRequest) {
@@ -47,6 +70,20 @@ export async function POST(req: NextRequest) {
     }
 
     let customerId = existing?.stripe_customer_id as string | undefined
+
+    if (customerId) {
+      try {
+        const customer = await stripe.customers.retrieve(customerId)
+        if ("deleted" in customer && customer.deleted) {
+          await resetStaleStripeCustomer(supabase, user.id)
+          customerId = undefined
+        }
+      } catch (error) {
+        if (!isMissingStripeCustomer(error)) throw error
+        await resetStaleStripeCustomer(supabase, user.id)
+        customerId = undefined
+      }
+    }
 
     if (!customerId) {
       const customer = await stripe.customers.create({
