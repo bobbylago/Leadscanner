@@ -141,15 +141,15 @@ export function BillingDialog({
 
   return (
     <Dialog open={open} onOpenChange={value => { if (!value) onClose() }}>
-      <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[calc(100dvh-1rem)] overflow-hidden p-0 gap-0">
-        <DialogHeader className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-6">
+      <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain p-0 gap-0">
+        <DialogHeader className="sticky top-0 z-10 border-b border-white/10 bg-slate-900 px-4 py-4 sm:px-6">
           <DialogTitle className="flex items-center gap-2 pr-8 text-white">
             <CreditCard className="w-5 h-5 text-cyan-400 shrink-0" />
             <span className="truncate">{headline}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 space-y-4">
+        <div className="px-4 py-4 sm:px-6 space-y-4">
           <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-3 sm:p-4 grid gap-3 sm:grid-cols-3">
             <div>
               <p className="text-xs text-white/40 uppercase tracking-wider font-mono">Current Plan</p>
