@@ -66,6 +66,44 @@ for select
 to authenticated
 using (auth.uid() = user_id);
 
+create table if not exists public.lead_audits (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  lead_id text not null,
+  website_domain text,
+  name_key text not null default '',
+  audit jsonb not null,
+  audited_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.lead_audits add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table public.lead_audits add column if not exists lead_id text;
+alter table public.lead_audits add column if not exists website_domain text;
+alter table public.lead_audits add column if not exists name_key text not null default '';
+alter table public.lead_audits add column if not exists audit jsonb;
+alter table public.lead_audits add column if not exists audited_at timestamptz not null default now();
+alter table public.lead_audits add column if not exists created_at timestamptz not null default now();
+alter table public.lead_audits add column if not exists updated_at timestamptz not null default now();
+
+create unique index if not exists lead_audits_user_lead_id_key
+on public.lead_audits(user_id, lead_id);
+
+create index if not exists lead_audits_user_website_domain_idx
+on public.lead_audits(user_id, website_domain)
+where website_domain is not null;
+
+alter table public.lead_audits enable row level security;
+
+drop policy if exists "Users can manage their lead audits" on public.lead_audits;
+create policy "Users can manage their lead audits"
+on public.lead_audits
+for all
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
 create table if not exists public.free_account_claims (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,

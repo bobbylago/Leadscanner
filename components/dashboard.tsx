@@ -18,7 +18,14 @@ import {
   type ContactedMap,
 } from "@/lib/contacted-storage"
 import { clearSavedScans, loadSavedScans, saveScan, type SavedScan } from "@/lib/saved-scans"
-import { loadAuditCache, saveAuditCache } from "@/lib/audit-cache-storage"
+import {
+  clearAuditCache,
+  loadAuditCache,
+  loadRemoteAuditCache,
+  mergeAuditCaches,
+  saveAuditCache,
+  saveRemoteAudit,
+} from "@/lib/audit-cache-storage"
 import { buildOutreachQueue, buildOutreachQueueCsv } from "@/lib/outreach-queue"
 import { getHighValueLeadProfile, isLeadRelevantToCategory } from "@/lib/lead-scoring"
 import { authedFetch } from "@/lib/api-client"
@@ -212,9 +219,9 @@ export function Dashboard({ userId }: DashboardProps) {
     for (const rec of Object.values(contacted)) set.add(rec.leadId)
     return set
   }, [contacted])
-  // Map of leadId -> realAudit (persisted to localStorage so audits survive reloads).
+  // Map of leadId -> realAudit (persisted locally and, when configured, in Supabase).
   // Lazy init reads storage on first client render, before the persist effect runs.
-  const [auditCache, setAuditCache] = useState<Record<string, Lead["realAudit"]>>(() => loadAuditCache())
+  const [auditCache, setAuditCache] = useState<Record<string, Lead["realAudit"]>>(() => loadAuditCache(userId))
   const [auditingId, setAuditingId] = useState<string | null>(null)
   const [bulkAuditStatus, setBulkAuditStatus] = useState<{ done: number; total: number; wave: number } | null>(null)
   // Mirror of auditCache for the audit effect to read without re-subscribing.
@@ -228,15 +235,15 @@ export function Dashboard({ userId }: DashboardProps) {
   // Persist the audit cache whenever it changes, and keep the ref mirror in sync.
   useEffect(() => {
     auditCacheRef.current = auditCache
-    saveAuditCache(auditCache as Record<string, NonNullable<Lead["realAudit"]>>)
-  }, [auditCache])
+    saveAuditCache(auditCache as Record<string, NonNullable<Lead["realAudit"]>>, userId)
+  }, [auditCache, userId])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get("clearLeads") === "1") {
       backgroundAuditRunRef.current += 1
       removeAccountWorkspaceStorage(userId)
-      localStorage.removeItem("ls_audit_cache_v1")
+      clearAuditCache(userId)
       setCustomLeadsMap({})
       setScannedCities([])
       setMapCenters({})
@@ -257,6 +264,23 @@ export function Dashboard({ userId }: DashboardProps) {
       })
       return
     }
+
+    const localAudits = loadAuditCache(userId)
+    setAuditCache(localAudits)
+    auditCacheRef.current = localAudits
+
+    loadRemoteAuditCache().then(remoteAudits => {
+      if (Object.keys(remoteAudits).length === 0) return
+      setAuditCache(prev => {
+        const merged = mergeAuditCaches(
+          prev as Record<string, NonNullable<Lead["realAudit"]>>,
+          remoteAudits,
+        )
+        auditCacheRef.current = merged
+        saveAuditCache(merged, userId)
+        return merged
+      })
+    }).catch(() => { /* offline / table not added yet - local cache still works */ })
 
     setCustomLeadsMap(loadCustomLeads(userId))
     setScannedCities(loadScannedCities(userId))
@@ -305,6 +329,7 @@ export function Dashboard({ userId }: DashboardProps) {
   // Auto-audit selected lead — debounced, deduped, only depends on lead.id
   useEffect(() => {
     if (!selectedLead?.website) return
+    const leadForAudit = selectedLead
     const id = selectedLead.id
     const url = selectedLead.website
     if (auditFetchedRef.current.has(id)) return
@@ -324,18 +349,17 @@ export function Dashboard({ userId }: DashboardProps) {
         .then(r => r.json())
         .then(data => {
           if (!data?.signals) return
-          setAuditCache(prev => ({
-            ...prev,
-            [id]: {
-              seo: data.seo,
-              mobileFriendliness: data.mobileFriendliness,
-              chatbotPresence: data.chatbotPresence,
-              pageSpeed: data.pageSpeed,
-              socialPresence: data.socialPresence,
-              signals: data.signals,
-              auditedAt: Date.now(),
-            },
-          }))
+          const realAudit: NonNullable<Lead["realAudit"]> = {
+            seo: data.seo,
+            mobileFriendliness: data.mobileFriendliness,
+            chatbotPresence: data.chatbotPresence,
+            pageSpeed: data.pageSpeed,
+            socialPresence: data.socialPresence,
+            signals: data.signals,
+            auditedAt: Date.now(),
+          }
+          setAuditCache(prev => ({ ...prev, [id]: realAudit }))
+          void saveRemoteAudit(leadForAudit, realAudit)
         })
         .catch(() => {
           // Allow a retry if the request was aborted (user re-selected this lead)
@@ -348,7 +372,7 @@ export function Dashboard({ userId }: DashboardProps) {
       if (auditDebounceRef.current) clearTimeout(auditDebounceRef.current)
       ctrl.abort()
     }
-  }, [selectedLead?.id, selectedLead?.website])
+  }, [selectedLead, selectedLead?.id, selectedLead?.website])
 
   // Look up the audit for the selected lead only — stable when other entries change
   const selectedRealAudit = selectedLead ? auditCache[selectedLead.id] : undefined
@@ -477,6 +501,7 @@ export function Dashboard({ userId }: DashboardProps) {
             }
             setAuditCache(prev => ({ ...prev, [lead.id]: realAudit }))
             auditCacheRef.current = { ...auditCacheRef.current, [lead.id]: realAudit }
+            void saveRemoteAudit(lead, realAudit)
           } catch {
             auditFetchedRef.current.delete(lead.id)
           } finally {

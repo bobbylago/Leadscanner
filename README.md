@@ -62,11 +62,11 @@ All variables live in `.env.local` (never commit it). See `.env.example`.
 ## Database setup (Supabase)
 
 Run [`supabase/schema.sql`](supabase/schema.sql) against your project (SQL editor or
-`supabase db push`). It creates `saved_scans`, `subscriptions`, `usage_events`,
-`free_account_claims`, and `contacted`. User-owned rows are protected with Row
-Level Security scoped to `auth.uid()`. Subscription, usage, and free-account claim
-rows are written server-side with the service-role key; `saved_scans` and
-`contacted` are user-managed via RLS.
+`supabase db push`). It creates `saved_scans`, `lead_audits`, `subscriptions`,
+`usage_events`, `free_account_claims`, and `contacted`. User-owned rows are
+protected with Row Level Security scoped to `auth.uid()`. Subscription, usage,
+and free-account claim rows are written server-side with the service-role key;
+`saved_scans`, `lead_audits`, and `contacted` are user-managed via RLS.
 
 ## Stripe setup
 
