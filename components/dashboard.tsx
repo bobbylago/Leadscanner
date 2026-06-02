@@ -30,27 +30,40 @@ import { cn } from "@/lib/utils"
 const STORAGE_KEY = "ls_custom_leads_v2"
 const SCANNED_CITIES_KEY = "ls_scanned_cities_v1"
 const MAP_CENTERS_KEY = "ls_map_centers_v1"
+const ONBOARDED_KEY = "ls_onboarded_v1"
 const BACKGROUND_AUDIT_WAVE_SIZE = 40
 const BACKGROUND_AUDIT_CONCURRENCY = 4
 const BACKGROUND_AUDIT_WAVE_DELAY_MS = 2500
 
-function loadCustomLeads(): Record<string, Lead[]> {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") } catch { return {} }
+function accountKey(base: string, userId: string): string {
+  return `${base}:${userId}`
 }
-function saveCustomLeads(data: Record<string, Lead[]>) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)) } catch {}
+
+function removeAccountWorkspaceStorage(userId: string) {
+  for (const key of [STORAGE_KEY, SCANNED_CITIES_KEY, MAP_CENTERS_KEY]) {
+    localStorage.removeItem(accountKey(key, userId))
+    // Remove legacy unscoped storage too so old browser data does not leak into new accounts.
+    localStorage.removeItem(key)
+  }
 }
-function loadScannedCities(): string[] {
-  try { return JSON.parse(localStorage.getItem(SCANNED_CITIES_KEY) || "[]") } catch { return [] }
+
+function loadCustomLeads(userId: string): Record<string, Lead[]> {
+  try { return JSON.parse(localStorage.getItem(accountKey(STORAGE_KEY, userId)) || "{}") } catch { return {} }
 }
-function saveScannedCities(cities: string[]) {
-  try { localStorage.setItem(SCANNED_CITIES_KEY, JSON.stringify(cities)) } catch {}
+function saveCustomLeads(userId: string, data: Record<string, Lead[]>) {
+  try { localStorage.setItem(accountKey(STORAGE_KEY, userId), JSON.stringify(data)) } catch {}
 }
-function loadMapCenters(): Record<string, { lat: number; lon: number }> {
-  try { return JSON.parse(localStorage.getItem(MAP_CENTERS_KEY) || "{}") } catch { return {} }
+function loadScannedCities(userId: string): string[] {
+  try { return JSON.parse(localStorage.getItem(accountKey(SCANNED_CITIES_KEY, userId)) || "[]") } catch { return [] }
 }
-function saveMapCenters(data: Record<string, { lat: number; lon: number }>) {
-  try { localStorage.setItem(MAP_CENTERS_KEY, JSON.stringify(data)) } catch {}
+function saveScannedCities(userId: string, cities: string[]) {
+  try { localStorage.setItem(accountKey(SCANNED_CITIES_KEY, userId), JSON.stringify(cities)) } catch {}
+}
+function loadMapCenters(userId: string): Record<string, { lat: number; lon: number }> {
+  try { return JSON.parse(localStorage.getItem(accountKey(MAP_CENTERS_KEY, userId)) || "{}") } catch { return {} }
+}
+function saveMapCenters(userId: string, data: Record<string, { lat: number; lon: number }>) {
+  try { localStorage.setItem(accountKey(MAP_CENTERS_KEY, userId), JSON.stringify(data)) } catch {}
 }
 
 function normaliseLeadName(name: string): string {
@@ -138,7 +151,11 @@ function mergeLeads(existing: Lead[], incoming: Lead[]): Lead[] {
   return merged
 }
 
-export function Dashboard() {
+interface DashboardProps {
+  userId: string
+}
+
+export function Dashboard({ userId }: DashboardProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [industry, setIndustry] = useState("All Industries")
   const [location, setLocation] = useState("Austin, TX")
@@ -218,9 +235,7 @@ export function Dashboard() {
     const params = new URLSearchParams(window.location.search)
     if (params.get("clearLeads") === "1") {
       backgroundAuditRunRef.current += 1
-      localStorage.removeItem(STORAGE_KEY)
-      localStorage.removeItem(SCANNED_CITIES_KEY)
-      localStorage.removeItem(MAP_CENTERS_KEY)
+      removeAccountWorkspaceStorage(userId)
       localStorage.removeItem("ls_audit_cache_v1")
       setCustomLeadsMap({})
       setScannedCities([])
@@ -233,7 +248,7 @@ export function Dashboard() {
       setMultiSelectMode(false)
       setBulkAuditStatus(null)
       setShowOutreachDialog(false)
-      setShowOnboarding(localStorage.getItem("ls_onboarded_v1") !== "true")
+      setShowOnboarding(localStorage.getItem(accountKey(ONBOARDED_KEY, userId)) !== "true")
 
       void clearSavedScans().finally(() => {
         params.delete("clearLeads")
@@ -243,10 +258,10 @@ export function Dashboard() {
       return
     }
 
-    setCustomLeadsMap(loadCustomLeads())
-    setScannedCities(loadScannedCities())
-    setMapCenters(loadMapCenters())
-    setShowOnboarding(localStorage.getItem("ls_onboarded_v1") !== "true")
+    setCustomLeadsMap(loadCustomLeads(userId))
+    setScannedCities(loadScannedCities(userId))
+    setMapCenters(loadMapCenters(userId))
+    setShowOnboarding(localStorage.getItem(accountKey(ONBOARDED_KEY, userId)) !== "true")
 
     loadSavedScans().then(scans => {
       if (!scans.length) return
@@ -256,13 +271,13 @@ export function Dashboard() {
         for (const scan of scans) {
           updated[scan.city] = mergeLeads(updated[scan.city] ?? [], scan.leads)
         }
-        saveCustomLeads(updated)
+        saveCustomLeads(userId, updated)
         return updated
       })
 
       setScannedCities(prev => {
         const updated = Array.from(new Set([...prev, ...scans.map(scan => scan.city)]))
-        saveScannedCities(updated)
+        saveScannedCities(userId, updated)
         return updated
       })
 
@@ -271,11 +286,11 @@ export function Dashboard() {
         for (const scan of scans) {
           if (scan.map_center) updated[scan.city] = scan.map_center
         }
-        saveMapCenters(updated)
+        saveMapCenters(userId, updated)
         return updated
       })
     })
-  }, [])
+  }, [userId])
 
   const refreshBillingStatus = useCallback(async () => {
     const res = await authedFetch("/api/billing/status")
@@ -415,10 +430,10 @@ export function Dashboard() {
   const handleAddLead = useCallback((lead: Lead) => {
     setCustomLeadsMap(prev => {
       const updated = { ...prev, [location]: mergeLeads(prev[location] ?? [], [lead]) }
-      saveCustomLeads(updated)
+      saveCustomLeads(userId, updated)
       return updated
     })
-  }, [location])
+  }, [location, userId])
 
   const auditLeadsInBackground = useCallback(async (leadsToAudit: Lead[], options: { force?: boolean } = {}) => {
     const runId = backgroundAuditRunRef.current + 1
@@ -488,7 +503,7 @@ export function Dashboard() {
 
     setCustomLeadsMap(prev => {
       const updated = { ...prev, [city]: mergeLeads(prev[city] ?? [], leads) }
-      saveCustomLeads(updated)
+      saveCustomLeads(userId, updated)
       return updated
     })
 
@@ -496,7 +511,7 @@ export function Dashboard() {
     setScannedCities(prev => {
       if (prev.includes(city)) return prev
       const updated = [...prev, city]
-      saveScannedCities(updated)
+      saveScannedCities(userId, updated)
       return updated
     })
 
@@ -504,7 +519,7 @@ export function Dashboard() {
     if (center) {
       setMapCenters(prev => {
         const updated = { ...prev, [city]: center }
-        saveMapCenters(updated)
+        saveMapCenters(userId, updated)
         return updated
       })
     }
@@ -521,30 +536,30 @@ export function Dashboard() {
     setSelectedLead(null)
     void auditLeadsInBackground(leads)
     refreshBillingStatus()
-  }, [auditLeadsInBackground, industry, refreshBillingStatus])
+  }, [auditLeadsInBackground, industry, refreshBillingStatus, userId])
 
   const openSavedScan = useCallback((scan: SavedScan) => {
     setCustomLeadsMap(prev => {
       const updated = { ...prev, [scan.city]: mergeLeads(prev[scan.city] ?? [], scan.leads) }
-      saveCustomLeads(updated)
+      saveCustomLeads(userId, updated)
       return updated
     })
     setScannedCities(prev => {
       const updated = prev.includes(scan.city) ? prev : [...prev, scan.city]
-      saveScannedCities(updated)
+      saveScannedCities(userId, updated)
       return updated
     })
     if (scan.map_center) {
       setMapCenters(prev => {
         const updated = { ...prev, [scan.city]: scan.map_center! }
-        saveMapCenters(updated)
+        saveMapCenters(userId, updated)
         return updated
       })
     }
     setLocation(scan.city)
     setIndustry(scan.industry)
     setSelectedLead(null)
-  }, [])
+  }, [userId])
 
   const handleExport = () => {
     const exportLeads = billingStatus.plan === "free" ? filteredLeads.slice(0, 10) : filteredLeads
@@ -974,7 +989,7 @@ export function Dashboard() {
       <OnboardingDialog
         open={showOnboarding}
         onClose={() => {
-          localStorage.setItem("ls_onboarded_v1", "true")
+          localStorage.setItem(accountKey(ONBOARDED_KEY, userId), "true")
           setShowOnboarding(false)
         }}
         onStartScan={() => setShowFindDialog(true)}

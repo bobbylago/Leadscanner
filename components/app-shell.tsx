@@ -17,7 +17,14 @@ function clearLocalLeadStorage() {
   localStorage.removeItem("ls_audit_cache_v2")
 
   for (const key of Object.keys(localStorage)) {
-    if (key.startsWith("ls_generated_outreach_")) localStorage.removeItem(key)
+    if (
+      key.startsWith("ls_custom_leads_v2:") ||
+      key.startsWith("ls_scanned_cities_v1:") ||
+      key.startsWith("ls_map_centers_v1:") ||
+      key.startsWith("ls_generated_outreach_")
+    ) {
+      localStorage.removeItem(key)
+    }
   }
 }
 
@@ -31,6 +38,7 @@ export function AppShell() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isRecovering, setIsRecovering] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -50,6 +58,7 @@ export function AppShell() {
 
     supabase.auth.getSession().then(({ data }) => {
       setIsAuthenticated(Boolean(data.session))
+      setUserId(data.session?.user.id ?? null)
       if (data.session) void clearPendingSavedScans()
       setIsLoading(false)
     })
@@ -59,6 +68,7 @@ export function AppShell() {
       // a new password before letting them into the app.
       if (event === "PASSWORD_RECOVERY") setIsRecovering(true)
       setIsAuthenticated(Boolean(session))
+      setUserId(session?.user.id ?? null)
       if (session) void clearPendingSavedScans()
     })
 
@@ -84,5 +94,16 @@ export function AppShell() {
     return <LoginScreen onLogin={() => setIsAuthenticated(true)} />
   }
 
-  return <Dashboard />
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-[#080b10] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
+          <p className="text-xs font-mono text-white/35">Loading account</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <Dashboard userId={userId} />
 }
