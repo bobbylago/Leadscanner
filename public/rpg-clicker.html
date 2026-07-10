@@ -93,61 +93,104 @@
   .hint{font-size:12px; color:var(--dim); max-width:320px; line-height:1.6;}
   .shardline{display:flex; align-items:center; gap:8px; font-size:15px; font-weight:800; color:var(--gold);}
 
-  /* ---------- title / stage carousel ---------- */
+  /* ---------- home screen (mobile survivors layout) ---------- */
   #scr-title{
-    justify-content:flex-end; gap:10px; padding:0 0 calc(16px + env(safe-area-inset-bottom));
-    background:linear-gradient(180deg,rgba(11,9,24,0) 34%,rgba(11,9,24,.62) 62%,rgba(11,9,24,.94) 88%);
+    justify-content:flex-end; gap:0; padding:0;
+    background:linear-gradient(180deg,rgba(11,9,24,.25) 0%,rgba(11,9,24,0) 16%,rgba(11,9,24,0) 52%,rgba(11,9,24,.7) 78%,rgba(11,9,24,.96) 94%);
   }
-  #titleTop{
-    position:absolute; top:calc(10px + env(safe-area-inset-top)); left:0; right:0;
-    display:flex; justify-content:space-between; align-items:flex-start; padding:0 14px 0 18px;
+  #profileBar{
+    position:absolute; top:calc(8px + env(safe-area-inset-top)); left:0; right:0;
+    display:flex; justify-content:space-between; align-items:center; gap:8px; padding:0 10px;
   }
-  #titleTop .logo{text-align:left;}
-  #titleTop .logo .gtitle{font-size:27px;}
-  #titleTop .logo .jp{font-size:10px; letter-spacing:.4em; color:var(--pink); margin-top:3px;}
-  .coinpill{
-    display:flex; align-items:center; gap:6px; background:rgba(23,19,49,.85); border:1px solid var(--line);
-    border-radius:999px; padding:7px 14px; font-size:14px; font-weight:800; color:var(--gold);
+  #avatarBox{
+    display:flex; align-items:center; gap:8px; background:rgba(14,11,30,.92);
+    border:2px solid #000; border-radius:14px; padding:5px 12px 5px 6px;
+    box-shadow:0 3px 0 #000; text-align:left;
   }
-  #carousel{
-    display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px;
-    width:100vw; padding:6px 13vw 4px; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  #avCv{width:40px; height:40px; border-radius:10px; background:linear-gradient(160deg,#2a2452,#171331); border:1.5px solid var(--line);}
+  .pname{font-size:12px; font-weight:900; line-height:1.2;}
+  .pname small{display:block; font-size:9px; color:var(--dim); font-weight:700; letter-spacing:.06em;}
+  #pLvlBar{width:64px; height:5px; border-radius:3px; background:#0a0716; margin-top:3px; overflow:hidden;}
+  #pLvlFill{display:block; height:100%; background:linear-gradient(90deg,#8dff7a,#3ecf4a); width:0%;}
+  .pills{display:flex; gap:6px;}
+  .pill{
+    display:flex; align-items:center; gap:5px; background:rgba(14,11,30,.92);
+    border:2px solid #000; border-radius:999px; padding:6px 12px;
+    font-size:12.5px; font-weight:900; color:#fff; box-shadow:0 3px 0 #000;
   }
-  #carousel::-webkit-scrollbar{display:none;}
-  .scard{
-    flex:0 0 74vw; max-width:360px; scroll-snap-align:center; position:relative;
-    background:rgba(23,19,49,.82); border:1px solid var(--line); border-radius:18px;
-    padding:14px 16px; text-align:left; cursor:pointer;
-    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-    transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  .pill .num{color:var(--gold);}
+
+  #stageHead{
+    position:absolute; top:calc(74px + env(safe-area-inset-top)); left:0; right:0;
+    text-align:center; pointer-events:none;
   }
-  .scard.sel{transform:scale(1.02); border-color:var(--pink); box-shadow:0 8px 30px rgba(255,95,162,.22);}
-  .scard .top{display:flex; align-items:center; gap:12px;}
-  .scard .ico{font-size:38px; filter:drop-shadow(0 0 10px rgba(255,95,162,.45));}
-  .scard .nm{font-weight:900; font-size:17px; line-height:1.15;}
-  .scard .jp{color:var(--pink); font-size:11px; font-weight:700; letter-spacing:.15em; margin-top:2px;}
-  .scard .ds{font-size:11.5px; color:var(--dim); margin-top:8px; line-height:1.5; min-height:34px;}
-  .scard .meta{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
-  .scard .st{font-size:10px; color:var(--cyan); font-weight:700; letter-spacing:.05em;}
-  .scard .st.dim{color:var(--dim);}
-  .scard .diff{color:var(--gold); font-size:10px; letter-spacing:1px; font-weight:700;}
-  .scard.lockedstage{filter:grayscale(.8); opacity:.66;}
-  .scard .lockov{
-    position:absolute; inset:0; border-radius:18px; display:flex; align-items:center; justify-content:center;
-    background:rgba(8,6,18,.45); font-size:30px;
+  #stageTitle{
+    font-size:31px; font-weight:900; color:#fff; line-height:1.1; padding:0 44px; text-wrap:balance;
+    text-shadow:0 3px 0 #000, -2px 0 0 #000, 2px 0 0 #000, 0 -2px 0 #000, 0 6px 16px rgba(0,0,0,.6);
   }
-  #dots{display:flex; gap:7px; justify-content:center;}
-  #dots .dot{width:7px; height:7px; border-radius:50%; background:var(--line); transition:all .2s;}
-  #dots .dot.on{background:var(--pink); width:20px; border-radius:4px;}
+  #stageTitle .jp{display:block; font-size:12px; color:var(--pink); letter-spacing:.3em; margin-top:4px; text-shadow:0 2px 0 #000;}
+  #stageBest{
+    margin-top:7px; font-size:14px; font-weight:800; color:#ffe9a8;
+    text-shadow:0 2px 0 #000, -1px 0 0 #000, 1px 0 0 #000;
+  }
+  #swipeZone{position:absolute; top:19%; bottom:33%; left:0; right:0; touch-action:pan-y;}
+  .chev{
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:44px; height:58px; border-radius:12px; border:2px solid #000; cursor:pointer;
+    background:rgba(14,11,30,.85); color:#fff; font-size:26px; font-weight:900;
+    box-shadow:0 3px 0 #000;
+  }
+  .chev:active{transform:translateY(-50%) scale(.93);}
+  .chev:disabled{opacity:.25;}
+  #chevL{left:8px;} #chevR{right:8px;}
+  #lockInfo{
+    position:absolute; left:50%; top:58%; transform:translateX(-50%);
+    background:rgba(8,6,18,.9); border:2px solid #000; border-radius:14px;
+    padding:12px 18px; font-size:13px; font-weight:800; color:#ffce56; display:none;
+    box-shadow:0 3px 0 #000; white-space:nowrap;
+  }
+  #dots{display:flex; gap:7px; justify-content:center; margin-bottom:10px;}
+  #dots .dot{width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.28); border:1px solid #000; transition:all .2s;}
+  #dots .dot.on{background:var(--gold); width:22px; border-radius:5px;}
+  #dots .dot.done{background:#3ecf4a;}
+
   #playBtn{
-    min-width:min(74vw,360px); padding:16px 26px; border-radius:16px; cursor:pointer;
-    border:1px solid var(--pink); color:#fff; font-size:17px; font-weight:900; letter-spacing:.14em;
-    background:linear-gradient(100deg,rgba(255,95,162,.45),rgba(76,224,255,.3));
-    box-shadow:0 0 26px rgba(255,95,162,.35), inset 0 0 16px rgba(255,95,162,.15);
+    width:min(70vw,330px); padding:12px 20px 10px; border-radius:16px; cursor:pointer;
+    border:2.5px solid #7a4a00; color:#5a3600; margin:0 auto 12px;
+    background:linear-gradient(180deg,#ffe25e,#ffb82e 60%,#ff9d1e);
+    box-shadow:0 5px 0 #7a4a00, 0 9px 22px rgba(0,0,0,.45);
+    display:flex; flex-direction:column; align-items:center; gap:0;
   }
-  #playBtn:active{transform:scale(.97);}
-  #playBtn.locked{filter:grayscale(.8); opacity:.6; border-color:var(--line); box-shadow:none;}
-  #playBtn{white-space:nowrap; font-size:14.5px; overflow:hidden; text-overflow:ellipsis;}
+  #playBtn span{font-size:24px; font-weight:900; letter-spacing:.06em; text-shadow:0 1px 0 rgba(255,255,255,.5);}
+  #playBtn small{font-size:12px; font-weight:900; color:#7a4a00;}
+  #playBtn:active{transform:translateY(3px); box-shadow:0 2px 0 #7a4a00, 0 5px 14px rgba(0,0,0,.4);}
+  #playBtn.locked{filter:grayscale(.9); opacity:.75;}
+
+  #tabbar{
+    width:100%; display:flex; align-items:flex-end; background:rgba(10,7,20,.97);
+    border-top:2px solid #000; padding:0 6px calc(6px + env(safe-area-inset-bottom));
+  }
+  .tabb{
+    flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:1px;
+    padding:9px 0 4px; cursor:pointer; color:var(--dim); font-size:22px;
+  }
+  .tabb span{font-size:9.5px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;}
+  .tabb.main{
+    flex:1.35; margin-top:-22px; padding-top:6px; font-size:34px; color:#fff;
+    background:linear-gradient(180deg,#2a2452,#171331); border:2px solid #000; border-bottom:none;
+    border-radius:18px 18px 0 0; box-shadow:0 -4px 14px rgba(0,0,0,.45);
+  }
+  .tabb.main span{color:var(--gold); font-size:11px;}
+  .badge{
+    position:absolute; top:4px; right:18%; width:15px; height:15px; border-radius:50%;
+    background:#ff3b30; border:2px solid #000; display:none;
+    color:#fff; font-size:10px; font-weight:900; line-height:12px; text-align:center; font-style:normal;
+  }
+  .badge.on{display:block;}
+  .badge::after{content:"!";}
+
+  /* records screen */
+  #recList{display:flex; flex-direction:column; gap:8px; width:min(380px,92vw); max-height:52vh; overflow-y:auto;}
 
   /* screen + card entrance animations */
   .screen.on{animation:scrIn .28s ease;}
@@ -179,11 +222,6 @@
   @keyframes dashPulse{0%,100%{box-shadow:0 0 14px rgba(76,224,255,.25);}50%{box-shadow:0 0 26px rgba(76,224,255,.7);}}
   #hpFill.low{animation:hpPulse .9s ease-in-out infinite;}
   @keyframes hpPulse{0%,100%{filter:brightness(1);}50%{filter:brightness(1.7);}}
-  #titleBtns{display:flex; gap:10px;}
-  .smallbtn{
-    border:1px solid var(--line); background:rgba(23,19,49,.85); color:var(--text);
-    border-radius:12px; padding:10px 18px; font-weight:700; font-size:13px; cursor:pointer;
-  }
 
   /* level-up cards */
   #lvCards{display:flex; flex-direction:column; gap:10px; width:min(360px,92vw);}
@@ -222,7 +260,7 @@
     width:38px; height:38px; border-radius:50%; border:1px solid var(--line);
     background:var(--panel); color:var(--text); font-size:15px; cursor:pointer; display:none;}
   .screen.on ~ #sndBtn{display:block;}
-  #scr-title.on ~ #sndBtn{top:auto; bottom:calc(16px + env(safe-area-inset-bottom)); right:12px;}
+  #scr-title.on ~ #sndBtn{top:auto; bottom:calc(112px + env(safe-area-inset-bottom)); right:10px;}
 
   #toast{
     position:fixed; left:50%; top:22%; transform:translateX(-50%) scale(.9);
@@ -258,16 +296,42 @@
 </div>
 
 <div class="screen on" id="scr-title">
-  <div id="titleTop">
-    <div class="logo"><h1 class="gtitle">YOKAI RIFT</h1><div class="jp">妖怪の裂け目</div></div>
-    <div class="coinpill">🔮 <span class="num" id="shards-title">0</span></div>
+  <div id="profileBar">
+    <div id="avatarBox">
+      <canvas id="avCv" width="80" height="80"></canvas>
+      <div class="pname">Wandering Shinobi
+        <small>Lv <b class="num" id="pLvl">1</b> · Yokai Rift</small>
+        <div id="pLvlBar"><i id="pLvlFill"></i></div>
+      </div>
+    </div>
+    <div class="pills">
+      <div class="pill">⚡ <span class="num" id="energyPill">30/30</span></div>
+      <div class="pill">🔮 <span class="num" id="shards-title">0</span></div>
+    </div>
   </div>
-  <div id="carousel"></div>
+  <div id="stageHead">
+    <div id="stageTitle">1. Hidden Leaf Village<span class="jp">木ノ葉の里</span></div>
+    <div id="stageBest">Longest Survived: —</div>
+  </div>
+  <div id="swipeZone">
+    <button class="chev" id="chevL">‹</button>
+    <button class="chev" id="chevR">›</button>
+    <div id="lockInfo"></div>
+  </div>
   <div id="dots"></div>
-  <button id="playBtn">▶ &nbsp;ENTER RIFT</button>
-  <div id="titleBtns">
-    <button class="smallbtn" id="shrineBtn">⛩️ Shrine of Power</button>
+  <button id="playBtn"><span>START</span><small id="playCost">⚡ ×5</small></button>
+  <div id="tabbar">
+    <div class="tabb" data-act="shrine">⛩️<span>Shrine</span><i class="badge" id="shrineBadge"></i></div>
+    <div class="tabb main" data-act="battle">⚔️<span>Battle</span></div>
+    <div class="tabb" data-act="records">🏆<span>Records</span></div>
   </div>
+</div>
+
+<div class="screen" id="scr-records">
+  <h1 class="gtitle" style="font-size:30px;">RECORDS</h1>
+  <div class="gsub"><span class="jp">戦績</span> · your legend so far</div>
+  <div id="recList"></div>
+  <button class="bigbtn alt" id="recBackBtn">← Back</button>
 </div>
 
 <div class="screen" id="scr-levelup">
@@ -380,6 +444,7 @@ const WIN_TIME=600;
 
 /* ============================ persistence ============================ */
 const fresh=()=>({shards:0, sound:true, meta:{atk:0,hp:0,spd:0,greed:0,revive:0}, best:{time:0,lvl:0,kills:0},
+  energy:30, energyLast:Date.now(), pxp:0, plvl:1, totalKills:0, totalRuns:0, totalWins:0,
   stages:Object.fromEntries(STAGES.map(s=>[s.id,{best:0,cleared:false}]))});
 let SAVE=fresh();
 try{const r=localStorage.getItem("yokaiRift"); if(r){const p=JSON.parse(r);
@@ -487,49 +552,50 @@ function rr(g,x,y,w,h,r){
   if(g.roundRect){g.beginPath();g.roundRect(x,y,w,h,r);g.fill();}
   else g.fillRect(x,y,w,h);
 }
-function drawHero(x,y,t,flip,moving,alpha){
-  ctx.save();ctx.translate(x,y);if(flip)ctx.scale(-1,1);
-  if(alpha!==undefined)ctx.globalAlpha=alpha;
+function drawHero(x,y,t,flip,moving,alpha,g){
+  g=g||ctx;
+  g.save();g.translate(x,y);if(flip)g.scale(-1,1);
+  if(alpha!==undefined)g.globalAlpha=alpha;
   const bob=Math.sin(t*8)*(moving?2.2:1.1);
   const lg=moving?Math.sin(t*14)*5:0;
   // legs
-  ctx.strokeStyle="#1b1633";ctx.lineWidth=5;ctx.lineCap="round";
-  ctx.beginPath();ctx.moveTo(-4,8+bob*.3);ctx.lineTo(-4+lg,17);
-  ctx.moveTo(4,8+bob*.3);ctx.lineTo(4-lg,17);ctx.stroke();
+  g.strokeStyle="#1b1633";g.lineWidth=5;g.lineCap="round";
+  g.beginPath();g.moveTo(-4,8+bob*.3);g.lineTo(-4+lg,17);
+  g.moveTo(4,8+bob*.3);g.lineTo(4-lg,17);g.stroke();
   // katana on back
-  ctx.strokeStyle="#93a7cc";ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(-9,2+bob);ctx.lineTo(-19,-13+bob);ctx.stroke();
-  ctx.strokeStyle="#ffd75e";ctx.lineWidth=3.4;
-  ctx.beginPath();ctx.moveTo(-7,-1+bob);ctx.lineTo(-11,-7+bob);ctx.stroke();
+  g.strokeStyle="#93a7cc";g.lineWidth=3;
+  g.beginPath();g.moveTo(-9,2+bob);g.lineTo(-19,-13+bob);g.stroke();
+  g.strokeStyle="#ffd75e";g.lineWidth=3.4;
+  g.beginPath();g.moveTo(-7,-1+bob);g.lineTo(-11,-7+bob);g.stroke();
   // flowing scarf
   const sw=Math.sin(t*6)*3;
-  ctx.fillStyle="#ff5fa2";
-  ctx.beginPath();
-  ctx.moveTo(-2,-7+bob);
-  ctx.quadraticCurveTo(-17,-5+bob+sw,-27,1+bob+sw*1.6);
-  ctx.quadraticCurveTo(-16,3+bob+sw,-2,-2+bob);
-  ctx.closePath();ctx.fill();
+  g.fillStyle="#ff5fa2";
+  g.beginPath();
+  g.moveTo(-2,-7+bob);
+  g.quadraticCurveTo(-17,-5+bob+sw,-27,1+bob+sw*1.6);
+  g.quadraticCurveTo(-16,3+bob+sw,-2,-2+bob);
+  g.closePath();g.fill();
   // gi
-  ctx.fillStyle="#262b4e";rr(ctx,-8,-6+bob,16,16,5);
-  ctx.fillStyle="#ff5fa2";ctx.fillRect(-8,1+bob,16,3);
+  g.fillStyle="#262b4e";rr(g,-8,-6+bob,16,16,5);
+  g.fillStyle="#ff5fa2";g.fillRect(-8,1+bob,16,3);
   // head
-  ctx.fillStyle="#f2d4b0";ctx.beginPath();ctx.arc(0,-14+bob,8.5,0,6.29);ctx.fill();
+  g.fillStyle="#f2d4b0";g.beginPath();g.arc(0,-14+bob,8.5,0,6.29);g.fill();
   // silver hair spikes
-  ctx.fillStyle="#e8ecf8";
-  ctx.beginPath();
-  ctx.moveTo(-9.5,-15+bob);
-  ctx.lineTo(-7,-26+bob);ctx.lineTo(-2.5,-20+bob);ctx.lineTo(.5,-28+bob);
-  ctx.lineTo(4.5,-20+bob);ctx.lineTo(8.5,-25+bob);ctx.lineTo(9.5,-15+bob);
-  ctx.quadraticCurveTo(0,-23+bob,-9.5,-15+bob);
-  ctx.closePath();ctx.fill();
+  g.fillStyle="#e8ecf8";
+  g.beginPath();
+  g.moveTo(-9.5,-15+bob);
+  g.lineTo(-7,-26+bob);g.lineTo(-2.5,-20+bob);g.lineTo(.5,-28+bob);
+  g.lineTo(4.5,-20+bob);g.lineTo(8.5,-25+bob);g.lineTo(9.5,-15+bob);
+  g.quadraticCurveTo(0,-23+bob,-9.5,-15+bob);
+  g.closePath();g.fill();
   // headband
-  ctx.fillStyle="#1b1633";ctx.fillRect(-9,-18.5+bob,18,4.5);
-  ctx.fillStyle="#93a7cc";ctx.fillRect(-3.4,-18.5+bob,6.8,4.5);
+  g.fillStyle="#1b1633";g.fillRect(-9,-18.5+bob,18,4.5);
+  g.fillStyle="#93a7cc";g.fillRect(-3.4,-18.5+bob,6.8,4.5);
   // eyes
-  ctx.fillStyle="#1b1633";
-  ctx.beginPath();ctx.arc(2.6,-12.5+bob,1.5,0,6.29);ctx.fill();
-  ctx.beginPath();ctx.arc(6.6,-12.5+bob,1.5,0,6.29);ctx.fill();
-  ctx.restore();ctx.globalAlpha=1;
+  g.fillStyle="#1b1633";
+  g.beginPath();g.arc(2.6,-12.5+bob,1.5,0,6.29);g.fill();
+  g.beginPath();g.arc(6.6,-12.5+bob,1.5,0,6.29);g.fill();
+  g.restore();g.globalAlpha=1;
 }
 function drawCrown(x,y,s){
   ctx.fillStyle="#ffd75e";
@@ -580,7 +646,7 @@ const HEAL_CARD={id:"_heal",e:"🍙",n:"Onigiri",jp:"回復",d:()=>"Restore 40% 
 
 /* ============================ run state ============================ */
 let R=null, playing=false, paused=false, screenOn="title";
-const inMenu=()=>!playing&&(screenOn==="title"||screenOn==="shrine"||screenOn==="death");
+const inMenu=()=>!playing&&(screenOn==="title"||screenOn==="shrine"||screenOn==="death"||screenOn==="records");
 function newRun(){
   const m=SAVE.meta;
   return {
@@ -648,79 +714,100 @@ $("dashBtn").addEventListener("pointerdown",e=>{e.stopPropagation();ac();if(play
 /* ============================ screens ============================ */
 function show(name){
   screenOn=name;
-  for(const s of["title","levelup","death","shrine","pause"])
+  for(const s of["title","levelup","death","shrine","pause","records"])
     $("scr-"+s).classList.toggle("on",s===name);
   $("hud").style.display=(name==="")?"block":(playing?"block":"none");
-  if(name==="title")paintCarousel();
+  if(name==="title")paintHome();
   if(name==="shrine")paintShrine();
+  if(name==="records")paintRecords();
   if(inMenu())setMusic("menu");
 }
 
-/* ============================ stage carousel ============================ */
-let viewIdx=0;
-function paintCarousel(){
-  $("shards-title").textContent=fmt(SAVE.shards);
-  $("carousel").innerHTML=STAGES.map((s,i)=>{
-    const unlocked=stageUnlocked(i),sp=SAVE.stages[s.id];
-    const status=unlocked
-      ?(sp.best>0?`Best ${fmtTime(sp.best)}${sp.cleared?" · ⭐ boss banished":""}`:"Unexplored")
-      :`Banish a boss in ${STAGES[i-1].n}`;
-    return `<div class="scard ${unlocked?"":"lockedstage"} ${i===viewIdx?"sel":""}" data-i="${i}">
-      <div class="top"><div class="ico">${s.e}</div>
-        <div><div class="nm">${s.n}</div><div class="jp">${s.jp}</div></div></div>
-      <div class="ds">${s.d}</div>
-      <div class="meta">
-        <span class="st ${sp.best>0?"":"dim"}">${status}</span>
-        <span class="diff">${"◆".repeat(i+1)} · 🔮×${s.shard}</span>
-      </div>
-      ${unlocked?"":'<div class="lockov">🔒</div>'}
-    </div>`;
-  }).join("");
-  $("dots").innerHTML=STAGES.map((_,i)=>`<div class="dot ${i===viewIdx?"on":""}"></div>`).join("");
-  paintPlayBtn();
-  // snap to current view
-  requestAnimationFrame(()=>{
-    const el=$("carousel").children[viewIdx];
-    if(el)$("carousel").scrollLeft=el.offsetLeft-($("carousel").clientWidth-el.clientWidth)/2;
-  });
+/* ============================ energy ============================ */
+const ENERGY_MAX=30, ENERGY_COST=5, ENERGY_RATE=120000; // 1 per 2 min
+function regenEnergy(){
+  const t=Date.now();
+  if(SAVE.energy>=ENERGY_MAX){SAVE.energyLast=t;return;}
+  const gained=Math.floor((t-SAVE.energyLast)/ENERGY_RATE);
+  if(gained>0){
+    SAVE.energy=Math.min(ENERGY_MAX,SAVE.energy+gained);
+    SAVE.energyLast+=gained*ENERGY_RATE;
+    persist();
+  }
 }
-function paintPlayBtn(){
-  const unlocked=stageUnlocked(viewIdx);
-  $("playBtn").classList.toggle("locked",!unlocked);
-  $("playBtn").innerHTML=unlocked?`▶ &nbsp;ENTER ${STAGES[viewIdx].n.toUpperCase()}`:`🔒 &nbsp;LOCKED`;
+setInterval(()=>{regenEnergy();if(screenOn==="title")paintHome();},15000);
+
+/* ============================ home screen ============================ */
+let viewIdx=0;
+function paintHome(){
+  regenEnergy();
+  $("shards-title").textContent=fmt(SAVE.shards);
+  $("energyPill").textContent=SAVE.energy+"/"+ENERGY_MAX;
+  $("pLvl").textContent=SAVE.plvl;
+  $("pLvlFill").style.width=clamp(SAVE.pxp/(100*SAVE.plvl)*100,0,100)+"%";
+  const s=STAGES[viewIdx],sp=SAVE.stages[s.id],unlocked=stageUnlocked(viewIdx);
+  $("stageTitle").innerHTML=`${viewIdx+1}. ${s.n}<span class="jp">${s.jp}</span>`;
+  $("stageBest").textContent="Longest Survived: "+(sp.best>0?fmtTime(sp.best):"—");
+  $("lockInfo").style.display=unlocked?"none":"block";
+  $("lockInfo").textContent=unlocked?"":`🔒 Banish a boss in ${STAGES[viewIdx-1].n}`;
+  $("chevL").disabled=viewIdx===0;
+  $("chevR").disabled=viewIdx===STAGES.length-1;
+  $("dots").innerHTML=STAGES.map((st,i)=>
+    `<div class="dot ${i===viewIdx?"on":(SAVE.stages[st.id].cleared?"done":"")}"></div>`).join("");
+  const canAfford=SAVE.energy>=ENERGY_COST;
+  $("playBtn").classList.toggle("locked",!unlocked||!canAfford);
+  $("playBtn").querySelector("span").textContent=unlocked?"START":"LOCKED";
+  $("playCost").textContent=unlocked?(canAfford?`⚡ ×${ENERGY_COST}`:"⚡ recharging…"):"clear the previous rift";
+  // red badge when a shrine upgrade is affordable
+  const affordable=SHRINE.some(u=>SAVE.meta[u.id]<u.max&&SAVE.shards>=scost(u,SAVE.meta[u.id]));
+  $("shrineBadge").classList.toggle("on",affordable);
 }
 function setView(i){
-  if(i===viewIdx)return;
-  viewIdx=i;
-  [...$("carousel").children].forEach((c,j)=>c.classList.toggle("sel",j===i));
-  [...$("dots").children].forEach((d,j)=>d.classList.toggle("on",j===i));
-  paintPlayBtn();
+  viewIdx=clamp(i,0,STAGES.length-1);
+  paintHome();
 }
-let scrollRaf=0;
-$("carousel").addEventListener("scroll",()=>{
-  if(scrollRaf)return;
-  scrollRaf=requestAnimationFrame(()=>{
-    scrollRaf=0;
-    const car=$("carousel"),center=car.scrollLeft+car.clientWidth/2;
-    let best=0,bd=1e9;
-    [...car.children].forEach((c,i)=>{
-      const cc=c.offsetLeft+c.clientWidth/2,d=Math.abs(cc-center);
-      if(d<bd){bd=d;best=i;}
-    });
-    setView(best);
-  });
-});
-$("carousel").addEventListener("click",e=>{
-  const c=e.target.closest(".scard");if(!c)return;
-  const i=+c.dataset.i;
-  if(i!==viewIdx){c.scrollIntoView({behavior:"smooth",inline:"center",block:"nearest"});return;}
-  tryPlay();
+$("chevL").addEventListener("click",()=>{SFX.pick();setView(viewIdx-1);});
+$("chevR").addEventListener("click",()=>{SFX.pick();setView(viewIdx+1);});
+// swipe anywhere on the vista to change stage
+let swX=null;
+$("swipeZone").addEventListener("pointerdown",e=>{swX=e.clientX;});
+$("swipeZone").addEventListener("pointerup",e=>{
+  if(swX===null)return;
+  const dx=e.clientX-swX;swX=null;
+  if(dx<-40){SFX.pick();setView(viewIdx+1);}
+  else if(dx>40){SFX.pick();setView(viewIdx-1);}
 });
 function tryPlay(){
   if(!stageUnlocked(viewIdx)){toast(`🔒 Banish a boss in ${STAGES[viewIdx-1].n} first`);return;}
+  regenEnergy();
+  if(SAVE.energy<ENERGY_COST){toast("⚡ Not enough energy — it refills over time");return;}
+  SAVE.energy-=ENERGY_COST;persist();
   startRun(STAGES[viewIdx].id);
 }
 $("playBtn").addEventListener("click",()=>{ac();tryPlay();});
+document.querySelectorAll(".tabb").forEach(tb=>tb.addEventListener("click",()=>{
+  ac();
+  const act=tb.dataset.act;
+  if(act==="shrine")show("shrine");
+  else if(act==="records")show("records");
+  else{SFX.pick();show("title");}
+}));
+
+/* ============================ records ============================ */
+function paintRecords(){
+  const rows=STAGES.map((s,i)=>{
+    const sp=SAVE.stages[s.id],unlocked=stageUnlocked(i);
+    return `<div class="srow"><div class="ico">${unlocked?s.e:"🔒"}</div>
+      <div class="info"><div class="nm">${s.n}</div>
+      <div class="ds">${sp.best>0?`Longest survived ${fmtTime(sp.best)}`:"Unexplored"}${sp.cleared?" · ⭐ boss banished":""}</div></div>
+      <div class="num" style="color:var(--gold);font-weight:800;">${"◆".repeat(i+1)}</div></div>`;
+  }).join("");
+  $("recList").innerHTML=
+    `<div class="srow"><div class="ico">🥷</div>
+      <div class="info"><div class="nm">Wandering Shinobi <span class="lv num" style="color:var(--gold);font-size:11px;">Lv ${SAVE.plvl}</span></div>
+      <div class="ds">${SAVE.totalRuns} dive${SAVE.totalRuns===1?"":"s"} · ${fmt(SAVE.totalKills)} yokai slain · ${SAVE.totalWins} rift${SAVE.totalWins===1?"":"s"} sealed</div></div></div>`+rows;
+}
+$("recBackBtn").addEventListener("click",()=>show("title"));
 
 /* ============================ shrine (meta shop) ============================ */
 const SHRINE=[
@@ -1131,6 +1218,10 @@ function endRun(win){
   SAVE.best.kills=Math.max(SAVE.best.kills,R.kills);
   const sp=SAVE.stages[R.stg.id];
   sp.best=Math.max(sp.best,R.t);
+  // profile progression
+  SAVE.totalRuns++;SAVE.totalKills+=R.kills;if(win)SAVE.totalWins++;
+  SAVE.pxp+=earned;
+  while(SAVE.pxp>=100*SAVE.plvl){SAVE.pxp-=100*SAVE.plvl;SAVE.plvl++;}
   persist();
   $("deathTitle").textContent=win?"RIFT SEALED!":"YOU FELL…";
   $("deathSub").innerHTML=win
@@ -1283,6 +1374,16 @@ function renderMenu(dt){
       ctx.drawImage(sprite(em,40),px-sz/2,py-sz,sz,sz);
       ctx.globalAlpha=1;
     }
+  }
+  // stage monsters idling on the diorama
+  for(let i=0;i<3;i++){
+    const fx=VW*(.25+i*.25)+Math.sin(menuT*.8+i*2.1)*14;
+    const fy=hor+(VH-hor)*(.32+hash2(i,77)*.3);
+    const bob=Math.abs(Math.sin(menuT*2.4+i*1.7))*6;
+    const sz=(34+i*7)*(0.8+((fy-hor)/(VH-hor))*.5);
+    ctx.fillStyle="rgba(0,0,0,.32)";
+    ctx.beginPath();ctx.ellipse(fx,fy+2,sz*.32,sz*.1,0,0,6.29);ctx.fill();
+    ctx.drawImage(outlined(stg.foes[i%stg.foes.length],48),fx-sz/2,fy-sz+ -bob,sz,sz);
   }
   // petals
   ctx.globalAlpha=.45;
@@ -1534,7 +1635,6 @@ function startRun(stageId){
   toast(`${R.stg.e} ${R.stg.n} — survive ${fmtTime(WIN_TIME)}!`);
 }
 $("retryBtn").addEventListener("click",()=>startRun());
-$("shrineBtn").addEventListener("click",()=>show("shrine"));
 $("deathShrineBtn").addEventListener("click",()=>show("shrine"));
 $("deathTitleBtn").addEventListener("click",()=>{viewIdx=STAGES.findIndex(s=>s.id===curStage);show("title");});
 $("shrineBackBtn").addEventListener("click",()=>show(playing?"pause":(R&&!playing?"death":"title")));
@@ -1554,5 +1654,13 @@ $("sndBtn").textContent=SAVE.sound?"🔊":"🔇";
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden&&playing&&!paused){paused=true;show("pause");}
 });
+// profile avatar: the hero model rendered into the little frame
+(function(){
+  const av=$("avCv"),g=av.getContext("2d");
+  g.setTransform(2,0,0,2,0,0); // 80px backing → 40px css
+  g.translate(20,26);g.scale(1.15,1.15);
+  drawHero(0,0,.4,false,false,undefined,g);
+})();
+regenEnergy();
 show("title");
 </script>
