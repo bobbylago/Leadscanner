@@ -1,0 +1,510 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Ember Depths — RPG Clicker</title>
+<style>
+  :root{
+    --bg:#141126; --bg2:#0e0b1d; --panel:#1e1a38; --panel2:#262047;
+    --line:#3a3263; --text:#ede4c8; --dim:#9d94bf;
+    --gold:#f5b84c; --gold-dk:#b57f1e;
+    --hp:#e4574c; --hp-dk:#8e2b24;
+    --xp:#6fbf5a; --mana:#5aa7e8;
+    --r:10px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg2); color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    user-select:none; -webkit-user-select:none; touch-action:manipulation;
+    overscroll-behavior:none;
+  }
+  .num{font-variant-numeric:tabular-nums; font-family:ui-monospace,Menlo,Consolas,monospace;}
+  #app{max-width:520px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column;
+       background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 8px;
+  }
+  header h1{
+    margin:0; font-size:15px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--gold); font-family:ui-monospace,Menlo,Consolas,monospace; font-weight:700;
+  }
+  header h1 small{display:block; font-size:9px; letter-spacing:.3em; color:var(--dim); font-weight:400; margin-top:2px;}
+  .wallet{display:flex; gap:10px; align-items:center;}
+  .coin{display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
+        border-radius:999px; padding:5px 12px; font-size:14px; font-weight:700;}
+  .coin .ico{width:14px; height:14px; border-radius:50%;
+        background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gold) 55%,var(--gold-dk));
+        box-shadow:0 0 6px rgba(245,184,76,.6);}
+
+  /* ---------- arena ---------- */
+  #arena{
+    position:relative; margin:4px 12px 0; border-radius:14px; overflow:hidden;
+    border:1px solid var(--line);
+    background:
+      radial-gradient(120% 90% at 50% 108%,rgba(245,184,76,.16),transparent 55%),
+      radial-gradient(90% 70% at 50% -10%,rgba(90,167,232,.10),transparent 60%),
+      var(--panel);
+    min-height:300px; display:flex; flex-direction:column;
+  }
+  #stageBar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px 0; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);
+  }
+  #stageBar .boss-tag{color:var(--hp); font-weight:700;}
+  #monsterName{
+    text-align:center; margin:8px 0 2px; font-size:17px; font-weight:800; letter-spacing:.04em;
+  }
+  #monsterName .lvl{color:var(--dim); font-weight:400; font-size:12px;}
+  #hpWrap{margin:6px 40px 0;}
+  #hpBar{height:14px; border-radius:7px; background:#2b1330; border:1px solid var(--hp-dk); overflow:hidden;}
+  #hpFill{height:100%; width:100%; border-radius:6px;
+    background:linear-gradient(180deg,#f0796f,var(--hp) 45%,var(--hp-dk));
+    transition:width .12s ease;}
+  #hpText{text-align:center; font-size:11px; color:var(--dim); margin-top:4px;}
+
+  #tapZone{flex:1; display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer; min-height:170px;}
+  #monster{
+    font-size:88px; line-height:1; filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));
+    transition:transform .06s ease; will-change:transform;
+    animation:idle 2.6s ease-in-out infinite;
+  }
+  @keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  #monster.hit{animation:none; transform:scale(.9) rotate(-4deg);}
+  #monster.dead{animation:none; transform:scale(0) rotate(30deg); transition:transform .3s ease; opacity:0;}
+  @media (prefers-reduced-motion:reduce){
+    #monster{animation:none;}
+    .float,.spark{transition:none !important; animation:none !important;}
+  }
+
+  .float{
+    position:absolute; pointer-events:none; font-weight:800; font-size:20px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    color:var(--text); text-shadow:0 2px 4px rgba(0,0,0,.6);
+    animation:floatUp .8s ease-out forwards;
+  }
+  .float.crit{color:var(--gold); font-size:27px;}
+  .float.goldpop{color:var(--gold); font-size:15px;}
+  @keyframes floatUp{
+    0%{opacity:1; transform:translateY(0) scale(1);}
+    100%{opacity:0; transform:translateY(-64px) scale(1.12);}
+  }
+  #bossTimer{
+    position:absolute; top:8px; right:12px; display:none;
+    font-size:20px; font-weight:800; color:var(--hp);
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+
+  /* ---------- stats strip ---------- */
+  #strip{
+    display:flex; gap:8px; padding:10px 12px 4px;
+  }
+  .stat{
+    flex:1; background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
+    padding:8px 10px; text-align:center;
+  }
+  .stat .k{font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim);}
+  .stat .v{font-size:15px; font-weight:800; margin-top:2px;}
+  .stat .v.gold{color:var(--gold);}
+  .stat .v.xp{color:var(--xp);}
+
+  /* ---------- tabs ---------- */
+  #tabs{display:flex; gap:6px; padding:10px 12px 6px;}
+  .tab{
+    flex:1; padding:9px 0; text-align:center; border-radius:var(--r);
+    background:var(--panel); border:1px solid var(--line); color:var(--dim);
+    font-size:12px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; cursor:pointer;
+  }
+  .tab.on{background:var(--panel2); color:var(--gold); border-color:var(--gold-dk);}
+  #panels{flex:1; overflow-y:auto; padding:4px 12px calc(18px + env(safe-area-inset-bottom));}
+  .panel{display:none; flex-direction:column; gap:8px;}
+  .panel.on{display:flex;}
+
+  .row{
+    display:flex; align-items:center; gap:12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:10px 12px;
+  }
+  .row .emoji{font-size:30px; width:38px; text-align:center; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));}
+  .row .info{flex:1; min-width:0;}
+  .row .name{font-weight:800; font-size:14px;}
+  .row .name .tier{color:var(--gold); font-size:11px; margin-left:6px;}
+  .row .desc{font-size:11px; color:var(--dim); margin-top:2px;}
+  .buy{
+    border:1px solid var(--gold-dk); background:linear-gradient(180deg,#4a3a14,#33270c);
+    color:var(--gold); border-radius:9px; padding:8px 12px; min-width:88px;
+    font-weight:800; font-size:12px; cursor:pointer; text-align:center;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  .buy small{display:block; font-weight:400; font-size:9px; letter-spacing:.1em; color:#cdb27a; margin-bottom:2px;}
+  .buy:active{transform:scale(.96);}
+  .buy:disabled{opacity:.38; border-color:var(--line); color:var(--dim); background:var(--panel2); cursor:default;}
+  .locked{opacity:.45;}
+
+  /* hero row extra */
+  .row .dpsline{font-size:11px; color:var(--xp); margin-top:2px; font-weight:700;}
+
+  #log{
+    font-size:11px; color:var(--dim); line-height:1.7; padding:2px 4px;
+  }
+  #log b{color:var(--gold);}
+
+  .btn-plain{
+    border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    border-radius:9px; padding:10px 12px; font-weight:700; font-size:12px; cursor:pointer;
+  }
+  .btn-danger{border-color:var(--hp-dk); color:var(--hp);}
+
+  /* level-up toast */
+  #toast{
+    position:fixed; left:50%; top:18%; transform:translateX(-50%) scale(.9);
+    background:var(--panel2); border:1px solid var(--gold-dk); color:var(--gold);
+    padding:10px 22px; border-radius:999px; font-weight:800; letter-spacing:.08em;
+    opacity:0; pointer-events:none; transition:opacity .25s,transform .25s; z-index:50;
+    box-shadow:0 6px 24px rgba(0,0,0,.5);
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) scale(1);}
+</style>
+
+<div id="app">
+  <header>
+    <h1>Ember Depths<small>RPG Clicker</small></h1>
+    <div class="wallet">
+      <div class="coin"><span class="ico"></span><span class="num" id="gold">0</span></div>
+    </div>
+  </header>
+
+  <div id="arena">
+    <div id="stageBar">
+      <span>Stage <span class="num" id="stage">1</span></span>
+      <span id="bossTag"></span>
+      <span>Kills <span class="num" id="killsLeft">0/10</span></span>
+    </div>
+    <div id="monsterName">Slime <span class="lvl">Lv 1</span></div>
+    <div id="hpWrap">
+      <div id="hpBar"><div id="hpFill"></div></div>
+      <div id="hpText" class="num">10 / 10</div>
+    </div>
+    <div id="tapZone">
+      <div id="monster">🟢</div>
+      <div id="bossTimer" class="num">30</div>
+    </div>
+  </div>
+
+  <div id="strip">
+    <div class="stat"><div class="k">Hero Lv</div><div class="v num" id="heroLv">1</div></div>
+    <div class="stat"><div class="k">Tap Dmg</div><div class="v num gold" id="tapDmg">1</div></div>
+    <div class="stat"><div class="k">Party DPS</div><div class="v num xp" id="dps">0</div></div>
+  </div>
+
+  <div id="tabs">
+    <div class="tab on" data-p="gear">Gear</div>
+    <div class="tab" data-p="party">Party</div>
+    <div class="tab" data-p="camp">Camp</div>
+  </div>
+
+  <div id="panels">
+    <div class="panel on" id="p-gear"></div>
+    <div class="panel" id="p-party"></div>
+    <div class="panel" id="p-camp">
+      <div class="row"><div class="emoji">📜</div><div class="info">
+        <div class="name">Chronicle</div><div id="log">Your adventure begins at the mouth of the Ember Depths…</div>
+      </div></div>
+      <button class="btn-plain" id="saveBtn">Save game</button>
+      <button class="btn-plain btn-danger" id="resetBtn">Abandon quest (reset)</button>
+      <div style="font-size:10px;color:var(--dim);text-align:center;letter-spacing:.1em;">
+        Auto-saves every 15s · Earns party gold while you're away
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============================== data ============================== */
+const MONSTERS=[
+  ["🟢","Slime"],["🦇","Cave Bat"],["🐀","Dire Rat"],["🕷️","Web Spinner"],["🐍","Pit Viper"],
+  ["💀","Restless Skull"],["🧟","Shambler"],["👻","Cold Wisp"],["🦂","Ember Scorpion"],["🐺","Ash Wolf"],
+  ["👺","Tunnel Goblin"],["🧌","Bridge Troll"],["🦴","Bone Knight"],["🦅","Roc Fledgling"],["🐗","Iron Boar"],
+  ["🧙","Rogue Warlock"],["🦑","Deep Lurker"],["🗿","Stone Sentinel"],["🦈","Magma Shark"],["🐉","Wyrmling"]
+];
+const BOSSES=[
+  ["👹","Gatekeeper Oni"],["🐲","Cinder Drake"],["🦖","Depths Tyrant"],["👾","Void Spawn"],
+  ["🤖","Forgotten Golem"],["🎃","Hollow King"],["🧛","Blood Baron"],["🐙","The Undertide"],
+  ["☠️","Lord of Ash"],["🌋","Heart of the Depths"]
+];
+const GEAR=[
+  {id:"sword",  e:"🗡️", n:"Sword Edge",    d:"+1 tap damage",            base:10,   g:1.14, fx:s=>s.tapFlat+=1},
+  {id:"gaunt",  e:"🥊", n:"War Gauntlets", d:"+4 tap damage",            base:120,  g:1.16, fx:s=>s.tapFlat+=4},
+  {id:"crit",   e:"🎯", n:"Hawk Charm",    d:"+2% crit chance (3× dmg)", base:400,  g:1.30, fx:s=>s.crit+=.02, cap:25},
+  {id:"rune",   e:"🔮", n:"Ember Rune",    d:"+10% total tap damage",    base:900,  g:1.36, fx:s=>s.tapMult+=.10},
+  {id:"banner", e:"🚩", n:"War Banner",    d:"+15% party DPS",           base:1500, g:1.38, fx:s=>s.dpsMult+=.15},
+  {id:"greed",  e:"💰", n:"Greed Idol",    d:"+10% gold from kills",     base:2200, g:1.42, fx:s=>s.goldMult+=.10}
+];
+const HEROES=[
+  {id:"squire", e:"🧑‍🌾", n:"Squire",        d:"A farmhand with a pitchfork.",     base:50,     g:1.15, dps:1},
+  {id:"archer", e:"🏹",  n:"Archer",         d:"Never misses. Usually.",           base:400,    g:1.15, dps:6},
+  {id:"cleric", e:"⛪",  n:"Cleric",         d:"Smites by committee.",             base:2500,   g:1.15, dps:28},
+  {id:"knight", e:"🛡️", n:"Knight",         d:"A wall that hits back.",           base:14000,  g:1.16, dps:120},
+  {id:"mage",   e:"🧙‍♀️",n:"Battle Mage",    d:"Fireballs, no refunds.",           base:80000,  g:1.16, dps:600},
+  {id:"rogue",  e:"🥷",  n:"Shadow Rogue",   d:"Stabs things that aren't there.",  base:450000, g:1.17, dps:3200},
+  {id:"dragon", e:"🐦‍🔥",n:"Phoenix Rider",  d:"Technically a fire hazard.",       base:2.6e6,  g:1.17, dps:17000},
+  {id:"titan",  e:"⚡",  n:"Storm Titan",    d:"The sky, weaponized.",             base:1.5e7,  g:1.18, dps:95000}
+];
+const KILLS_PER_STAGE=10, BOSS_TIME=30;
+
+/* ============================== state ============================== */
+const fresh=()=>({
+  gold:0, stage:1, kills:0, heroLv:1, xp:0,
+  gear:Object.fromEntries(GEAR.map(g=>[g.id,0])),
+  heroes:Object.fromEntries(HEROES.map(h=>[h.id,0])),
+  bossDeadline:0, last:Date.now()
+});
+let S=fresh();
+try{const raw=localStorage.getItem("emberDepths"); if(raw){S={...fresh(),...JSON.parse(raw)};}}catch(e){}
+
+/* ============================== derived stats ============================== */
+function stats(){
+  const st={tapFlat:1,tapMult:1,crit:.03,dpsMult:1,goldMult:1};
+  for(const g of GEAR){const lv=S.gear[g.id]; for(let i=0;i<lv;i++) g.fx(st);}
+  st.crit=Math.min(st.crit,.55);
+  st.tap=Math.max(1,Math.round(st.tapFlat*st.tapMult*(1+ (S.heroLv-1)*0.05)));
+  st.dps=HEROES.reduce((a,h)=>a+h.dps*S.heroes[h.id],0)*st.dpsMult*(1+(S.heroLv-1)*0.05);
+  return st;
+}
+const isBoss=()=>S.kills>=KILLS_PER_STAGE;
+function maxHP(){
+  const base=10*Math.pow(1.55,S.stage-1)*(1+S.kills*0.08);
+  return Math.ceil(isBoss()? base*8 : base);
+}
+function goldReward(st){
+  const base=Math.ceil((2+S.stage*1.7)*Math.pow(1.35,S.stage-1)/3);
+  return Math.ceil((isBoss()? base*12 : base)*st.goldMult);
+}
+function cost(item,owned){return Math.ceil(item.base*Math.pow(item.g,owned));}
+const xpNeed=lv=>Math.ceil(20*Math.pow(1.35,lv-1));
+
+/* ============================== formatting ============================== */
+const SUF=["","K","M","B","T","q","Q","s","S"];
+function fmt(n){
+  if(n<1000) return String(Math.floor(n));
+  let t=0; while(n>=1000&&t<SUF.length-1){n/=1000;t++;}
+  return (n<10?n.toFixed(2):n<100?n.toFixed(1):Math.floor(n))+SUF[t];
+}
+
+/* ============================== monster ============================== */
+let hp=maxHP(), dying=false;
+function monsterInfo(){
+  if(isBoss()){const b=BOSSES[(S.stage-1)%BOSSES.length]; return {e:b[0],n:b[1]};}
+  const m=MONSTERS[(S.stage-1+S.kills*3)%MONSTERS.length]; return {e:m[0],n:m[1]};
+}
+function spawn(){
+  hp=maxHP(); dying=false;
+  const el=$("monster"); el.classList.remove("dead");
+  const mi=monsterInfo(); el.textContent=mi.e;
+  $("monsterName").innerHTML=`${mi.n} <span class="lvl">Lv ${S.stage}</span>`;
+  if(isBoss()){
+    S.bossDeadline=Date.now()+BOSS_TIME*1000;
+    $("bossTag").innerHTML=`<span class="boss-tag">☠ BOSS ☠</span>`;
+    $("bossTimer").style.display="block";
+  }else{
+    S.bossDeadline=0;
+    $("bossTag").textContent="";
+    $("bossTimer").style.display="none";
+  }
+  paint();
+}
+
+function damage(amount,fromTap,x,y){
+  if(dying||amount<=0) return;
+  hp-=amount;
+  if(fromTap){
+    const el=$("monster");
+    el.classList.add("hit"); setTimeout(()=>el.classList.remove("hit"),70);
+  }
+  if(hp<=0) kill(); else paint();
+}
+
+function kill(){
+  dying=true;
+  const st=stats(), g=goldReward(st), wasBoss=isBoss();
+  S.gold+=g; S.xp+=wasBoss?8:1;
+  while(S.xp>=xpNeed(S.heroLv)){S.xp-=xpNeed(S.heroLv); S.heroLv++; toast(`⚔️ Hero level ${S.heroLv}!`);}
+  popup("+"+fmt(g)+" 🪙","goldpop");
+  $("monster").classList.add("dead");
+  if(wasBoss){
+    const slain=BOSSES[(S.stage-1)%BOSSES.length][1];
+    S.stage++; S.kills=0;
+    log(`Felled <b>${slain}</b> — descended to stage <b>${S.stage}</b>.`);
+    toast(`🏆 Stage ${S.stage} unlocked!`);
+  }else{
+    S.kills++;
+    if(isBoss()) log(`A <b>boss</b> blocks the way down…`);
+  }
+  setTimeout(spawn,300);
+  paint();
+}
+
+/* boss timer fail */
+function bossCheck(){
+  if(S.bossDeadline&&!dying){
+    const left=Math.max(0,Math.ceil((S.bossDeadline-Date.now())/1000));
+    $("bossTimer").textContent=left;
+    if(left<=0){
+      S.kills=Math.max(0,KILLS_PER_STAGE-3); // knocked back, retry after 3 kills
+      log(`The boss drove you back! Regroup and try again.`);
+      toast("💨 Driven back!");
+      spawn();
+    }
+  }
+}
+
+/* ============================== UI helpers ============================== */
+const $=id=>document.getElementById(id);
+function popup(text,cls,x,y){
+  const zone=$("tapZone"), f=document.createElement("div");
+  f.className="float "+(cls||"");
+  f.textContent=text;
+  const r=zone.getBoundingClientRect();
+  f.style.left=((x??(r.width/2+(Math.random()*80-40)))-20)+"px";
+  f.style.top =((y??(r.height/2-20+(Math.random()*30-15))))+"px";
+  zone.appendChild(f); setTimeout(()=>f.remove(),820);
+}
+let toastT;
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1800);
+}
+const LOGMAX=6; const logs=[];
+function log(html){
+  logs.unshift(html); if(logs.length>LOGMAX)logs.pop();
+  $("log").innerHTML=logs.join("<br>");
+}
+
+/* ============================== shops ============================== */
+function buildShops(){
+  $("p-gear").innerHTML=GEAR.map(g=>`
+    <div class="row" id="row-g-${g.id}">
+      <div class="emoji">${g.e}</div>
+      <div class="info">
+        <div class="name">${g.n} <span class="tier num" id="lv-g-${g.id}"></span></div>
+        <div class="desc">${g.d}</div>
+      </div>
+      <button class="buy" data-kind="gear" data-id="${g.id}"><small>upgrade</small><span class="num" id="c-g-${g.id}"></span></button>
+    </div>`).join("");
+  $("p-party").innerHTML=HEROES.map(h=>`
+    <div class="row" id="row-h-${h.id}">
+      <div class="emoji">${h.e}</div>
+      <div class="info">
+        <div class="name">${h.n} <span class="tier num" id="lv-h-${h.id}"></span></div>
+        <div class="desc">${h.d}</div>
+        <div class="dpsline num" id="d-h-${h.id}"></div>
+      </div>
+      <button class="buy" data-kind="hero" data-id="${h.id}"><small>recruit</small><span class="num" id="c-h-${h.id}"></span></button>
+    </div>`).join("");
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".buy"); if(!b||b.disabled) return;
+  const {kind,id}=b.dataset;
+  if(kind==="gear"){
+    const g=GEAR.find(x=>x.id===id), c=cost(g,S.gear[id]);
+    if(S.gold>=c && !(g.cap&&S.gear[id]>=g.cap)){S.gold-=c; S.gear[id]++; toast(`${g.e} ${g.n} → ${S.gear[id]}`);}
+  }else{
+    const h=HEROES.find(x=>x.id===id), c=cost(h,S.heroes[id]);
+    if(S.gold>=c){S.gold-=c; S.heroes[id]++; if(S.heroes[id]===1)log(`<b>${h.n}</b> joined the party.`);}
+  }
+  paint();
+});
+
+/* ============================== paint ============================== */
+function paint(){
+  const st=stats();
+  $("gold").textContent=fmt(S.gold);
+  $("stage").textContent=S.stage;
+  $("killsLeft").textContent=isBoss()?"BOSS":`${S.kills}/${KILLS_PER_STAGE}`;
+  $("heroLv").textContent=S.heroLv;
+  $("tapDmg").textContent=fmt(st.tap);
+  $("dps").textContent=fmt(st.dps);
+  const m=maxHP();
+  $("hpFill").style.width=Math.max(0,hp/m*100)+"%";
+  $("hpText").textContent=`${fmt(Math.max(0,hp))} / ${fmt(m)}`;
+  for(const g of GEAR){
+    const owned=S.gear[g.id], c=cost(g,owned), capped=g.cap&&owned>=g.cap;
+    $("lv-g-"+g.id).textContent=owned?("Lv "+owned):"";
+    $("c-g-"+g.id).textContent=capped?"MAX":fmt(c)+" 🪙";
+    const btn=$("c-g-"+g.id).parentElement;
+    btn.disabled=capped||S.gold<c;
+  }
+  for(const h of HEROES){
+    const owned=S.heroes[h.id], c=cost(h,owned);
+    $("lv-h-"+h.id).textContent=owned?("×"+owned):"";
+    $("d-h-"+h.id).textContent=owned?`${fmt(h.dps*owned)} dps`:`${fmt(h.dps)} dps each`;
+    $("c-h-"+h.id).textContent=fmt(c)+" 🪙";
+    const btn=$("c-h-"+h.id).parentElement;
+    btn.disabled=S.gold<c;
+    $("row-h-"+h.id).classList.toggle("locked",!owned&&S.gold<h.base*.6);
+  }
+}
+
+/* ============================== input ============================== */
+function tapAt(clientX,clientY){
+  if(dying) return;
+  const st=stats();
+  const crit=Math.random()<st.crit;
+  const dmg=crit?st.tap*3:st.tap;
+  const r=$("tapZone").getBoundingClientRect();
+  popup((crit?"✦ ":"")+fmt(dmg),crit?"crit":"",clientX-r.left,clientY-r.top);
+  if(navigator.vibrate&&crit) navigator.vibrate(20);
+  damage(dmg,true);
+}
+$("tapZone").addEventListener("pointerdown",e=>{e.preventDefault(); tapAt(e.clientX,e.clientY);});
+
+/* tabs */
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on",p.id==="p-"+t.dataset.p));
+}));
+
+/* ============================== loops ============================== */
+setInterval(()=>{ // party DPS tick, 4×/s
+  const st=stats();
+  if(st.dps>0) damage(st.dps/4,false);
+  bossCheck();
+},250);
+
+function save(){S.last=Date.now(); try{localStorage.setItem("emberDepths",JSON.stringify(S));}catch(e){}}
+setInterval(save,15000);
+window.addEventListener("pagehide",save);
+$("saveBtn").addEventListener("click",()=>{save(); toast("💾 Saved");});
+$("resetBtn").addEventListener("click",()=>{
+  if(confirm("Abandon quest? All progress will be lost.")){
+    localStorage.removeItem("emberDepths"); S=fresh(); logs.length=0;
+    log("Your adventure begins anew…"); spawn(); paint(); toast("🗺️ New quest begun");
+  }
+});
+
+/* offline earnings: party earns gold at ~40% efficiency while away */
+(function offline(){
+  const away=Math.min(8*3600, (Date.now()-(S.last||Date.now()))/1000);
+  const st=stats();
+  if(away>60 && st.dps>0){
+    const perKill=goldReward(st), hpNow=maxHP();
+    const kills=st.dps*away*0.4/hpNow;
+    const earned=Math.floor(kills*perKill);
+    if(earned>0){
+      S.gold+=earned;
+      log(`While you rested, the party earned <b>${fmt(earned)} 🪙</b>.`);
+      toast(`😴 +${fmt(earned)} 🪙 while away`);
+    }
+  }
+})();
+
+/* ============================== boot ============================== */
+buildShops();
+log(`Stage <b>${S.stage}</b> · The depths await.`);
+spawn();
+paint();
+</script>
