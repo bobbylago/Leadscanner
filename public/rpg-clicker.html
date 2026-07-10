@@ -79,6 +79,24 @@
   .hint{font-size:12px; color:var(--dim); max-width:300px; line-height:1.6;}
   .beststat{font-size:12px; color:var(--dim);}
   .beststat b{color:var(--gold);}
+
+  /* stage select */
+  #stageList{display:flex; flex-direction:column; gap:8px; width:min(380px,92vw);
+    max-height:46vh; overflow-y:auto; padding:2px; -webkit-overflow-scrolling:touch;}
+  .stagecard{
+    display:flex; align-items:center; gap:12px; background:var(--panel);
+    border:1px solid var(--line); border-radius:14px; padding:12px; text-align:left; cursor:pointer;
+  }
+  .stagecard:active{transform:scale(.98);}
+  .stagecard .ico{font-size:32px; width:42px; text-align:center; filter:drop-shadow(0 0 8px rgba(255,95,162,.4));}
+  .stagecard .info{flex:1; min-width:0;}
+  .stagecard .nm{font-weight:800; font-size:14px;}
+  .stagecard .nm .jp{color:var(--pink); font-size:11px; margin-left:6px; font-weight:600;}
+  .stagecard .ds{font-size:11px; color:var(--dim); margin-top:2px; line-height:1.4;}
+  .stagecard .st{font-size:10px; color:var(--cyan); margin-top:3px; font-weight:700; letter-spacing:.05em;}
+  .stagecard .st.dim{color:var(--dim);}
+  .stagecard .diffpips{color:var(--gold); font-size:9px; letter-spacing:1px; text-align:right; min-width:34px;}
+  .stagecard.lockedstage{opacity:.45; filter:grayscale(.7);}
   .shardline{display:flex; align-items:center; gap:8px; font-size:15px; font-weight:800; color:var(--gold);}
 
   /* level-up cards */
@@ -151,13 +169,12 @@
 
 <div class="screen on" id="scr-title">
   <h1 class="gtitle">YOKAI RIFT</h1>
-  <div class="gsub"><span class="jp">妖怪の裂け目</span> · survive the night</div>
+  <div class="gsub"><span class="jp">妖怪の裂け目</span> · choose your rift</div>
   <div class="shardline">🔮 <span class="num" id="shards-title">0</span> spirit shards</div>
-  <button class="bigbtn" id="playBtn">⚔️ &nbsp;ENTER THE RIFT</button>
+  <div id="stageList"></div>
   <button class="bigbtn alt" id="shrineBtn">⛩️ &nbsp;Shrine of Power</button>
   <div class="hint">Drag anywhere to move — your hero attacks on their own.
-    Collect <b style="color:var(--cyan)">spirit gems</b>, choose anime abilities as you level, and don't get surrounded.</div>
-  <div class="beststat" id="bestLine"></div>
+    Banish a rift's boss to unlock the next world.</div>
 </div>
 
 <div class="screen" id="scr-levelup">
@@ -206,10 +223,54 @@ function fmtTime(s){s=Math.floor(s);return Math.floor(s/60)+":"+String(s%60).pad
 let toastT;
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1700);}
 
+/* ============================ stages ============================ */
+/* per-slot base stats; each stage re-skins them via its foes[] list */
+const EBASE=[
+  {hp:14, spd:88, dmg:8,  xp:1, r:15, at:0},
+  {hp:42, spd:56, dmg:12, xp:2, r:18, at:35},
+  {hp:85, spd:72, dmg:16, xp:3, r:17, at:95},
+  {hp:70, spd:62, dmg:14, xp:3, r:18, at:160, drift:true},
+  {hp:230,spd:42, dmg:24, xp:5, r:22, at:230},
+  {hp:130,spd:80, dmg:18, xp:4, r:18, at:320}
+];
+const STAGES=[
+  {id:"leaf",e:"🍃",n:"Hidden Leaf Village",jp:"木ノ葉の里",diff:1,shard:1,
+   d:"Rogue shinobi and summoned beasts prowl the forest paths.",
+   bg:"#0c1712",grid:"rgba(110,190,110,.14)",petal:"🍃",props:["🌳","🌲","🏮","🍄"],
+   foes:["🐍","🥷","🦂","🐸","🐗","🦅"],
+   bosses:[{e:"🦊",n:"NINE TAILS · 九尾"},{e:"🐍",n:"GREAT SERPENT · 大蛇"}]},
+  {id:"soul",e:"⚔️",n:"Soul Society",jp:"尸魂界",diff:1.4,shard:1.3,
+   d:"Hollows slip through the gates of the spirit realm.",
+   bg:"#0d1020",grid:"rgba(150,170,235,.13)",petal:"✨",props:["⛩️","🏮","🕯️","🗼"],
+   foes:["🦇","🎭","💀","👻","🦴","🌪️"],
+   bosses:[{e:"🎭",n:"MENOS GRANDE · 大虚"},{e:"💀",n:"HOLLOW KING · 虚王"}]},
+  {id:"demon",e:"🌙",n:"Demon Slayer Night",jp:"鬼の夜",diff:1.9,shard:1.7,
+   d:"Demons feast under a blood moon. The wisteria won't save you.",
+   bg:"#170a14",grid:"rgba(220,110,160,.12)",petal:"🌸",props:["⛩️","🏮","🌾","🪦"],
+   foes:["🦇","👺","🕷️","👻","👹","🐺"],
+   bosses:[{e:"🕷️",n:"SPIDER MOTHER · 母蜘蛛"},{e:"🌑",n:"UPPER MOON · 上弦の鬼"}]},
+  {id:"namek",e:"🪐",n:"Planet Namek",jp:"ナメック星",diff:2.5,shard:2.2,
+   d:"Alien warbands scour the green sky for the dragon's wish.",
+   bg:"#081614",grid:"rgba(90,220,190,.12)",petal:"💫",props:["🪨","🌴","🛸","💠"],
+   foes:["🪲","👽","🦎","👾","🤖","🛸"],
+   bosses:[{e:"❄️",n:"FROST TYRANT · 冷帝"},{e:"🐲",n:"GALACTIC WYRM · 銀河竜"}]},
+  {id:"wall",e:"🏰",n:"Wall Maria",jp:"ウォール・マリア",diff:3.3,shard:3,
+   d:"The wall has fallen. Giants walk. Humanity watches.",
+   bg:"#171310",grid:"rgba(200,170,120,.12)",petal:"🍂",props:["🏚️","🪨","🌾","🏰"],
+   foes:["🐀","🧟","🧌","🦅","🗿","🐺"],
+   bosses:[{e:"🗿",n:"THE COLOSSAL ONE · 超大型"},{e:"🧌",n:"ARMORED BRUTE · 鎧の巨人"}]}
+];
+const stageUnlocked=i=>i===0||SAVE.stages[STAGES[i-1].id].cleared;
+
 /* ============================ persistence ============================ */
-const fresh=()=>({shards:0, sound:true, meta:{atk:0,hp:0,spd:0,greed:0,revive:0}, best:{time:0,lvl:0,kills:0}});
+const fresh=()=>({shards:0, sound:true, meta:{atk:0,hp:0,spd:0,greed:0,revive:0}, best:{time:0,lvl:0,kills:0},
+  stages:Object.fromEntries(STAGES.map(s=>[s.id,{best:0,cleared:false}]))});
 let SAVE=fresh();
-try{const r=localStorage.getItem("yokaiRift"); if(r){const p=JSON.parse(r); SAVE={...fresh(),...p,meta:{...fresh().meta,...(p.meta||{})},best:{...fresh().best,...(p.best||{})}};}}catch(e){}
+try{const r=localStorage.getItem("yokaiRift"); if(r){const p=JSON.parse(r);
+  SAVE={...fresh(),...p,meta:{...fresh().meta,...(p.meta||{})},best:{...fresh().best,...(p.best||{})}};
+  SAVE.stages=fresh().stages;
+  for(const k in (p.stages||{}))if(SAVE.stages[k])SAVE.stages[k]={...SAVE.stages[k],...p.stages[k]};
+}}catch(e){}
 function persist(){try{localStorage.setItem("yokaiRift",JSON.stringify(SAVE));}catch(e){}}
 
 /* ============================ audio ============================ */
@@ -293,25 +354,12 @@ const PASSIVES=[
 ];
 const HEAL_CARD={id:"_heal",e:"🍙",n:"Onigiri",jp:"回復",d:()=>"Restore 40% of max HP"};
 
-/* ============================ enemies ============================ */
-const ETYPES=[
-  {e:"🦇",hp:14, spd:88, dmg:8,  xp:1, r:15, at:0},
-  {e:"👺",hp:42, spd:56, dmg:12, xp:2, r:18, at:35},
-  {e:"💀",hp:85, spd:72, dmg:16, xp:3, r:17, at:95},
-  {e:"👻",hp:70, spd:62, dmg:14, xp:3, r:18, at:160, drift:true},
-  {e:"👹",hp:230,spd:42, dmg:24, xp:5, r:22, at:230},
-  {e:"🌊",hp:130,spd:80, dmg:18, xp:4, r:18, at:320}
-];
-const BOSS_DEFS=[
-  {e:"🐉",n:"AZURE WYRM · 青竜"},{e:"👹",n:"CRIMSON ONI · 赤鬼"},
-  {e:"🕸️",n:"WIDOW OF THE RIFT · 女郎蜘蛛"},{e:"🌑",n:"HOLLOW MOON · 空月"}
-];
-
 /* ============================ run state ============================ */
 let R=null, playing=false, paused=false, screenOn="title";
 function newRun(){
   const m=SAVE.meta;
   return {
+    stg:STAGES[0],
     t:0, px:0, py:0, dirx:1, diry:0,
     maxhp:100+m.hp*20, hp:100+m.hp*20, regen:0,
     speed:170*(1+m.spd*.04),
@@ -366,13 +414,35 @@ function show(name){
   for(const s of["title","levelup","death","shrine","pause"])
     $("scr-"+s).classList.toggle("on",s===name);
   $("hud").style.display=(name==="")?"block":(playing?"block":"none");
-  if(name==="title"){
-    $("shards-title").textContent=fmt(SAVE.shards);
-    $("bestLine").innerHTML=SAVE.best.time>0
-      ?`Best run — <b>${fmtTime(SAVE.best.time)}</b> · Lv <b>${SAVE.best.lvl}</b> · <b>${SAVE.best.kills}</b> kills`:"";
-  }
+  if(name==="title")paintStages();
   if(name==="shrine")paintShrine();
 }
+
+/* ============================ stage select ============================ */
+function paintStages(){
+  $("shards-title").textContent=fmt(SAVE.shards);
+  $("stageList").innerHTML=STAGES.map((s,i)=>{
+    const unlocked=stageUnlocked(i),sp=SAVE.stages[s.id];
+    const status=unlocked
+      ?(sp.best>0?`Best ${fmtTime(sp.best)}${sp.cleared?" · ⭐ boss banished":""}`:"Unexplored")
+      :`🔒 Banish a boss in ${STAGES[i-1].n}`;
+    return `<div class="stagecard ${unlocked?"":"lockedstage"}" data-id="${s.id}">
+      <div class="ico">${s.e}</div>
+      <div class="info">
+        <div class="nm">${s.n}<span class="jp">${s.jp}</span></div>
+        <div class="ds">${s.d}</div>
+        <div class="st ${sp.best>0?"":"dim"}">${status}</div>
+      </div>
+      <div class="diffpips">${"◆".repeat(i+1)}<br>🔮×${s.shard}</div>
+    </div>`;
+  }).join("");
+}
+$("stageList").addEventListener("click",e=>{
+  const c=e.target.closest(".stagecard");if(!c)return;
+  const i=STAGES.findIndex(s=>s.id===c.dataset.id);
+  if(!stageUnlocked(i)){toast(`🔒 Banish a boss in ${STAGES[i-1].n} first`);return;}
+  startRun(STAGES[i].id);
+});
 
 /* ============================ shrine (meta shop) ============================ */
 const SHRINE=[
@@ -473,27 +543,35 @@ function killEnemy(e){
     R.hp=Math.min(R.maxhp,R.hp+R.maxhp*.25);
     R.shake=Math.max(R.shake,.7);SFX.boss();
     toast(`🏆 ${e.name} banished!`);
+    const sp=SAVE.stages[R.stg.id];
+    if(!sp.cleared){
+      sp.cleared=true;persist();
+      const idx=STAGES.findIndex(s=>s.id===R.stg.id);
+      if(idx<STAGES.length-1)setTimeout(()=>toast(`⛩️ New rift unlocked: ${STAGES[idx+1].n}!`),1900);
+    }
   }
 }
 function spawnEnemy(forceElite){
   if(R.enemies.length>=140)return;
-  const avail=ETYPES.filter(t=>R.t>=t.at);
-  const t=avail[Math.floor(Math.random()*avail.length)];
+  const idxs=[];for(let i=0;i<EBASE.length;i++)if(R.t>=EBASE[i].at)idxs.push(i);
+  const ix=idxs[Math.floor(Math.random()*idxs.length)];
+  const t=EBASE[ix],diff=R.stg.diff;
   const a=rand(0,Math.PI*2),d=Math.max(VW,VH)*.62;
-  const scale=1+Math.pow(R.t/60,1.15)*.55;
+  const scale=(1+Math.pow(R.t/60,1.15)*.55)*diff;
   const elite=forceElite||(R.t>60&&Math.random()<.045);
   R.enemies.push({
     x:R.px+Math.cos(a)*d,y:R.py+Math.sin(a)*d,
     hp:t.hp*scale*(elite?6:1),maxhp:t.hp*scale*(elite?6:1),
-    spd:t.spd*(elite?.9:1)*rand(.9,1.1),dmg:t.dmg*(elite?1.6:1),
-    xp:t.xp,r:t.r*(elite?1.5:1),e:t.e,drift:t.drift,elite,
+    spd:t.spd*(elite?.9:1)*rand(.9,1.1),dmg:t.dmg*Math.sqrt(diff)*(elite?1.6:1),
+    xp:t.xp,r:t.r*(elite?1.5:1),e:R.stg.foes[ix],drift:t.drift,elite,
     flash:0,hitAt:0,orbAt:0,ph:rand(0,6.28),dead:false
   });
 }
 function spawnBoss(){
-  const def=BOSS_DEFS[R.bossKills%BOSS_DEFS.length];
+  const defs=R.stg.bosses;
+  const def=defs[R.bossKills%defs.length];
   const a=rand(0,Math.PI*2),d=Math.max(VW,VH)*.6;
-  const hp=1400*Math.pow(2.1,R.bossKills)*(1+R.t/300);
+  const hp=1400*R.stg.diff*Math.pow(2.1,R.bossKills)*(1+R.t/300);
   const b={
     x:R.px+Math.cos(a)*d,y:R.py+Math.sin(a)*d,
     hp,maxhp:hp,spd:46+R.bossKills*4,dmg:30,xp:10,r:44,e:def.e,name:def.n,
@@ -731,14 +809,16 @@ function playerDeath(){
   }
   playing=false;SFX.die();
   const greed=1+SAVE.meta.greed*.1;
-  const earned=Math.ceil((R.kills*.12+R.lvl*1.5+R.bossKills*15)*greed);
+  const earned=Math.ceil((R.kills*.12+R.lvl*1.5+R.bossKills*15)*greed*R.stg.shard);
   SAVE.shards+=earned;
   SAVE.best.time=Math.max(SAVE.best.time,R.t);
   SAVE.best.lvl=Math.max(SAVE.best.lvl,R.lvl);
   SAVE.best.kills=Math.max(SAVE.best.kills,R.kills);
+  const sp=SAVE.stages[R.stg.id];
+  sp.best=Math.max(sp.best,R.t);
   persist();
   $("deathStats").innerHTML=
-    `Survived <b>${fmtTime(R.t)}</b> in the rift<br>`+
+    `Survived <b>${fmtTime(R.t)}</b> in ${R.stg.e} <b>${R.stg.n}</b><br>`+
     `Level <b>${R.lvl}</b> · <b>${R.kills}</b> yokai slain · <b>${R.bossKills}</b> boss${R.bossKills===1?"":"es"} banished`;
   $("shardsEarned").textContent=fmt(earned);
   $("bossBarWrap").style.display="none";
@@ -747,26 +827,41 @@ function playerDeath(){
 
 /* ============================ render ============================ */
 const PETALS=[];for(let i=0;i<26;i++)PETALS.push({x:rand(0,1600),y:rand(0,1600),s:rand(8,15),ph:rand(0,6.28),sp:rand(8,20)});
+function hash2(x,y){let h=(x*374761393+y*668265263)|0;h=((h^(h>>>13))*1274126177)|0;return((h^(h>>>16))>>>0)/4294967295;}
 function render(){
   ctx.clearRect(0,0,VW,VH);
+  const stg=R?R.stg:STAGES[0];
   const shx=R?rand(-1,1)*R.shake*9:0,shy=R?rand(-1,1)*R.shake*9:0;
   const camX=(R?R.px:0)-VW/2+shx,camY=(R?R.py:0)-VH/2+shy;
   // ground
-  ctx.fillStyle="#0b0918";ctx.fillRect(0,0,VW,VH);
-  ctx.strokeStyle="rgba(60,48,110,.25)";ctx.lineWidth=1;
+  ctx.fillStyle=stg.bg;ctx.fillRect(0,0,VW,VH);
+  ctx.strokeStyle=stg.grid;ctx.lineWidth=1;
   const gs=90,ox=-camX%gs,oy=-camY%gs;
   ctx.beginPath();
   for(let x=ox;x<VW;x+=gs){ctx.moveTo(x,0);ctx.lineTo(x,VH);}
   for(let y=oy;y<VH;y+=gs){ctx.moveTo(0,y);ctx.lineTo(VW,y);}
   ctx.stroke();
-  // petals
+  // scenery props anchored to world cells
+  const cs=300,cx0=Math.floor(camX/cs)-1,cy0=Math.floor(camY/cs)-1;
+  for(let cx=cx0;cx<cx0+Math.ceil(VW/cs)+3;cx++)for(let cy=cy0;cy<cy0+Math.ceil(VH/cs)+3;cy++){
+    const h=hash2(cx,cy);
+    if(h<.62){
+      const em=stg.props[Math.floor(h*913)%stg.props.length];
+      const wpx=cx*cs+hash2(cx+7,cy)*cs, wpy=cy*cs+hash2(cx,cy+7)*cs;
+      const sz=26+hash2(cx+3,cy+3)*20;
+      ctx.globalAlpha=.85;
+      ctx.drawImage(sprite(em,40),wpx-camX-sz/2,wpy-camY-sz/2,sz,sz);
+      ctx.globalAlpha=1;
+    }
+  }
+  // petals / motes
   const t=R?R.t:performance.now()/1000;
   ctx.globalAlpha=.4;
   for(const p of PETALS){
     const wx=((p.x+t*p.sp-camX*.6)%1700+1700)%1700-50;
     const wy=((p.y+t*p.sp*.7-camY*.6)%1700+1700)%1700-50;
     if(wx>-20&&wx<VW+20&&wy>-20&&wy<VH+20){
-      const sp=sprite("🌸",16);
+      const sp=sprite(stg.petal,16);
       ctx.drawImage(sp,wx-p.s,wy-p.s,p.s*2,p.s*2);
     }
   }
@@ -914,15 +1009,17 @@ function frame(tms){
 requestAnimationFrame(frame);
 
 /* ============================ flow ============================ */
-function startRun(){
-  R=newRun();recompute();R.hp=R.maxhp;
+let curStage=STAGES[0].id;
+function startRun(stageId){
+  if(stageId)curStage=stageId;
+  R=newRun();R.stg=STAGES.find(s=>s.id===curStage)||STAGES[0];
+  recompute();R.hp=R.maxhp;
   playing=true;paused=false;
   $("bossBarWrap").style.display="none";
   show("");
-  toast("⚔️ Survive the night!");
+  toast(`${R.stg.e} ${R.stg.n} — survive!`);
 }
-$("playBtn").addEventListener("click",startRun);
-$("retryBtn").addEventListener("click",startRun);
+$("retryBtn").addEventListener("click",()=>startRun());
 $("shrineBtn").addEventListener("click",()=>show("shrine"));
 $("deathShrineBtn").addEventListener("click",()=>show("shrine"));
 $("deathTitleBtn").addEventListener("click",()=>show("title"));
@@ -931,9 +1028,11 @@ $("pauseBtn").addEventListener("click",()=>{if(playing&&screenOn===""){paused=tr
 $("resumeBtn").addEventListener("click",()=>{show("");paused=false;});
 $("quitBtn").addEventListener("click",()=>{playing=false;paused=false;R.hp=0;
   const greed=1+SAVE.meta.greed*.1;
-  const earned=Math.ceil((R.kills*.12+R.lvl*1.5+R.bossKills*15)*greed);
-  SAVE.shards+=earned;persist();
-  $("deathStats").innerHTML=`Survived <b>${fmtTime(R.t)}</b> · Level <b>${R.lvl}</b> · <b>${R.kills}</b> slain`;
+  const earned=Math.ceil((R.kills*.12+R.lvl*1.5+R.bossKills*15)*greed*R.stg.shard);
+  SAVE.shards+=earned;
+  SAVE.stages[R.stg.id].best=Math.max(SAVE.stages[R.stg.id].best,R.t);
+  persist();
+  $("deathStats").innerHTML=`Survived <b>${fmtTime(R.t)}</b> in ${R.stg.e} <b>${R.stg.n}</b> · Level <b>${R.lvl}</b> · <b>${R.kills}</b> slain`;
   $("shardsEarned").textContent=fmt(earned);
   show("death");
 });
