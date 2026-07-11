@@ -78,6 +78,21 @@
   .screen.on{display:flex;}
   /* translucent overlays that sit on top of live gameplay */
   #scr-levelup,#scr-pause{background:rgba(14,17,26,.86);}
+  #scr-levelup{overflow:hidden;}
+  #scr-levelup::before{
+    content:""; position:absolute; left:50%; top:50%; width:220vmax; height:220vmax;
+    transform:translate(-50%,-50%);
+    background:repeating-conic-gradient(rgba(255,255,255,.05) 0 7deg, transparent 7deg 15deg);
+    animation:rays 18s linear infinite; pointer-events:none;
+  }
+  @keyframes rays{to{transform:translate(-50%,-50%) rotate(360deg);}}
+  #scr-levelup>*{position:relative;}
+  @media (prefers-reduced-motion:reduce){#scr-levelup::before{animation:none;}}
+  #deathKanji{
+    position:absolute; top:6%; left:50%; transform:translateX(-50%) rotate(-6deg);
+    font-size:170px; font-weight:900; font-style:italic; color:rgba(255,255,255,.055);
+    pointer-events:none; line-height:1;
+  }
   .gtitle{
     margin:0; font-size:36px; font-weight:900; font-style:italic; letter-spacing:.01em; line-height:1;
     color:#fff; text-wrap:balance;
@@ -444,6 +459,7 @@
 </div>
 
 <div class="screen" id="scr-death">
+  <div id="deathKanji">敗</div>
   <h1 class="gtitle" style="font-size:34px;" id="deathTitle">YOU FELL…</h1>
   <div class="gsub" id="deathSub"><span class="jp">また会おう</span> · the rift closes</div>
   <div class="deathstat" id="deathStats"></div>
@@ -638,7 +654,9 @@ const SFX={
   item:()=>{beep(700,.08,"sine",.7);beep(1050,.12,"sine",.7,0,.07);},
   bomb:()=>beep(220,.5,"sawtooth",.9,-180),
   warn:()=>{beep(440,.12,"square",.7);beep(440,.12,"square",.7,0,.2);},
-  win:()=>{[523,659,784,1046].forEach((f,i)=>beep(f,.18,"square",.8,0,i*.13));}
+  win:()=>{[523,659,784,1046].forEach((f,i)=>beep(f,.18,"square",.8,0,i*.13));},
+  iai:()=>{beep(2400,.16,"sine",.6,-2000);beep(300,.08,"square",.5,0,.08);},
+  domain:()=>{beep(70,.5,"sawtooth",.9,-30);beep(140,.4,"sine",.7,-60,.1);}
 };
 
 /* ---------- music sequencer ---------- */
@@ -1086,12 +1104,28 @@ function flameSprite(){
   g.bezierCurveTo(2,26,2,14,14,2);
   g.closePath();
   const gr=g.createLinearGradient(0,2,0,37);
-  gr.addColorStop(0,"#ffe25e");gr.addColorStop(.5,"#ff9d2e");gr.addColorStop(1,"#e8434f");
+  gr.addColorStop(0,"#eaf6ff");gr.addColorStop(.5,"#7ac4ff");gr.addColorStop(1,"#4a5ae8");
   g.fillStyle=gr;g.fill();g.stroke();
   g.beginPath();
   g.moveTo(14,12);g.bezierCurveTo(20,19,20,25,14,31);g.bezierCurveTo(8,25,8,19,14,12);
-  g.closePath();g.fillStyle="#fff2c0";g.fill();
+  g.closePath();g.fillStyle="#ffffff";g.fill();
   flameCv=c;return c;
+}
+/* crescent slash projectile */
+let crescCv=null;
+function crescentSprite(){
+  if(crescCv)return crescCv;
+  const c=document.createElement("canvas");c.width=c.height=44;
+  const g=c.getContext("2d");
+  g.shadowColor="#ff5fa2";g.shadowBlur=8;
+  g.beginPath();
+  g.arc(14,22,18,-1.25,1.25);
+  g.arc(6,22,13,1.15,-1.15,true);
+  g.closePath();
+  g.fillStyle="#fff";g.fill();
+  g.shadowBlur=0;
+  g.lineWidth=2;g.strokeStyle="rgba(255,95,162,.85)";g.stroke();
+  crescCv=c;return c;
 }
 
 /* hand-drawn hero model: chibi ninja with silver hair, headband, scarf, katana */
@@ -1208,7 +1242,13 @@ const WEAPONS=[
   {id:"beam",e:"🐉",n:"Dragon Beam",jp:"竜破斬",max:5,
    d:l=>`Devastating beam every ${(9-l*.8).toFixed(1)}s (${90*l} dmg)`},
   {id:"clone",e:"👥",n:"Shadow Clone",jp:"影分身",max:3,
-   d:l=>`${l} clone${l>1?"s":""} fight beside you (60% damage)`}
+   d:l=>`${l} clone${l>1?"s":""} fight beside you (60% damage)`},
+  {id:"iai",e:"💫",n:"Iai Flash",jp:"一閃",max:5,
+   d:l=>`Instant sword-draw cuts a full line every ${(7-l*.6).toFixed(1)}s (${50+30*l} dmg)`},
+  {id:"domain",e:"🕳️",n:"Shadow Domain",jp:"領域展開",max:5,
+   d:l=>`Expand a domain that slows foes and rends them (${18+10*l} dmg/tick)`},
+  {id:"raidash",e:"🌩️",n:"Raijin Step",jp:"雷神脚",max:3,
+   d:l=>`Your dash becomes lightning, scorching your path (${40+30*l} dmg)`}
 ];
 const PASSIVES=[
   {id:"focus",e:"🎯",n:"Focus",jp:"集中",max:5,d:l=>`+${15*l}% all damage`},
@@ -1232,7 +1272,8 @@ function newRun(){
     speed:170*(1+m.spd*.04),
     dmgMult:(1+m.atk*.05), atkSpd:1, critC:.03, magnetR:90,
     lvl:1, xp:0, need:6, kills:0, bossKills:0,
-    weapons:{}, passives:{}, timers:{bolt:0,shuriken:0,raiton:0,zan:0,kitsune:0,beam:0,clone:0},
+    weapons:{}, passives:{}, timers:{bolt:0,shuriken:0,raiton:0,zan:0,kitsune:0,beam:0,clone:0,iai:0,domain:0},
+    domain:null, wasDash:false, dashStart:{x:0,y:0},
     enemies:[], bullets:[], gems:[], parts:[], texts:[], fx:[], items:[], trail:[],
     spawnT:0, nextBossAt:75, boss:null, hurtT:0, shake:0,
     dashReadyAt:0, dashUntil:0, ddx:1, ddy:0,
@@ -1281,6 +1322,7 @@ function dash(){
   const t=R.t;
   if(t<R.dashReadyAt)return;
   R.dashReadyAt=t+3;R.dashUntil=t+.2;
+  R.dashStart={x:R.px,y:R.py};
   R.ddx=R.dirx;R.ddy=R.diry;
   const l=Math.hypot(R.ddx,R.ddy)||1;R.ddx/=l;R.ddy/=l;
   SFX.dash();
@@ -1567,7 +1609,8 @@ function hitEnemy(e,dmg,kx=0,ky=0){
   e.hp-=dmg;e.flash=.12;
   e.x+=kx;e.y+=ky;
   dmgText(e.x,e.y-e.r,dmg,crit);
-  crit?SFX.crit():(Math.random()<.25&&SFX.hit());
+  if(crit){SFX.crit();if(R.fx.length<40)R.fx.push({kind:"crit",x:e.x,y:e.y,t:0,life:.22});}
+  else if(Math.random()<.25)SFX.hit();
   if(e.hp<=0&&!e.dead)killEnemy(e);
 }
 function killEnemy(e){
@@ -1592,6 +1635,9 @@ function killEnemy(e){
   if(e.boss){
     R.bossKills++;R.boss=null;$("bossBarWrap").style.display="none";
     R.hp=Math.min(R.maxhp,R.hp+R.maxhp*.25);
+    R.fx.push({kind:"lines",x:e.x,y:e.y,t:0,life:.4});
+    R.fx.push({kind:"kanji",x:e.x,y:e.y-56,ch:"討伐",t:0,life:.8,c:"#ffd75e"});
+    hitStop(.12);
     R.shake=Math.max(R.shake,.7);SFX.boss();
     toast(`🏆 ${e.name} banished!`);
     const sp=SAVE.stages[R.stg.id];
@@ -1688,7 +1734,11 @@ function weaponsTick(dt){
         for(const e of R.enemies){if(e.dead||hitset.has(e))continue;const d=dist2(cur.x,cur.y,e.x,e.y);if(d<bd){bd=d;nxt=e;}}
         cur=nxt;
       }
-      if(hitcount){R.fx.push({kind:"bolt",pts,t:0,life:.22});SFX.bolt();T.raiton=2.6/R.atkSpd;}
+      if(hitcount){
+        R.fx.push({kind:"bolt",pts,t:0,life:.22});
+        R.fx.push({kind:"kanji",x:pts[1].x,y:pts[1].y-44,ch:"雷",t:0,life:.5,c:"#4ce0ff"});
+        SFX.bolt();T.raiton=2.6/R.atkSpd;
+      }
     }
   }
   const za=W.zan||0;
@@ -1710,6 +1760,11 @@ function weaponsTick(dt){
           }
         }
         R.fx.push({kind:"arc",x:R.px,y:R.py,ang,r:rr,t:0,life:.28});
+        R.fx.push({kind:"kanji",x:R.px+Math.cos(ang)*72,y:R.py+Math.sin(ang)*72-22,ch:"斬",t:0,life:.5,c:"#ff5fa2"});
+        if(za>=3){ // flying crescent wave at high rank
+          R.bullets.push({x:R.px,y:R.py,vx:Math.cos(ang)*330,vy:Math.sin(ang)*330,
+            dmg:(20+10*za)*R.dmgMult,r:15,pierce:99,life:.9,crescent:true});
+        }
         T.zan=(2.4-za*.2)/R.atkSpd;SFX.slash();
       }else T.zan=.4;
     }
@@ -1743,10 +1798,47 @@ function weaponsTick(dt){
           if(proj>0&&proj<len&&Math.abs(rx*uy-ry*ux)<wHalf+e.r)
             hitEnemy(e,90*be*R.dmgMult);
         }
+        R.fx.push({kind:"flash",x:R.px,y:R.py,t:0,life:.22});
         R.fx.push({kind:"beam",x:R.px,y:R.py,ang:a,w:wHalf*2,len,t:0,life:.45});
+        R.fx.push({kind:"lines",x:R.px+ux*180,y:R.py+uy*180,t:0,life:.32});
+        R.fx.push({kind:"kanji",x:R.px+ux*130,y:R.py+uy*130-40,ch:"竜",t:0,life:.6,c:"#4ce0ff"});
+        hitStop(.07);
         R.shake=Math.max(R.shake,.5);SFX.beam();
         T.beam=(9-be*.8)/R.atkSpd;
       }
+    }
+  }
+  // iai flash: instant sword-draw across a full line
+  const ia=W.iai||0;
+  if(ia){
+    T.iai-=dt;
+    if(T.iai<=0){
+      const tgt=nearestEnemy(R.px,R.py,650);
+      if(tgt){
+        const a=Math.atan2(tgt.y-R.py,tgt.x-R.px),ux=Math.cos(a),uy=Math.sin(a);
+        const wHalf=26+ia*4;
+        for(const e of R.enemies){
+          if(e.dead)continue;
+          const rx=e.x-R.px,ry=e.y-R.py;
+          if(Math.abs(rx*uy-ry*ux)<wHalf+e.r&&Math.abs(rx*ux+ry*uy)<680)
+            hitEnemy(e,(50+30*ia)*R.dmgMult);
+        }
+        R.fx.push({kind:"iai",x:R.px,y:R.py,ang:a,t:0,life:.32});
+        R.fx.push({kind:"kanji",x:R.px+ux*90,y:R.py+uy*90-30,ch:"一閃",t:0,life:.6,c:"#fff"});
+        hitStop(.09);SFX.iai();R.shake=Math.max(R.shake,.3);
+        T.iai=(7-ia*.6)/R.atkSpd;
+      }
+    }
+  }
+  // shadow domain: expanding slow-and-rend zone
+  const dm=W.domain||0;
+  if(dm){
+    T.domain-=dt;
+    if(T.domain<=0&&R.enemies.length){
+      R.domain={x:R.px,y:R.py,r:24,maxR:150+25*dm,until:R.t+3.5,nextTick:R.t+.3,dmg:(18+10*dm)*R.dmgMult};
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"領域",t:0,life:.75,c:"#c26bff"});
+      hitStop(.05);SFX.domain();R.shake=Math.max(R.shake,.35);
+      T.domain=(10-dm*.7)/R.atkSpd;
     }
   }
   const orb=W.orbs||0;
@@ -1811,7 +1903,38 @@ function update(dt){
     R.px+=R.ddx*760*dt;R.py+=R.ddy*760*dt;
     R.trail.push({x:R.px,y:R.py,t0:R.t});
   }
+  // Raijin Step: the finished dash scorches its path with lightning
+  if(R.wasDash&&!dashing){
+    R.wasDash=false;
+    const rl=R.weapons.raidash||0;
+    if(rl){
+      const sx=R.dashStart.x,sy=R.dashStart.y;
+      const ddx2=R.px-sx,ddy2=R.py-sy,len=Math.max(1,Math.hypot(ddx2,ddy2)),ux=ddx2/len,uy=ddy2/len;
+      for(const e of R.enemies){
+        if(e.dead)continue;
+        const rx=e.x-sx,ry=e.y-sy,proj=rx*ux+ry*uy;
+        if(proj>-24&&proj<len+24&&Math.abs(rx*uy-ry*ux)<38+e.r)
+          hitEnemy(e,(40+30*rl)*R.dmgMult);
+      }
+      R.fx.push({kind:"bolt",pts:[{x:sx,y:sy},{x:(sx+R.px)/2,y:(sy+R.py)/2},{x:R.px,y:R.py}],t:0,life:.25});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-48,ch:"雷",t:0,life:.5,c:"#4ce0ff"});
+      SFX.bolt();hitStop(.04);
+    }
+  }
+  if(dashing)R.wasDash=true;
   while(R.trail.length&&R.t-R.trail[0].t0>.3)R.trail.shift();
+  // shadow domain expansion + ticks
+  if(R.domain){
+    const D=R.domain;
+    if(R.t<D.until){
+      D.r=Math.min(D.maxR,D.r+dt*520);
+      if(R.t>=D.nextTick){
+        D.nextTick=R.t+.5;
+        for(const e of R.enemies)
+          if(!e.dead&&dist2(e.x,e.y,D.x,D.y)<D.r*D.r)hitEnemy(e,D.dmg);
+      }
+    }else R.domain=null;
+  }
   const invuln=R.t<R.dashUntil+.3;
   if(R.regen)R.hp=Math.min(R.maxhp,R.hp+R.regen*dt);
   R.hurtT=Math.max(0,R.hurtT-dt);
@@ -1839,7 +1962,9 @@ function update(dt){
     const d=Math.max(1,Math.hypot(dx,dy));
     let sx=dx/d,sy=dy/d;
     if(e.drift){const a=Math.atan2(sy,sx)+Math.sin(R.t*2+e.ph)*.7;sx=Math.cos(a);sy=Math.sin(a);}
-    e.x+=sx*e.spd*dt;e.y+=sy*e.spd*dt;
+    let sp=e.spd;
+    if(R.domain&&R.t<R.domain.until&&dist2(e.x,e.y,R.domain.x,R.domain.y)<R.domain.r*R.domain.r)sp*=.45;
+    e.x+=sx*sp*dt;e.y+=sy*sp*dt;
     e.flash=Math.max(0,e.flash-dt);
     if(!invuln&&d<e.r+16&&R.t-e.hitAt>.6){
       e.hitAt=R.t;R.hp-=e.dmg;R.hurtT=.25;R.shake=Math.max(R.shake,.25);
@@ -1912,6 +2037,7 @@ function endRun(win){
   while(SAVE.pxp>=100*SAVE.plvl){SAVE.pxp-=100*SAVE.plvl;SAVE.plvl++;}
   persist();
   $("deathTitle").textContent=win?"RIFT SEALED!":"YOU FELL…";
+  $("deathKanji").textContent=win?"勝":"敗";
   $("deathSub").innerHTML=win
     ?'<span class="jp">完全勝利</span> · the night is over (2× shards)'
     :'<span class="jp">また会おう</span> · the rift closes';
@@ -2120,6 +2246,21 @@ function renderGame(){
   ctx.globalAlpha=1;
   const wx=x=>x-camX, wy=y=>y-camY;
 
+  // shadow domain zone
+  if(R.domain&&R.t<R.domain.until){
+    const D=R.domain,dxp=wx(D.x),dyp=wy(D.y);
+    const dg=ctx.createRadialGradient(dxp,dyp,D.r*.2,dxp,dyp,D.r);
+    dg.addColorStop(0,"rgba(40,14,66,.22)");dg.addColorStop(1,"rgba(30,8,52,.5)");
+    ctx.fillStyle=dg;
+    ctx.beginPath();ctx.arc(dxp,dyp,D.r,0,6.29);ctx.fill();
+    ctx.strokeStyle="rgba(194,107,255,.9)";ctx.lineWidth=3;
+    ctx.setLineDash([16,10]);ctx.lineDashOffset=-R.t*46;
+    ctx.beginPath();ctx.arc(dxp,dyp,D.r,0,6.29);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle="rgba(194,107,255,.35)";ctx.lineWidth=6;
+    ctx.beginPath();ctx.arc(dxp,dyp,D.r-7,0,6.29);ctx.stroke();
+  }
+
   for(const g of R.gems){
     const pulse=1+Math.sin(t*6+g.t)*.15,gsz=17*pulse;
     ctx.drawImage(gemSprite(),wx(g.x)-gsz/2,wy(g.y)-gsz/2,gsz,gsz);
@@ -2148,18 +2289,28 @@ function renderGame(){
       ctx.beginPath();ctx.arc(0,0,f.r*(.8+.25*(1-k))+7,-1.1,1.1);ctx.stroke();
       ctx.restore();
     }else if(f.kind==="bolt"){
-      ctx.strokeStyle="rgba(76,224,255,"+(.95*k)+")";ctx.lineWidth=3;ctx.lineJoin="round";
-      ctx.beginPath();
-      for(let i=0;i<f.pts.length;i++){
-        const p=f.pts[i];
-        if(i===0)ctx.moveTo(wx(p.x),wy(p.y));
-        else{
-          const pr=f.pts[i-1];
-          ctx.lineTo(wx((pr.x+p.x)/2+rand(-14,14)),wy((pr.y+p.y)/2+rand(-14,14)));
-          ctx.lineTo(wx(p.x),wy(p.y));
+      ctx.lineJoin="round";
+      for(const[lw,col2]of[[8,"rgba(76,224,255,"+(.3*k)+")"],[3,"rgba(220,250,255,"+(.95*k)+")"]]){
+        ctx.strokeStyle=col2;ctx.lineWidth=lw;
+        ctx.beginPath();
+        for(let i=0;i<f.pts.length;i++){
+          const p=f.pts[i];
+          if(i===0)ctx.moveTo(wx(p.x),wy(p.y));
+          else{
+            const pr=f.pts[i-1];
+            ctx.lineTo(wx((pr.x+p.x)/2+rand(-14,14)),wy((pr.y+p.y)/2+rand(-14,14)));
+            ctx.lineTo(wx(p.x),wy(p.y));
+          }
         }
+        ctx.stroke();
       }
-      ctx.stroke();
+      // small branches flickering off the chain
+      ctx.strokeStyle="rgba(76,224,255,"+(.6*k)+")";ctx.lineWidth=1.6;
+      for(let i=1;i<f.pts.length;i++){
+        const p=f.pts[i];
+        ctx.beginPath();ctx.moveTo(wx(p.x),wy(p.y));
+        ctx.lineTo(wx(p.x+rand(-26,26)),wy(p.y+rand(-26,26)));ctx.stroke();
+      }
     }else if(f.kind==="nova"){
       ctx.strokeStyle="rgba(255,215,94,"+(.9*k)+")";ctx.lineWidth=14*k+2;
       ctx.beginPath();ctx.arc(wx(f.x),wy(f.y),(1-k)*430,0,6.29);ctx.stroke();
@@ -2200,6 +2351,9 @@ function renderGame(){
     }else if(b.fire){
       ctx.save();ctx.translate(bx,by);ctx.rotate(Math.atan2(b.vy,b.vx)+Math.PI/2);
       ctx.drawImage(flameSprite(),-9,-13,18,26);ctx.restore();
+    }else if(b.crescent){
+      ctx.save();ctx.translate(bx,by);ctx.rotate(Math.atan2(b.vy,b.vx));
+      ctx.drawImage(crescentSprite(),-17,-17,34,34);ctx.restore();
     }else{
       ctx.fillStyle=b.c;ctx.shadowColor=b.c;ctx.shadowBlur=8;
       ctx.beginPath();ctx.arc(bx,by,b.r,0,6.29);ctx.fill();ctx.shadowBlur=0;
@@ -2246,6 +2400,51 @@ function renderGame(){
     ctx.fillStyle=tx.c;ctx.fillText(tx.s,wx(tx.x),wy(tx.y));
   }
   ctx.globalAlpha=1;
+  // anime overlay effects: kanji bursts, crit slashes, speed lines, iai flash
+  for(const f of R.fx){
+    const k=1-f.t/f.life;
+    if(f.kind==="kanji"){
+      ctx.save();ctx.translate(wx(f.x),wy(f.y));ctx.rotate(-.1);
+      const pop=1+(1-k)*.35;
+      ctx.font="900 "+Math.floor(40*pop)+"px 'Hiragino Sans','Yu Gothic',system-ui,sans-serif";
+      ctx.textAlign="center";ctx.globalAlpha=Math.min(1,k*3);
+      ctx.lineWidth=7;ctx.lineJoin="round";ctx.strokeStyle="#141024";
+      ctx.strokeText(f.ch,0,0);
+      ctx.fillStyle=f.c;ctx.fillText(f.ch,0,0);
+      ctx.restore();ctx.globalAlpha=1;
+    }else if(f.kind==="crit"){
+      ctx.strokeStyle="rgba(255,255,255,"+k+")";ctx.lineWidth=3;ctx.lineCap="round";
+      const cl2=16+14*(1-k);
+      for(const a of[-.55,.55]){
+        ctx.beginPath();
+        ctx.moveTo(wx(f.x)-Math.cos(a)*cl2,wy(f.y)-Math.sin(a)*cl2);
+        ctx.lineTo(wx(f.x)+Math.cos(a)*cl2,wy(f.y)+Math.sin(a)*cl2);
+        ctx.stroke();
+      }
+    }else if(f.kind==="lines"){
+      ctx.strokeStyle="rgba(255,255,255,"+(.55*k)+")";ctx.lineWidth=2.5;
+      const r1=46+150*(1-k);
+      for(let i=0;i<14;i++){
+        const a=i/14*6.283+f.t*1.5;
+        ctx.beginPath();
+        ctx.moveTo(wx(f.x)+Math.cos(a)*r1,wy(f.y)+Math.sin(a)*r1);
+        ctx.lineTo(wx(f.x)+Math.cos(a)*(r1+34),wy(f.y)+Math.sin(a)*(r1+34));
+        ctx.stroke();
+      }
+    }else if(f.kind==="flash"){
+      ctx.fillStyle="rgba(255,255,255,"+(.85*k)+")";
+      ctx.beginPath();ctx.arc(wx(f.x),wy(f.y),12+46*k,0,6.29);ctx.fill();
+    }else if(f.kind==="iai"){
+      ctx.save();ctx.translate(wx(f.x),wy(f.y));ctx.rotate(f.ang);
+      ctx.fillStyle="rgba(255,255,255,"+(.95*k)+")";
+      const th=1.5+11*(1-k);
+      ctx.fillRect(-700,-th/2,1400,th);
+      ctx.fillStyle="rgba(255,95,162,"+(.4*k)+")";
+      ctx.fillRect(-700,-th/2-4,1400,2);
+      ctx.fillRect(-700,th/2+2,1400,2);
+      ctx.restore();
+    }
+  }
   // stage tint vignette
   const vg=ctx.createRadialGradient(VW/2,VH/2,VH*.34,VW/2,VH/2,VH*.85);
   vg.addColorStop(0,stg.vin+"0)");vg.addColorStop(1,stg.vin+".42)");
@@ -2288,11 +2487,14 @@ function paintHUD(dt){
 }
 
 /* ============================ loop ============================ */
-let lastT=performance.now();
+let lastT=performance.now(),freezeT=0;
+function hitStop(s){freezeT=Math.max(freezeT,s);} // anime impact freeze
 function frame(tms){
   requestAnimationFrame(frame);
-  const dt=clamp((tms-lastT)/1000,0,.033);lastT=tms;
-  if(playing&&!paused){update(dt);if(playing)paintHUD(dt);}
+  const raw=(tms-lastT)/1000;lastT=tms;
+  const dt=clamp(raw,0,.033);
+  if(freezeT>0){freezeT-=raw;}
+  else if(playing&&!paused){update(dt);if(playing)paintHUD(dt);}
   if(inMenu()||!R)renderMenu(dt);
   else renderGame();
 }
