@@ -714,77 +714,100 @@ function shade(hex,f){ // darken/lighten a hex color
   const r=clamp(((n>>16)&255)*f,0,255),g2=clamp(((n>>8)&255)*f,0,255),b=clamp((n&255)*f,0,255);
   return `rgb(${r|0},${g2|0},${b|0})`;
 }
+function ballGrad(g,x,y,r,hex){
+  const gr=g.createRadialGradient(x-r*.35,y-r*.5,r*.12,x,y,r*1.18);
+  gr.addColorStop(0,shade(hex,1.5));gr.addColorStop(.55,hex);gr.addColorStop(1,shade(hex,.6));
+  return gr;
+}
 function monsterSprite(w,s){
   const key=w+"-"+s;
   if(monsterCache.has(key))return monsterCache.get(key);
   const C=112,c=document.createElement("canvas");c.width=c.height=C;
   const g=c.getContext("2d"),cx=C/2,cy=C/2+6;
   const col=MCOLORS[w][s],OL="#141024";
-  g.lineWidth=5;g.strokeStyle=OL;g.lineJoin="round";
-  const blob=(x,y,rx,ry)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,6.29);g.fillStyle=col;g.fill();g.stroke();};
+  g.lineWidth=5;g.strokeStyle=OL;g.lineJoin="round";g.lineCap="round";
+  const blob=(x,y,rx,ry)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,6.29);
+    g.fillStyle=ballGrad(g,x,y,Math.max(rx,ry),col);g.fill();g.stroke();};
   const ghost=s===3;
-  if(ghost)g.globalAlpha=.88;
-  if(s===0){ // flyer: small body + wings
+  if(ghost)g.globalAlpha=.9;
+  if(s===0){ // flyer: small body + shaded wings + ears
     for(const dir of[-1,1]){
       g.beginPath();
       g.moveTo(cx+dir*16,cy-6);
-      g.lineTo(cx+dir*46,cy-22);g.lineTo(cx+dir*38,cy-4);g.lineTo(cx+dir*46,cy+10);
-      g.closePath();g.fillStyle=shade(col,.75);g.fill();g.stroke();
+      g.quadraticCurveTo(cx+dir*44,cy-30,cx+dir*47,cy-20);
+      g.lineTo(cx+dir*37,cy-6);g.lineTo(cx+dir*46,cy+8);
+      g.quadraticCurveTo(cx+dir*30,cy+10,cx+dir*16,cy+2);
+      g.closePath();g.fillStyle=ballGrad(g,cx+dir*32,cy-6,22,shade(col,.8));g.fill();g.stroke();
     }
     blob(cx,cy,24,21);
-    for(const dir of[-1,1]){ // ears
-      g.beginPath();g.moveTo(cx+dir*8,cy-18);g.lineTo(cx+dir*15,cy-32);g.lineTo(cx+dir*19,cy-14);
+    for(const dir of[-1,1]){
+      g.beginPath();g.moveTo(cx+dir*8,cy-18);g.lineTo(cx+dir*15,cy-33);g.lineTo(cx+dir*19,cy-14);
       g.closePath();g.fillStyle=col;g.fill();g.stroke();
     }
   }else if(s===1){ // grunt: horn stubs + fangs
     blob(cx,cy,26,24);
     for(const dir of[-1,1]){
       g.beginPath();g.moveTo(cx+dir*12,cy-20);g.lineTo(cx+dir*20,cy-36);g.lineTo(cx+dir*24,cy-16);
-      g.closePath();g.fillStyle="#f2e8d0";g.fill();g.stroke();
+      g.closePath();g.fillStyle=ballGrad(g,cx+dir*18,cy-26,10,"#e8d8b0");g.fill();g.stroke();
     }
-  }else if(s===2){ // bruiser: wide, angry brows
+  }else if(s===2){ // bruiser: wide body + belly patch
     blob(cx,cy,30,25);
-    g.fillStyle=shade(col,.7);
-    g.beginPath();g.ellipse(cx,cy+14,22,9,0,0,6.29);g.fill();g.stroke();
+    g.fillStyle=shade(col,.68);
+    g.beginPath();g.ellipse(cx,cy+13,20,9,0,0,6.29);g.fill();
+    g.lineWidth=3;g.stroke();g.lineWidth=5;
   }else if(ghost){ // drifter: teardrop with wavy skirt
     g.beginPath();
     g.moveTo(cx-24,cy+16);
     g.quadraticCurveTo(cx-28,cy-24,cx,cy-30);
     g.quadraticCurveTo(cx+28,cy-24,cx+24,cy+16);
     for(let i=0;i<4;i++)g.quadraticCurveTo(cx+18-i*12,cy+(i%2?12:24),cx+12-i*12,cy+16);
-    g.closePath();g.fillStyle=col;g.fill();g.stroke();
-  }else if(s===4){ // tank: big body, curved horns, arms
+    g.closePath();g.fillStyle=ballGrad(g,cx,cy-6,30,col);g.fill();g.stroke();
+    g.fillStyle="rgba(255,255,255,.35)"; // inner glow wisp
+    g.beginPath();g.ellipse(cx-8,cy-14,7,10,-.4,0,6.29);g.fill();
+  }else if(s===4){ // tank: big body, curved horns, stub arms
     blob(cx,cy,32,28);
     for(const dir of[-1,1]){
       g.beginPath();
       g.moveTo(cx+dir*16,cy-22);
       g.quadraticCurveTo(cx+dir*34,cy-34,cx+dir*28,cy-48);
       g.quadraticCurveTo(cx+dir*40,cy-36,cx+dir*24,cy-18);
-      g.closePath();g.fillStyle="#f2e8d0";g.fill();g.stroke();
+      g.closePath();g.fillStyle=ballGrad(g,cx+dir*28,cy-34,14,"#e8d8b0");g.fill();g.stroke();
       g.beginPath();g.ellipse(cx+dir*32,cy+10,9,13,dir*.4,0,6.29);
-      g.fillStyle=col;g.fill();g.stroke();
+      g.fillStyle=ballGrad(g,cx+dir*32,cy+8,11,col);g.fill();g.stroke();
     }
   }else{ // speedster: spiky ball
-    blob(cx,cy,25,23);
-    for(let i=0;i<7;i++){
-      const a=-.5-i*.35,r1=24;
+    for(let i=0;i<8;i++){
+      const a=i/8*Math.PI*2-.4,r1=22;
       g.beginPath();
       g.moveTo(cx+Math.cos(a)*r1*.9,cy+Math.sin(a)*r1*.85);
-      g.lineTo(cx+Math.cos(a)*(r1+14),cy+Math.sin(a)*(r1+13));
-      g.lineTo(cx+Math.cos(a+.28)*r1*.9,cy+Math.sin(a+.28)*r1*.85);
-      g.closePath();g.fillStyle=shade(col,.8);g.fill();g.stroke();
+      g.lineTo(cx+Math.cos(a+.2)*(r1+15),cy+Math.sin(a+.2)*(r1+14));
+      g.lineTo(cx+Math.cos(a+.42)*r1*.9,cy+Math.sin(a+.42)*r1*.85);
+      g.closePath();g.fillStyle=shade(col,.78);g.fill();g.stroke();
     }
+    blob(cx,cy,25,23);
   }
-  // face: big cartoon eyes + fangs
+  // face: big cartoon eyes with shine, angry brows on brutes
   const ey=ghost?cy-8:cy-4,er=s===4?8:7;
   for(const dir of[-1,1]){
     g.beginPath();g.ellipse(cx+dir*11,ey,er,er+2,0,0,6.29);
     g.fillStyle=ghost?"#141024":"#fff";g.fill();
     g.lineWidth=3.5;g.stroke();g.lineWidth=5;
     if(!ghost){
-      g.beginPath();g.arc(cx+dir*11+dir*2,ey+2,3.4,0,6.29);
+      g.beginPath();g.arc(cx+dir*11+dir*2,ey+2,3.6,0,6.29);
       g.fillStyle="#141024";g.fill();
+      g.beginPath();g.arc(cx+dir*11,ey-1,1.3,0,6.29);
+      g.fillStyle="#fff";g.fill();
+    }else{
+      g.beginPath();g.arc(cx+dir*11-1,ey-2,1.6,0,6.29);
+      g.fillStyle="rgba(180,220,255,.9)";g.fill();
     }
+  }
+  if(s===1||s===2||s===4){ // angry brows
+    g.lineWidth=4;g.strokeStyle=OL;
+    for(const dir of[-1,1]){
+      g.beginPath();g.moveTo(cx+dir*4,ey-er-6);g.lineTo(cx+dir*16,ey-er-1);g.stroke();
+    }
+    g.lineWidth=5;
   }
   if(s===1||s===2||s===4){ // fangs
     g.fillStyle="#fff";g.lineWidth=2.5;
@@ -813,6 +836,264 @@ function gemSprite(){
   gemCv=c;return c;
 }
 
+/* ---------- unique drawn boss models (two per world) ---------- */
+const BCOLORS=[["#ff8a3c","#4e9a4e"],["#3a3a52","#e8e0c8"],["#4a4258","#7a4fd8"],["#e8e8f8","#2f9e88"],["#c8b088","#9a9aa8"]];
+const bossCache=new Map();
+function bossSprite(w,i){
+  const key=w+"-"+i;
+  if(bossCache.has(key))return bossCache.get(key);
+  const C=160,c=document.createElement("canvas");c.width=c.height=C;
+  const g=c.getContext("2d"),cx=80,cy=92;
+  const col=BCOLORS[w][i],OL="#141024";
+  g.lineWidth=5.5;g.strokeStyle=OL;g.lineJoin="round";g.lineCap="round";
+  const ball=(x,y,rx,ry,hex)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,6.29);
+    g.fillStyle=ballGrad(g,x,y,Math.max(rx,ry),hex||col);g.fill();g.stroke();};
+  const eye=(x,y,r,red)=>{ // fierce boss eye
+    g.beginPath();g.ellipse(x,y,r,r*1.15,0,0,6.29);
+    g.fillStyle=red?"#ff4030":"#fff";g.fill();g.lineWidth=3.5;g.stroke();g.lineWidth=5.5;
+    g.beginPath();g.arc(x,y+1,r*.42,0,6.29);g.fillStyle=OL;g.fill();
+  };
+  const brows=(y,r)=>{g.lineWidth=4.5;
+    for(const d of[-1,1]){g.beginPath();g.moveTo(cx+d*4,y-r-7);g.lineTo(cx+d*19,y-r);g.stroke();}
+    g.lineWidth=5.5;};
+  const id=w+"-"+i;
+  if(id==="0-0"){ // Nine Tails — fox with a fan of tails
+    for(let k=-2;k<=2;k++){
+      const a=-Math.PI/2+k*.5;
+      g.beginPath();
+      g.moveTo(cx,cy-8);
+      g.quadraticCurveTo(cx+Math.cos(a)*52,cy-12+Math.sin(a)*46,cx+Math.cos(a)*64,cy-16+Math.sin(a)*58);
+      g.quadraticCurveTo(cx+Math.cos(a+.28)*46,cy-8+Math.sin(a+.28)*40,cx,cy-2);
+      g.closePath();g.fillStyle=ballGrad(g,cx+Math.cos(a)*40,cy-10+Math.sin(a)*36,18,col);g.fill();g.stroke();
+      g.beginPath();g.arc(cx+Math.cos(a)*58,cy-14+Math.sin(a)*52,6,0,6.29);
+      g.fillStyle="#fff";g.fill();g.lineWidth=3;g.stroke();g.lineWidth=5.5;
+    }
+    ball(cx,cy+6,36,30);
+    for(const d of[-1,1]){ // ears
+      g.beginPath();g.moveTo(cx+d*12,cy-20);g.lineTo(cx+d*24,cy-44);g.lineTo(cx+d*30,cy-14);
+      g.closePath();g.fillStyle=col;g.fill();g.stroke();
+    }
+    ball(cx,cy+16,16,11,"#f8f0e0"); // snout
+    g.beginPath();g.arc(cx,cy+12,3.4,0,6.29);g.fillStyle=OL;g.fill();
+    eye(cx-14,cy-2,7,true);eye(cx+14,cy-2,7,true);brows(cy-2,8);
+  }else if(id==="0-1"){ // Great Serpent — coiled snake
+    ball(cx,cy+22,42,17,shade(col,.85));
+    ball(cx,cy+2,33,15);
+    ball(cx-4,cy-18,24,13,shade(col,1.1));
+    ball(cx+10,cy-34,19,15); // head
+    g.fillStyle="#e4574c"; // tongue
+    g.beginPath();g.moveTo(cx+28,cy-32);g.lineTo(cx+42,cy-30);g.lineTo(cx+36,cy-26);g.closePath();g.fill();g.stroke();
+    eye(cx+6,cy-38,5.5,false);eye(cx+19,cy-36,5.5,false);
+    g.fillStyle="#fff";g.lineWidth=2.5; // fangs
+    g.beginPath();g.moveTo(cx+18,cy-24);g.lineTo(cx+20,cy-16);g.lineTo(cx+23,cy-23);g.closePath();g.fill();g.stroke();
+    g.lineWidth=5.5;
+  }else if(id==="1-0"){ // Menos — towering cloak and white mask
+    g.beginPath(); // tall cloak
+    g.moveTo(cx-34,cy+38);
+    g.quadraticCurveTo(cx-38,cy-40,cx,cy-46);
+    g.quadraticCurveTo(cx+38,cy-40,cx+34,cy+38);
+    g.closePath();g.fillStyle=ballGrad(g,cx,cy-4,42,col);g.fill();g.stroke();
+    for(let k=0;k<5;k++){ // spiky collar
+      g.beginPath();g.moveTo(cx-26+k*13,cy+2);g.lineTo(cx-20+k*13,cy-12);g.lineTo(cx-13+k*13,cy+2);
+      g.closePath();g.fillStyle="#f2ecff";g.fill();g.stroke();
+    }
+    ball(cx,cy-24,20,15,"#f8f4ec"); // mask
+    g.fillStyle=OL;
+    g.beginPath();g.ellipse(cx-8,cy-26,4.4,5.8,0,0,6.29);g.fill();
+    g.beginPath();g.ellipse(cx+8,cy-26,4.4,5.8,0,0,6.29);g.fill();
+    g.lineWidth=3; // jagged mask mouth
+    g.beginPath();g.moveTo(cx-11,cy-14);
+    for(let k=0;k<5;k++)g.lineTo(cx-11+(k+.5)*4.4,cy-(k%2?12:17)+0);
+    g.stroke();g.lineWidth=5.5;
+  }else if(id==="1-1"){ // Hollow King — crowned great skull
+    ball(cx,cy-6,32,29,"#efe8d4");
+    g.beginPath(); // jaw
+    g.moveTo(cx-22,cy+16);g.lineTo(cx+22,cy+16);g.lineTo(cx+17,cy+34);g.lineTo(cx-17,cy+34);
+    g.closePath();g.fillStyle=ballGrad(g,cx,cy+24,20,"#e2d8bc");g.fill();g.stroke();
+    g.lineWidth=2.5;g.beginPath(); // teeth seams
+    for(let k=-2;k<=2;k++){g.moveTo(cx+k*8,cy+18);g.lineTo(cx+k*8,cy+32);}
+    g.stroke();g.lineWidth=5.5;
+    g.fillStyle=OL; // sockets
+    g.beginPath();g.ellipse(cx-12,cy-8,7.5,9,0,0,6.29);g.fill();
+    g.beginPath();g.ellipse(cx+12,cy-8,7.5,9,0,0,6.29);g.fill();
+    g.fillStyle="#ff4030";
+    g.beginPath();g.arc(cx-12,cy-7,3,0,6.29);g.fill();
+    g.beginPath();g.arc(cx+12,cy-7,3,0,6.29);g.fill();
+    g.lineWidth=2.5;g.beginPath();g.moveTo(cx+20,cy-28);g.lineTo(cx+28,cy-14);g.stroke();g.lineWidth=5.5; // crack
+    g.fillStyle="#ffd75e"; // crown
+    g.beginPath();g.moveTo(cx-18,cy-30);g.lineTo(cx-18,cy-46);g.lineTo(cx-9,cy-36);g.lineTo(cx,cy-50);
+    g.lineTo(cx+9,cy-36);g.lineTo(cx+18,cy-46);g.lineTo(cx+18,cy-30);g.closePath();g.fill();g.stroke();
+  }else if(id==="2-0"){ // Spider Mother — legs, abdomen, many eyes
+    for(let k=0;k<4;k++)for(const d of[-1,1]){
+      g.beginPath();
+      g.moveTo(cx+d*18,cy-2+k*7);
+      g.quadraticCurveTo(cx+d*52,cy-26+k*10,cx+d*60,cy+6+k*9);
+      g.lineWidth=7;g.stroke();g.lineWidth=5.5;
+    }
+    ball(cx,cy+18,26,20,shade(col,.8)); // abdomen
+    g.fillStyle="#e4574c";
+    g.beginPath();g.moveTo(cx,cy+8);g.lineTo(cx-6,cy+22);g.lineTo(cx,cy+30);g.lineTo(cx+6,cy+22);g.closePath();g.fill(); // marking
+    ball(cx,cy-12,22,18); // head
+    eye(cx-9,cy-16,5,true);eye(cx+9,cy-16,5,true);
+    eye(cx-16,cy-8,3,true);eye(cx+16,cy-8,3,true);
+    g.fillStyle="#fff";g.lineWidth=2.5;
+    for(const d of[-1,1]){g.beginPath();g.moveTo(cx+d*7,cy);g.lineTo(cx+d*4,cy+8);g.lineTo(cx+d*1,cy);g.closePath();g.fill();g.stroke();}
+    g.lineWidth=5.5;
+  }else if(id==="2-1"){ // Upper Moon — horned demon with cracked skin
+    ball(cx,cy+12,30,26);
+    ball(cx,cy-18,23,21,shade(col,1.15)); // head
+    g.beginPath(); // long horn
+    g.moveTo(cx-4,cy-36);g.quadraticCurveTo(cx-2,cy-58,cx+14,cy-64);
+    g.quadraticCurveTo(cx+6,cy-52,cx+8,cy-34);g.closePath();
+    g.fillStyle=ballGrad(g,cx+4,cy-50,12,"#e8d8c0");g.fill();g.stroke();
+    g.lineWidth=2.5;g.strokeStyle="#2a1a3a"; // skin cracks
+    g.beginPath();g.moveTo(cx-16,cy-26);g.lineTo(cx-8,cy-18);g.moveTo(cx+16,cy-10);g.lineTo(cx+8,cy-16);g.stroke();
+    g.strokeStyle=OL;g.lineWidth=5.5;
+    eye(cx-9,cy-20,6,true);eye(cx+9,cy-20,6,true);brows(cy-20,7);
+  }else if(id==="3-0"){ // Frost Tyrant — sleek dome + tail
+    g.beginPath(); // tail
+    g.moveTo(cx+20,cy+22);g.quadraticCurveTo(cx+58,cy+30,cx+54,cy-6);
+    g.quadraticCurveTo(cx+46,cy+18,cx+16,cy+10);g.closePath();
+    g.fillStyle=ballGrad(g,cx+40,cy+12,18,col);g.fill();g.stroke();
+    ball(cx,cy+8,26,28); // body
+    ball(cx,cy+10,14,17,"#6a4fd8"); // chest plate
+    ball(cx,cy-26,19,17); // head
+    ball(cx,cy-34,12,7,"#6a4fd8"); // dome crest
+    for(const d of[-1,1]){ // shoulder pads
+      ball(cx+d*24,cy-6,10,12,"#6a4fd8");
+    }
+    eye(cx-8,cy-26,5.5,true);eye(cx+8,cy-26,5.5,true);brows(cy-26,6);
+  }else if(id==="3-1"){ // Galactic Wyrm — whiskered dragon
+    g.beginPath(); // snaking body
+    g.moveTo(cx-44,cy+30);
+    g.quadraticCurveTo(cx-10,cy+44,cx+8,cy+22);
+    g.quadraticCurveTo(cx+22,cy+4,cx+2,cy-8);
+    g.quadraticCurveTo(cx-16,cy-18,cx-2,cy-28);
+    g.lineTo(cx+6,cy-16);
+    g.quadraticCurveTo(cx+34,cy-2,cx+18,cy+26);
+    g.quadraticCurveTo(cx+2,cy+52,cx-44,cy+38);
+    g.closePath();g.fillStyle=ballGrad(g,cx-4,cy+10,40,col);g.fill();g.stroke();
+    ball(cx+14,cy-34,17,13); // head
+    for(const d of[-1,1]){ // antlers
+      g.beginPath();g.moveTo(cx+8+d*6,cy-44);g.lineTo(cx+4+d*14,cy-58);g.lineWidth=4;g.stroke();g.lineWidth=5.5;
+    }
+    g.lineWidth=3; // whiskers
+    g.beginPath();g.moveTo(cx+30,cy-34);g.quadraticCurveTo(cx+48,cy-30,cx+52,cy-18);g.stroke();
+    g.beginPath();g.moveTo(cx-2,cy-34);g.quadraticCurveTo(cx-20,cy-30,cx-24,cy-18);g.stroke();
+    g.lineWidth=5.5;
+    eye(cx+8,cy-36,4.6,false);eye(cx+21,cy-35,4.6,false);
+  }else if(id==="4-0"){ // The Colossal One — grinning giant
+    ball(cx,cy+30,40,18,shade(col,.75)); // shoulders
+    ball(cx,cy-6,30,32); // head
+    g.fillStyle="#f2ecff"; // exposed grin
+    g.beginPath();g.moveTo(cx-22,cy+8);g.lineTo(cx+22,cy+8);g.lineTo(cx+18,cy+22);g.lineTo(cx-18,cy+22);
+    g.closePath();g.fill();g.stroke();
+    g.lineWidth=2.5;g.beginPath();
+    for(let k=-2;k<=2;k++){g.moveTo(cx+k*8.5,cy+9);g.lineTo(cx+k*8.5,cy+21);}
+    g.moveTo(cx-20,cy+15);g.lineTo(cx+20,cy+15);
+    g.stroke();g.lineWidth=5.5;
+    g.lineWidth=3; // muscle striations
+    g.beginPath();g.moveTo(cx-24,cy-20);g.lineTo(cx-12,cy-14);g.moveTo(cx+24,cy-20);g.lineTo(cx+12,cy-14);g.stroke();
+    g.lineWidth=5.5;
+    eye(cx-12,cy-12,6,false);eye(cx+12,cy-12,6,false);brows(cy-12,7);
+  }else{ // Armored Brute — plated juggernaut
+    ball(cx,cy+16,34,26,shade(col,.9)); // torso
+    for(const d of[-1,1])ball(cx+d*30,cy+2,11,14,shade(col,1.1)); // pauldrons
+    g.fillStyle=ballGrad(g,cx,cy+16,20,shade(col,1.2)); // chest plate
+    g.beginPath();g.moveTo(cx-16,cy+2);g.lineTo(cx+16,cy+2);g.lineTo(cx+10,cy+30);g.lineTo(cx-10,cy+30);
+    g.closePath();g.fill();g.stroke();
+    ball(cx,cy-20,20,17,shade(col,1.15)); // helm
+    g.fillStyle=OL; // visor slit
+    g.beginPath();g.moveTo(cx-14,cy-22);g.lineTo(cx+14,cy-22);g.lineTo(cx+12,cy-15);g.lineTo(cx-12,cy-15);
+    g.closePath();g.fill();
+    g.fillStyle="#ffd75e"; // glowing eyes in the slit
+    g.beginPath();g.arc(cx-7,cy-18.5,2.6,0,6.29);g.fill();
+    g.beginPath();g.arc(cx+7,cy-18.5,2.6,0,6.29);g.fill();
+    g.beginPath();g.moveTo(cx-6,cy-36);g.lineTo(cx,cy-48);g.lineTo(cx+6,cy-36);g.closePath(); // crest
+    g.fill();g.stroke();
+  }
+  bossCache.set(key,c);return c;
+}
+
+/* ---------- drawn pickup + projectile sprites ---------- */
+const itemCache=new Map();
+function itemSprite(kind){
+  if(itemCache.has(kind))return itemCache.get(kind);
+  const c=document.createElement("canvas");c.width=c.height=48;
+  const g=c.getContext("2d");
+  g.lineWidth=3.5;g.strokeStyle="#141024";g.lineJoin="round";g.lineCap="round";
+  if(kind==="potion"){ // heart
+    g.beginPath();
+    g.moveTo(24,42);
+    g.bezierCurveTo(4,28,6,10,17,10);g.bezierCurveTo(21,10,24,13,24,17);
+    g.bezierCurveTo(24,13,27,10,31,10);g.bezierCurveTo(42,10,44,28,24,42);
+    g.closePath();g.fillStyle=ballGrad(g,20,18,16,"#e8434f");g.fill();g.stroke();
+    g.fillStyle="rgba(255,255,255,.6)";
+    g.beginPath();g.ellipse(16,17,4,5,-.5,0,6.29);g.fill();
+  }else if(kind==="bomb"){
+    g.beginPath();g.arc(23,28,15,0,6.29);
+    g.fillStyle=ballGrad(g,23,28,15,"#3a3448");g.fill();g.stroke();
+    g.fillStyle="#6a748c";g.fillRect(19,9,8,6);g.strokeRect(19,9,8,6);
+    g.lineWidth=3;g.beginPath();g.moveTo(25,9);g.quadraticCurveTo(31,2,38,6);g.stroke();g.lineWidth=3.5;
+    g.fillStyle="#ffb82e"; // spark
+    for(let k=0;k<4;k++){const a2=k*1.57+.4;
+      g.beginPath();g.moveTo(38+Math.cos(a2)*7,6+Math.sin(a2)*7);g.lineTo(38,6);g.stroke();}
+    g.fillStyle="rgba(255,255,255,.5)";
+    g.beginPath();g.ellipse(17,22,4,5,-.5,0,6.29);g.fill();
+  }else if(kind==="magnet"){ // horseshoe
+    g.lineWidth=13;g.strokeStyle="#141024";
+    g.beginPath();g.arc(24,22,12,Math.PI,0);g.moveTo(12,22);g.lineTo(12,36);g.moveTo(36,22);g.lineTo(36,36);g.stroke();
+    g.lineWidth=8;g.strokeStyle="#e8434f";
+    g.beginPath();g.arc(24,22,12,Math.PI,0);g.moveTo(12,22);g.lineTo(12,30);g.moveTo(36,22);g.lineTo(36,30);g.stroke();
+    g.strokeStyle="#f2ecff";
+    g.beginPath();g.moveTo(12,31);g.lineTo(12,36);g.moveTo(36,31);g.lineTo(36,36);g.stroke();
+    g.lineWidth=3.5;g.strokeStyle="#141024";
+  }else{ // gear chest
+    g.fillStyle=ballGrad(g,24,28,16,"#8a5a2a");
+    g.beginPath();g.moveTo(8,20);g.lineTo(40,20);g.lineTo(40,38);g.lineTo(8,38);g.closePath();g.fill();g.stroke();
+    g.beginPath();g.moveTo(8,20);g.quadraticCurveTo(24,6,40,20);g.closePath();
+    g.fillStyle=ballGrad(g,24,14,14,"#a06a34");g.fill();g.stroke();
+    g.fillStyle="#ffd75e";g.fillRect(20,18,8,12);g.strokeRect(20,18,8,12);
+    g.beginPath();g.arc(24,26,2.2,0,6.29);g.fillStyle="#141024";g.fill();
+  }
+  itemCache.set(kind,c);return c;
+}
+let shurCv=null,flameCv=null;
+function shurikenSprite(){
+  if(shurCv)return shurCv;
+  const c=document.createElement("canvas");c.width=c.height=40;
+  const g=c.getContext("2d");
+  g.lineWidth=3;g.strokeStyle="#141024";g.lineJoin="round";
+  g.fillStyle=ballGrad(g,20,20,16,"#aab4cc");
+  g.beginPath();
+  for(let k=0;k<4;k++){
+    const a=k*Math.PI/2;
+    g.lineTo(20+Math.cos(a)*18,20+Math.sin(a)*18);
+    g.lineTo(20+Math.cos(a+.9)*6,20+Math.sin(a+.9)*6);
+  }
+  g.closePath();g.fill();g.stroke();
+  g.beginPath();g.arc(20,20,3.2,0,6.29);g.fillStyle="#141024";g.fill();
+  shurCv=c;return c;
+}
+function flameSprite(){
+  if(flameCv)return flameCv;
+  const c=document.createElement("canvas");c.width=28;c.height=40;
+  const g=c.getContext("2d");
+  g.lineWidth=3;g.strokeStyle="#141024";g.lineJoin="round";
+  g.beginPath();
+  g.moveTo(14,2);
+  g.bezierCurveTo(26,14,26,26,14,37);
+  g.bezierCurveTo(2,26,2,14,14,2);
+  g.closePath();
+  const gr=g.createLinearGradient(0,2,0,37);
+  gr.addColorStop(0,"#ffe25e");gr.addColorStop(.5,"#ff9d2e");gr.addColorStop(1,"#e8434f");
+  g.fillStyle=gr;g.fill();g.stroke();
+  g.beginPath();
+  g.moveTo(14,12);g.bezierCurveTo(20,19,20,25,14,31);g.bezierCurveTo(8,25,8,19,14,12);
+  g.closePath();g.fillStyle="#fff2c0";g.fill();
+  flameCv=c;return c;
+}
+
 /* hand-drawn hero model: chibi ninja with silver hair, headband, scarf, katana */
 function rr(g,x,y,w,h,r){
   if(g.roundRect){g.beginPath();g.roundRect(x,y,w,h,r);g.fill();}
@@ -823,50 +1104,72 @@ function drawHero(x,y,t,flip,moving,alpha,g){
   g.save();g.translate(x,y);if(flip)g.scale(-1,1);
   if(alpha!==undefined)g.globalAlpha=alpha;
   const bob=Math.sin(t*8)*(moving?2.2:1.1);
-  const lg=moving?Math.sin(t*14)*5:0;
+  const lg=moving?Math.sin(t*14)*5.5:0;
+  const OL="#141024";
+  g.lineJoin="round";g.lineCap="round";
   // legs
-  g.strokeStyle="#1b1633";g.lineWidth=5;g.lineCap="round";
-  g.beginPath();g.moveTo(-4,8+bob*.3);g.lineTo(-4+lg,17);
-  g.moveTo(4,8+bob*.3);g.lineTo(4-lg,17);g.stroke();
-  // katana on back
-  g.strokeStyle="#93a7cc";g.lineWidth=3;
-  g.beginPath();g.moveTo(-9,2+bob);g.lineTo(-19,-13+bob);g.stroke();
-  g.strokeStyle="#ffd75e";g.lineWidth=3.4;
-  g.beginPath();g.moveTo(-7,-1+bob);g.lineTo(-11,-7+bob);g.stroke();
-  // flowing scarf
-  const sw=Math.sin(t*6)*3;
-  g.lineJoin="round";
-  g.fillStyle="#ff5fa2";g.strokeStyle="#141024";g.lineWidth=2.2;
+  g.strokeStyle=OL;g.lineWidth=5.5;
+  g.beginPath();g.moveTo(-4,9+bob*.3);g.lineTo(-4+lg,18);
+  g.moveTo(4,9+bob*.3);g.lineTo(4-lg,18);g.stroke();
+  // katana on back: outlined blade + gold wrap
+  g.strokeStyle=OL;g.lineWidth=5.2;
+  g.beginPath();g.moveTo(-8,3+bob);g.lineTo(-20,-14+bob);g.stroke();
+  g.strokeStyle="#b8c8e8";g.lineWidth=2.6;
+  g.beginPath();g.moveTo(-8,3+bob);g.lineTo(-20,-14+bob);g.stroke();
+  g.strokeStyle="#ffd75e";g.lineWidth=3.6;
+  g.beginPath();g.moveTo(-6.5,0+bob);g.lineTo(-10.5,-6+bob);g.stroke();
+  // flowing scarf with tail flick
+  const sw=Math.sin(t*6)*3.5;
+  g.fillStyle="#ff5fa2";g.strokeStyle=OL;g.lineWidth=2.4;
   g.beginPath();
-  g.moveTo(-2,-7+bob);
-  g.quadraticCurveTo(-17,-5+bob+sw,-27,1+bob+sw*1.6);
-  g.quadraticCurveTo(-16,3+bob+sw,-2,-2+bob);
+  g.moveTo(-1,-7+bob);
+  g.quadraticCurveTo(-18,-5+bob+sw,-29,1+bob+sw*1.7);
+  g.quadraticCurveTo(-24,5+bob+sw,-14,4+bob+sw*.7);
+  g.quadraticCurveTo(-7,3+bob,-1,-2+bob);
   g.closePath();g.fill();g.stroke();
-  // gi (outlined)
-  g.fillStyle="#262b4e";
-  if(g.roundRect){g.beginPath();g.roundRect(-8,-6+bob,16,16,5);g.fill();g.stroke();}
-  else{g.fillRect(-8,-6+bob,16,16);g.strokeRect(-8,-6+bob,16,16);}
-  g.fillStyle="#ff5fa2";g.fillRect(-8,1+bob,16,3);
-  // head (outlined)
-  g.fillStyle="#f2d4b0";
-  g.beginPath();g.arc(0,-14+bob,8.5,0,6.29);g.fill();g.stroke();
-  // silver hair spikes (outlined)
-  g.fillStyle="#e8ecf8";
+  // gi with gradient, flared skirt
+  const bg=g.createLinearGradient(0,-6+bob,0,12+bob);
+  bg.addColorStop(0,"#3c4380");bg.addColorStop(1,"#20244a");
+  g.fillStyle=bg;g.lineWidth=2.6;
   g.beginPath();
-  g.moveTo(-9.5,-15+bob);
-  g.lineTo(-7,-26+bob);g.lineTo(-2.5,-20+bob);g.lineTo(.5,-28+bob);
-  g.lineTo(4.5,-20+bob);g.lineTo(8.5,-25+bob);g.lineTo(9.5,-15+bob);
-  g.quadraticCurveTo(0,-23+bob,-9.5,-15+bob);
+  g.moveTo(-7.5,-5+bob);
+  g.quadraticCurveTo(-10,10+bob,-6.5,11.5+bob);g.lineTo(6.5,11.5+bob);
+  g.quadraticCurveTo(10,10+bob,7.5,-5+bob);g.closePath();g.fill();g.stroke();
+  // sash
+  g.fillStyle="#ff5fa2";g.fillRect(-8.4,2.5+bob,16.8,3.4);
+  g.lineWidth=1.8;g.strokeRect(-8.4,2.5+bob,16.8,3.4);g.lineWidth=2.6;
+  // big chibi head with skin gradient
+  const hg=g.createRadialGradient(-3,-19+bob,2,0,-16+bob,12);
+  hg.addColorStop(0,"#ffe9cf");hg.addColorStop(1,"#eec9a0");
+  g.fillStyle=hg;
+  g.beginPath();g.arc(0,-16+bob,10.5,0,6.29);g.fill();g.stroke();
+  // silver hair spikes with sheen
+  const hgr=g.createLinearGradient(0,-32+bob,0,-14+bob);
+  hgr.addColorStop(0,"#ffffff");hgr.addColorStop(1,"#c2cce8");
+  g.fillStyle=hgr;
+  g.beginPath();
+  g.moveTo(-11.5,-16+bob);
+  g.lineTo(-9,-30+bob);g.lineTo(-4,-23+bob);g.lineTo(0,-32+bob);
+  g.lineTo(4.5,-23+bob);g.lineTo(9.5,-29+bob);g.lineTo(11.5,-16+bob);
+  g.quadraticCurveTo(0,-26+bob,-11.5,-16+bob);
   g.closePath();g.fill();g.stroke();
-  // headband
-  g.fillStyle="#1b1633";g.fillRect(-9,-18.5+bob,18,4.5);
-  g.fillStyle="#93a7cc";g.fillRect(-3.4,-18.5+bob,6.8,4.5);
-  // eyes: big cartoon whites + pupils
-  for(const ex2 of[2.8,7.2]){
+  // headband + steel plate
+  g.fillStyle="#252a4e";
+  g.fillRect(-11,-21+bob,22,5);g.strokeRect(-11,-21+bob,22,5);
+  g.fillStyle="#b8c8e8";
+  g.fillRect(-4,-20.6+bob,8,4.2);g.lineWidth=1.8;g.strokeRect(-4,-20.6+bob,8,4.2);g.lineWidth=2.6;
+  // headband knot tails
+  g.fillStyle="#252a4e";
+  g.beginPath();g.moveTo(-11,-19+bob);g.lineTo(-17,-14+bob+sw*.4);g.lineTo(-12,-16+bob);g.closePath();g.fill();
+  // eyes: whites + pupils + shine
+  for(const ex2 of[3,7.8]){
     g.fillStyle="#fff";
-    g.beginPath();g.ellipse(ex2,-12.5+bob,2.4,2.9,0,0,6.29);g.fill();
-    g.fillStyle="#141024";
-    g.beginPath();g.arc(ex2+.7,-12.2+bob,1.3,0,6.29);g.fill();
+    g.beginPath();g.ellipse(ex2,-13.5+bob,2.6,3.2,0,0,6.29);g.fill();
+    g.lineWidth=1.5;g.stroke();g.lineWidth=2.6;
+    g.fillStyle=OL;
+    g.beginPath();g.arc(ex2+.8,-13+bob,1.5,0,6.29);g.fill();
+    g.fillStyle="#fff";
+    g.beginPath();g.arc(ex2+.2,-14.2+bob,.7,0,6.29);g.fill();
   }
   g.restore();g.globalAlpha=1;
 }
@@ -1323,6 +1626,7 @@ function spawnBoss(){
   const b={
     x:R.px+Math.cos(a)*d,y:R.py+Math.sin(a)*d,
     hp,maxhp:hp,spd:46+R.bossKills*4,dmg:30,xp:10,r:44,e:def.e,name:def.n,
+    w:STAGES.indexOf(R.stg),bIdx:R.bossKills%defs.length,
     boss:true,flash:0,hitAt:0,orbAt:0,ph:0,dead:false
   };
   R.enemies.push(b);R.boss=b;
@@ -1822,7 +2126,7 @@ function renderGame(){
   }
   for(const it of R.items){
     const bob=Math.sin(t*4+it.t)*4;
-    ctx.drawImage(outlined(it.e,28),wx(it.x)-15,wy(it.y)-15+bob,30,30);
+    ctx.drawImage(itemSprite(it.kind),wx(it.x)-16,wy(it.y)-16+bob,32,32);
     ctx.strokeStyle="rgba(255,215,94,.5)";ctx.lineWidth=1.5;
     ctx.beginPath();ctx.arc(wx(it.x),wy(it.y)+bob,20+Math.sin(t*5)*3,0,6.29);ctx.stroke();
   }
@@ -1877,10 +2181,9 @@ function renderGame(){
       ctx.strokeStyle="rgba(255,77,94,.7)";ctx.lineWidth=3;
       ctx.beginPath();ctx.arc(ex,ey,e.r+10+Math.sin(t*4)*3,0,6.29);ctx.stroke();
     }
-    const mdl=e.boss?outlined(e.e,48):monsterSprite(e.w,e.slot);
+    const mdl=e.boss?bossSprite(e.w,e.bIdx):monsterSprite(e.w,e.slot);
     ctx.drawImage(mdl,ex-size/2,ey-size/2+bob,size,size);
-    if(e.boss)drawCrown(ex,ey-e.r-14+bob,15);
-    else if(e.elite)drawCrown(ex,ey-e.r-9+bob,9);
+    if(e.elite&&!e.boss)drawCrown(ex,ey-e.r-9+bob,9);
     if(e.flash>0){ctx.globalAlpha=e.flash*6;ctx.globalCompositeOperation="lighter";
       ctx.drawImage(mdl,ex-size/2,ey-size/2+bob,size,size);
       ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;}
@@ -1893,9 +2196,10 @@ function renderGame(){
     const bx=wx(b.x),by=wy(b.y);
     if(b.star){
       ctx.save();ctx.translate(bx,by);ctx.rotate(t*14);
-      ctx.drawImage(sprite("✴️",20),-10,-10,20,20);ctx.restore();
+      ctx.drawImage(shurikenSprite(),-11,-11,22,22);ctx.restore();
     }else if(b.fire){
-      ctx.drawImage(sprite("🔥",22),bx-11,by-11,22,22);
+      ctx.save();ctx.translate(bx,by);ctx.rotate(Math.atan2(b.vy,b.vx)+Math.PI/2);
+      ctx.drawImage(flameSprite(),-9,-13,18,26);ctx.restore();
     }else{
       ctx.fillStyle=b.c;ctx.shadowColor=b.c;ctx.shadowBlur=8;
       ctx.beginPath();ctx.arc(bx,by,b.r,0,6.29);ctx.fill();ctx.shadowBlur=0;
