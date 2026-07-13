@@ -278,7 +278,17 @@
     30%{transform:rotate(8deg);} 45%{transform:rotate(-7deg) scale(1.08);}
     60%{transform:rotate(6deg);} 80%{transform:rotate(-3deg) scale(1.12);}
   }
+  #pullBtns{display:flex; gap:8px; justify-content:center; width:min(380px,94vw);}
+  .pullB{flex:1; display:flex; flex-direction:column; align-items:center; gap:0; padding:11px 8px;}
+  .pullB small{font-size:10px; font-weight:900; color:#7a4a00;}
+  .pullB.off{filter:grayscale(.9); opacity:.6;}
   #pullResult{min-height:86px; display:flex; align-items:center; justify-content:center;}
+  #pullResult .multi{display:flex; flex-direction:column; gap:6px; width:min(380px,94vw);}
+  #pullResult .mgrid{display:grid; grid-template-columns:repeat(6,1fr); gap:5px; max-height:26vh; overflow-y:auto;}
+  #pullResult .mtile{position:relative; aspect-ratio:1; border-radius:9px; border:2px solid var(--line);
+    background:var(--panel); display:flex; align-items:center; justify-content:center;}
+  #pullResult .mtile img{width:78%; height:78%;}
+  #pullResult .msum{display:flex; gap:8px; justify-content:center; font-size:11px; font-weight:900; flex-wrap:wrap;}
   .pullcard{
     display:flex; align-items:center; gap:12px; padding:12px 18px; border-radius:14px;
     background:linear-gradient(180deg,#2e3752,#222a3d); border:3px solid var(--line);
@@ -586,7 +596,11 @@
   <div class="shardline">🔮 <span class="num" id="shards-chest">0</span></div>
   <img id="chestImg" alt="chest">
   <div id="pullResult"></div>
-  <button class="bigbtn" id="pullBtn">Open ×1 — 60 🔮</button>
+  <div id="pullBtns">
+    <button class="bigbtn pullB" id="pullBtn1" data-n="1" style="min-width:0;">×1<small>60 🔮</small></button>
+    <button class="bigbtn pullB" id="pullBtn10" data-n="10" style="min-width:0;">×10<small>600 🔮</small></button>
+    <button class="bigbtn pullB" id="pullBtn100" data-n="100" style="min-width:0;">×100<small>6000 🔮</small></button>
+  </div>
   <button class="bigbtn alt" id="chestBackBtn">← Back</button>
 </div>
 
@@ -2502,34 +2516,52 @@ $("avatarBox").addEventListener("click",()=>{ac();show("chars");});
 
 /* ============================ chapter chest ============================ */
 const PULL_COST=60;
+let pulling=false;
 function paintChest(){
   $("shards-chest").textContent=fmt(SAVE.shards);
-  $("pullBtn").disabled=SAVE.shards<PULL_COST;
+  for(const n of[1,10,100])
+    $("pullBtn"+n).classList.toggle("off",pulling||SAVE.shards<PULL_COST*n);
 }
-$("pullBtn").addEventListener("click",()=>{
-  if(SAVE.shards<PULL_COST)return;
-  SAVE.shards-=PULL_COST;persist();
+function rollChestItem(){
+  const unlocked=STAGES.filter((s,i)=>stageUnlocked(i));
+  const w=STAGES.indexOf(unlocked[Math.floor(Math.random()*unlocked.length)]);
+  const r=Math.random(),rar=r<.05?4:r<.18?3:r<.45?2:r<.75?1:0;
+  return {w,s:Math.floor(Math.random()*6),r:rar};
+}
+function doPull(n){
+  const cost=PULL_COST*n;
+  if(pulling||SAVE.shards<cost)return;
+  pulling=true;SAVE.shards-=cost;
   $("pullResult").innerHTML="";
   const img=$("chestImg");
   img.classList.remove("shakeAnim");void img.offsetWidth;img.classList.add("shakeAnim");
-  $("pullBtn").disabled=true;SFX.buy();
+  paintChest();SFX.buy();
   setTimeout(()=>{
-    const unlocked=STAGES.filter((s,i)=>stageUnlocked(i));
-    const w=STAGES.indexOf(unlocked[Math.floor(Math.random()*unlocked.length)]);
-    const r=Math.random(),rar=r<.05?4:r<.18?3:r<.45?2:r<.75?1:0;
-    const item={w,s:Math.floor(Math.random()*6),r:rar};
-    SAVE.inv.push(item);SAVE.newGear=true;persist();
-    const d=gearDef(item);
-    $("pullResult").innerHTML=
-      `<div class="pullcard" style="border-color:${RAR[rar].c};box-shadow:0 0 18px ${RAR[rar].c}55;">
-        <img src="${gearIconURL(item.s,item.w)}">
-        <div><div class="pn">${d.n}</div>
-        <div class="pr" style="color:${RAR[rar].c}">${RAR[rar].n} · ${STAGES[w].n}</div></div>
+    const items=[];let bestRar=0;
+    for(let i=0;i<n;i++){const it=rollChestItem();items.push(it);SAVE.inv.push(it);if(it.r>bestRar)bestRar=it.r;}
+    SAVE.newGear=true;persist();
+    if(n===1){
+      const item=items[0],d=gearDef(item);
+      $("pullResult").innerHTML=
+        `<div class="pullcard" style="border-color:${RAR[item.r].c};box-shadow:0 0 18px ${RAR[item.r].c}55;">
+          <img src="${gearIconURL(item.s,item.w)}">
+          <div><div class="pn">${d.n}</div>
+          <div class="pr" style="color:${RAR[item.r].c}">${RAR[item.r].n} · ${STAGES[item.w].n}</div></div>
+        </div>`;
+    }else{
+      const counts=[0,0,0,0,0];items.forEach(it=>counts[it.r]++);
+      const summary=RAR.map((rr,i)=>counts[i]?`<span style="color:${rr.c}">${counts[i]} ${rr.n}</span>`:"").filter(Boolean).join(" · ");
+      const sorted=items.slice().sort((a,b)=>b.r-a.r);
+      $("pullResult").innerHTML=`<div class="multi">
+        <div class="msum">${summary}</div>
+        <div class="mgrid">${sorted.map(it=>`<div class="mtile r${it.r}"><img src="${gearIconURL(it.s,it.w)}"></div>`).join("")}</div>
       </div>`;
-    (rar>=3?SFX.win:SFX.level)();
-    paintChest();
+    }
+    (bestRar>=3?SFX.win:SFX.level)();
+    pulling=false;paintChest();
   },720);
-});
+}
+document.querySelectorAll(".pullB").forEach(b=>b.addEventListener("click",()=>doPull(+b.dataset.n)));
 $("chestBackBtn").addEventListener("click",()=>show("title"));
 
 /* ============================ records ============================ */
