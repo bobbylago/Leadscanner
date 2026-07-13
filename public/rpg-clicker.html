@@ -346,6 +346,27 @@
     background:#0a0716; border:1px solid var(--line); border-radius:999px; padding:1px 7px; color:var(--dim);
     white-space:nowrap;
   }
+  #upPanel{width:min(380px,94vw); min-height:8px;}
+  .upcard{
+    display:flex; align-items:center; gap:12px; padding:10px 12px; text-align:left;
+    background:linear-gradient(180deg,#2e3752,#222a3d); border:2.5px solid #000; border-radius:14px;
+    box-shadow:0 4px 0 rgba(0,0,0,.5);
+  }
+  .upcard img{width:44px; height:44px;}
+  .upcard .ui{flex:1; min-width:0;}
+  .upcard .un{font-weight:900; font-size:13px;}
+  .upcard .ust{font-size:11px; color:var(--cyan); margin-top:2px; font-weight:800;}
+  .upcard .lvbar{height:5px; border-radius:3px; background:#10141f; margin-top:4px; border:1px solid #000; overflow:hidden;}
+  .upcard .lvbar i{display:block; height:100%; background:linear-gradient(90deg,#8dff7a,#3ecf4a);}
+  .upbtns{display:flex; flex-direction:column; gap:5px;}
+  .upbtn{
+    border:2.5px solid #1f6e12; background:linear-gradient(180deg,#8ae04e,#4bb42e);
+    color:#153e0a; border-radius:10px; padding:6px 10px; font-weight:900; font-size:11px; cursor:pointer;
+    box-shadow:0 3px 0 #1f6e12; white-space:nowrap;
+  }
+  .upbtn.evo{border-color:#8a5c10; background:linear-gradient(180deg,#ffe25e,#ffb82e); box-shadow:0 3px 0 #8a5c10;}
+  .upbtn.off{border-color:#000; background:linear-gradient(180deg,#39435c,#232b3e); color:#8f9ab4; box-shadow:0 3px 0 #000;}
+  .upbtn:active{transform:translateY(2px);}
   #invHead{font-size:13px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
   #invGrid{
     display:grid; grid-template-columns:repeat(5,58px); gap:8px; justify-content:center;
@@ -542,6 +563,7 @@
     <canvas id="gearCv" width="220" height="260"></canvas>
     <div class="gcol" id="gcolR"></div>
   </div>
+  <div id="upPanel"></div>
   <div id="invHead">My Items <span id="invCount" class="num"></span></div>
   <div id="invGrid"></div>
   <div style="display:flex;gap:10px;">
@@ -714,7 +736,13 @@ const EVOS={
   iai:{req:"haste",n:"Zero-Step Iai",jp:"無拍子",d:"The draw cuts a cross through creation."},
   clone:{req:"focus",n:"Phantom Legion",jp:"幻影軍団",d:"Two more clones, striking at full power."},
   domain:{req:"vital",n:"Boundless Domain",jp:"無限領域",d:"Vaster, longer, and it nearly stops time."},
-  raidash:{req:"swift",n:"Storm God Step",jp:"神速雷帝",d:"A wider godspeed bolt with double the wrath."}
+  raidash:{req:"swift",n:"Storm God Step",jp:"神速雷帝",d:"A wider godspeed bolt with double the wrath."},
+  icefang:{req:"focus",n:"Absolute Zero",jp:"絶対零度",d:"Shards shatter, freezing foes solid."},
+  barrage:{req:"haste",n:"Thousand Fists",jp:"千手乱舞",d:"A blinding storm of strikes engulfs you."},
+  curse:{req:"lucky",n:"Malevolent Shrine",jp:"魔虚羅",d:"The sigil becomes a relentless rending field."},
+  smash:{req:"vital",n:"Plus Ultra Smash",jp:"覇天撃",d:"A colossal shockwave that flings the horde."},
+  scythe:{req:"swift",n:"Reaper's Waltz",jp:"死神円舞",d:"Longer chains carve a lethal storm ring."},
+  meteor:{req:"lucky",n:"Starfall Judgment",jp:"星落審判",d:"A rain of meteors blankets the field."}
 };
 
 /* ============================ awakened arts (world-locked abilities) ============================ */
@@ -790,8 +818,10 @@ const GEAR_SETS=[
   [["🔫","Scouter Blaster"],["🦺","Battle Plate"],["🟠","Four-Star Orb"],["🧤","Gravity Gloves"],["🥋","Warrior Sash"],["👢","Combat Boots"]],
   [["⚔️","Maneuver Blades"],["🧥","Scout Cloak"],["🗝️","Basement Key"],["🧤","Grip Gauntlets"],["🪢","Harness Straps"],["🥾","Trooper Boots"]]
 ];
-const gearDef=it=>({e:GEAR_SETS[it.w][it.s][0], n:GEAR_SETS[it.w][it.s][1]});
-const gearValue=it=>SLOTS[it.s].base*RAR[it.r].m*(1+it.w*.5);
+const gearDef=it=>({e:GEAR_SETS[it.w][it.s][0], n:(it.evo?"Awakened ":"")+GEAR_SETS[it.w][it.s][1]});
+const GEAR_MAXLVL=10;
+const gearValue=it=>SLOTS[it.s].base*RAR[it.r].m*(1+it.w*.5)*(1+((it.lvl||1)-1)*.15)*(it.evo?2:1);
+const gearUpCost=it=>Math.ceil(15*Math.pow(1.5,(it.lvl||1)-1)*(1+it.r*.4));
 function gearStatText(it){
   const v=gearValue(it),s=SLOTS[it.s];
   return s.stat==="hp"?`+${Math.round(v)} max HP`
@@ -1426,7 +1456,8 @@ function petalSprite(kind){
 }
 /* hand-drawn gear item icons: one design per slot, tinted per world */
 const WTINT=["#57b849","#7ba7d8","#e8434f","#18b89a","#c98a3a"];
-const gearIconCache=new Map();
+const gearIconCache=new Map(),gearIconCanvasCache=new Map();
+function gearIconCanvas(s,w){const k=s+"-"+w;if(!gearIconCanvasCache.has(k))gearIconURL(s,w);return gearIconCanvasCache.get(k);}
 function gearIconURL(s,w){
   const key=s+"-"+w;
   if(gearIconCache.has(key))return gearIconCache.get(key);
@@ -1475,10 +1506,12 @@ function gearIconURL(s,w){
     g.fillStyle="#2a2438";g.fillRect(20,46,34,8);g.strokeRect(20,46,34,8);
   }
   const url=c.toDataURL();
+  gearIconCanvasCache.set(key,c);
   gearIconCache.set(key,url);return url;
 }
 /* hand-drawn ability icons */
-const abIconCache=new Map();
+const abIconCache=new Map(),abIconCanvas=new Map();
+function abIconImg(id){if(!abIconCanvas.has(id))abilityIconURL(id);return abIconCanvas.get(id);}
 function abilityIconURL(id){
   if(abIconCache.has(id))return abIconCache.get(id);
   const c=document.createElement("canvas");c.width=c.height=72;
@@ -1564,6 +1597,48 @@ function abilityIconURL(id){
         g.beginPath();g.ellipse(hx,hy,9,7,a,0,6.29);
         g.fillStyle=ballGrad(g,hx,hy,9,"#57b849");g.fill();g.stroke();}
       break;
+    case"icefang": // ice crystal shard
+      g.fillStyle=ballGrad(g,36,36,18,"#9fe4ff");
+      g.beginPath();g.moveTo(36,6);g.lineTo(52,26);g.lineTo(46,58);g.lineTo(26,58);g.lineTo(20,26);g.closePath();
+      g.fill();g.stroke();
+      g.strokeStyle="#eaf8ff";g.lineWidth=2.5;
+      g.beginPath();g.moveTo(36,12);g.lineTo(36,54);g.moveTo(24,30);g.lineTo(48,44);g.moveTo(48,30);g.lineTo(24,44);g.stroke();
+      g.strokeStyle=OL;g.lineWidth=4;break;
+    case"barrage": // flurry of fists
+      for(const[fx,fy] of [[26,26],[46,30],[32,46]]){
+        g.fillStyle=ballGrad(g,fx,fy,11,"#e86a4a");
+        g.beginPath();g.arc(fx,fy,10,0,6.29);g.fill();g.stroke();
+        g.lineWidth=2;g.beginPath();for(const k of[-4,0,4]){g.moveTo(fx+k,fy-6);g.lineTo(fx+k,fy+2);}g.stroke();g.lineWidth=4;}
+      break;
+    case"curse": // blood sigil
+      g.strokeStyle="#c01830";g.lineWidth=4;
+      g.beginPath();g.arc(36,36,22,0,6.29);g.stroke();
+      g.beginPath();g.moveTo(36,14);g.lineTo(55,47);g.lineTo(17,47);g.closePath();g.stroke();
+      g.beginPath();g.moveTo(36,58);g.lineTo(17,25);g.lineTo(55,25);g.closePath();g.stroke();
+      g.strokeStyle=OL;g.lineWidth=2;
+      g.beginPath();g.arc(36,36,22,0,6.29);g.stroke();break;
+    case"smash": // impact burst
+      g.fillStyle=ballGrad(g,36,36,20,"#ffb82e");
+      g.beginPath();
+      for(let k=0;k<12;k++){const a=k*.523,r=k%2?24:12;g.lineTo(36+Math.cos(a)*r,36+Math.sin(a)*r);}
+      g.closePath();g.fill();g.stroke();
+      g.fillStyle="#fff2c0";g.beginPath();g.arc(36,36,7,0,6.29);g.fill();break;
+    case"scythe": // curved blade on chain
+      g.strokeStyle="#9aa8c8";g.lineWidth=3;
+      for(let k=0;k<4;k++){g.beginPath();g.arc(20,52,3,0,6.29);
+        g.moveTo(20+k*4,52-k*4);g.lineTo(24+k*4,48-k*4);g.stroke();}
+      g.strokeStyle=OL;g.lineWidth=4;
+      g.fillStyle=ballGrad(g,44,26,16,"#d8e2f4");
+      g.beginPath();g.moveTo(34,40);g.quadraticCurveTo(58,34,54,10);g.quadraticCurveTo(40,22,34,40);
+      g.closePath();g.fill();g.stroke();break;
+    case"meteor": // flaming rock
+      g.fillStyle=ballGrad(g,40,40,16,"#8a5a3a");
+      g.beginPath();g.arc(42,42,15,0,6.29);g.fill();g.stroke();
+      g.fillStyle="#ff8a3c";
+      g.beginPath();g.moveTo(14,10);g.lineTo(34,30);g.lineTo(24,34);g.lineTo(30,42);g.lineTo(14,10);
+      g.closePath();g.fill();g.stroke();
+      g.fillStyle="#3a2a22";g.beginPath();g.arc(38,44,3,0,6.29);g.fill();
+      g.beginPath();g.arc(48,38,2.5,0,6.29);g.fill();break;
     case"mirror": // crimson eye with three pupils
       g.fillStyle="#fff";
       g.beginPath();g.moveTo(6,36);g.quadraticCurveTo(36,10,66,36);g.quadraticCurveTo(36,62,6,36);
@@ -1660,6 +1735,7 @@ function abilityIconURL(id){
       g.beginPath();g.arc(44,32,10,2.6,6.6);g.stroke();break;
   }
   const url=c.toDataURL();
+  abIconCanvas.set(id,c);
   abIconCache.set(id,url);return url;
 }
 
@@ -1848,6 +1924,28 @@ function drawCrown(x,y,s){
   ctx.lineTo(x,y-s*.75);ctx.lineTo(x+s*.5,y-s*.2);ctx.lineTo(x+s,y-s*.55);ctx.lineTo(x+s,y);
   ctx.closePath();ctx.fill();
 }
+/* draw the equipped sword sweeping through its swing arc */
+function drawSwings(t,px2,py2){
+  for(const s of R.swings){
+    const k=s.t/s.life;               // 0..1 progress
+    const spread=1.9;                 // total arc radians
+    const a=s.ang+(k-.5)*spread*s.dir;
+    const reach=64;
+    // motion trail wedge
+    ctx.save();ctx.translate(px2,py2);
+    ctx.fillStyle="rgba(255,255,255,"+(0.5*(1-k))+")";
+    ctx.beginPath();ctx.moveTo(0,0);
+    for(let u=0;u<=1;u+=.2){const aa=s.ang+((k-.5)-u*.5*s.dir)*spread*s.dir;
+      ctx.lineTo(Math.cos(aa)*reach,Math.sin(aa)*reach);}
+    ctx.closePath();ctx.fill();
+    // the actual blade
+    ctx.rotate(a+Math.PI/2);
+    ctx.drawImage(gearIconCanvas(0,s.item.w),-16,-reach-4,32,32);
+    if(s.evo){ctx.strokeStyle="rgba(255,215,94,.8)";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(0,0,reach,-.4,.4);ctx.stroke();}
+    ctx.restore();
+  }
+}
 
 /* ============================ canvas ============================ */
 const cv=$("game"),ctx=cv.getContext("2d");
@@ -1882,7 +1980,19 @@ const WEAPONS=[
   {id:"domain",e:"🕳️",n:"Shadow Domain",jp:"領域展開",max:5,
    d:l=>`Expand a domain that slows foes and rends them (${18+10*l} dmg/tick)`},
   {id:"raidash",e:"🌩️",n:"Raijin Step",jp:"雷神脚",max:3,
-   d:l=>`Your dash becomes lightning, scorching your path (${40+30*l} dmg)`}
+   d:l=>`Your dash becomes lightning, scorching your path (${40+30*l} dmg)`},
+  {id:"icefang",e:"❄️",n:"Ice Fang",jp:"氷牙",max:5,
+   d:l=>`${2+l} freezing shards pierce & slow foes (${14+9*l} dmg)`},
+  {id:"barrage",e:"👊",n:"Gale Barrage",jp:"乱打",max:5,
+   d:l=>`A whirl of ${4+l*2} rapid strikes around you (${9+5*l} dmg each)`},
+  {id:"curse",e:"🩸",n:"Cursed Sigil",jp:"呪印",max:5,
+   d:l=>`Plant a sigil that pulses ${16+9*l} dmg over an area`},
+  {id:"smash",e:"💥",n:"Hero Smash",jp:"豪腕",max:5,
+   d:l=>`Shockwave punch every ${(3.5-l*.3).toFixed(1)}s (${34+18*l} dmg)`},
+  {id:"scythe",e:"🌾",n:"Chain Scythe",jp:"鎖鎌",max:5,
+   d:l=>`${l} bladed chain${l>1?"s":""} sweep a wide orbit (${20+10*l} dmg)`},
+  {id:"meteor",e:"☄️",n:"Meteor Fall",jp:"流星",max:5,
+   d:l=>`${1+Math.floor(l/2)} meteor${l>1?"s":""} crash on foes (${60+30*l} dmg)`}
 ];
 const PASSIVES=[
   {id:"focus",e:"🎯",n:"Focus",jp:"集中",max:5,d:l=>`+${15*l}% all damage`},
@@ -1906,7 +2016,9 @@ function newRun(){
     speed:170*(1+m.spd*.04),
     dmgMult:(1+m.atk*.05), atkSpd:1, critC:.03, magnetR:90,
     lvl:1, xp:0, need:6, kills:0, bossKills:0,
-    weapons:{}, passives:{}, timers:{bolt:0,shuriken:0,raiton:0,zan:0,kitsune:0,beam:0,clone:0,iai:0,domain:0},
+    weapons:{}, passives:{}, timers:{bolt:0,shuriken:0,raiton:0,zan:0,kitsune:0,beam:0,clone:0,iai:0,domain:0,
+      icefang:0,barrage:0,curse:0,smash:0,scythe:0,meteor:0,mainhand:0},
+    barrageA:0, scytheA:0, sigils:[], meteors:[], swings:[],
     domain:null, wasDash:false, dashStart:{x:0,y:0},
     charId:SAVE.chars.cur, evolved:{}, mods:null, ebullets:[],
     nextGoblinAt:rand(50,90), bonusShards:0,
@@ -2113,7 +2225,7 @@ function paintGear(){
   const slotHtml=(s,i)=>{
     const it=SAVE.equip[s.id];
     if(it){const d=gearDef(it);
-      return `<div class="gslot r${it.r}" data-slot="${s.id}" title="${d.n}"><img class="gico" src="${gearIconURL(it.s,it.w)}"><span class="slbl" style="color:${RAR[it.r].c}">${d.n.split(" ").slice(-1)}</span></div>`;}
+      return `<div class="gslot r${it.r} ${gearSel===s.id?"sel":""}" data-slot="${s.id}" title="${d.n}"><img class="gico" src="${gearIconURL(it.s,it.w)}"><span class="slbl" style="color:${RAR[it.r].c}">Lv${it.lvl||1}${it.evo?"★":""}</span></div>`;}
     return `<div class="gslot empty" data-slot="${s.id}"><img class="gico" src="${gearIconURL(SLOTS.indexOf(s),0)}"><span class="slbl">${s.lbl}</span></div>`;
   };
   $("gcolL").innerHTML=SLOTS.slice(0,3).map(slotHtml).join("");
@@ -2137,6 +2249,25 @@ function paintGear(){
   $("invGrid").innerHTML=tiles.length?tiles.join(""):`<div class="none">No items yet — defeat elites & bosses in the rifts to loot gear 🎁</div>`;
   $("invCount").textContent=SAVE.inv.length?`(${SAVE.inv.length})`:"";
   $("mergeBtn").disabled=![...groups.values()].some(g2=>g2.n>=3&&g2.it.r<4);
+  // upgrade panel for the selected equipped item
+  const sel=gearSel&&SAVE.equip[gearSel];
+  if(sel){
+    const d=gearDef(sel),lvl=sel.lvl||1,maxed=lvl>=GEAR_MAXLVL;
+    const cost=gearUpCost(sel),canUp=!maxed&&SAVE.shards>=cost;
+    const isWeapon=gearSel==="weapon";
+    const canEvo=maxed&&!sel.evo&&isWeapon&&SAVE.shards>=500;
+    const upBtn=maxed?(isWeapon?(sel.evo?`<button class="upbtn off">✦ Awakened</button>`
+        :`<button class="upbtn evo ${canEvo?"":"off"}" data-up="evo">✦ Evolve 500🔮</button>`)
+        :`<button class="upbtn off">MAX Lv</button>`)
+      :`<button class="upbtn ${canUp?"":"off"}" data-up="lvl">▲ Lv${lvl+1} · ${fmt(cost)}🔮</button>`;
+    $("upPanel").innerHTML=`<div class="upcard">
+      <img src="${gearIconURL(sel.s,sel.w)}">
+      <div class="ui"><div class="un" style="color:${RAR[sel.r].c}">${d.n} <span style="color:var(--dim);font-size:10px;">Lv ${lvl}/${GEAR_MAXLVL}</span></div>
+        <div class="ust">${gearStatText(sel)}${isWeapon?" · swings in battle":""}</div>
+        <div class="lvbar"><i style="width:${lvl/GEAR_MAXLVL*100}%"></i></div></div>
+      <div class="upbtns">${upBtn}<button class="upbtn off" data-up="unequip">Unequip</button></div>
+    </div>`;
+  }else $("upPanel").innerHTML=`<div style="font-size:11px;color:var(--dim);padding:4px;">Tap an equipped item to upgrade &amp; evolve it</div>`;
 }
 $("invGrid").addEventListener("click",e=>{
   const tEl=e.target.closest(".itile");if(!tEl)return;
@@ -2152,12 +2283,23 @@ $("invGrid").addEventListener("click",e=>{
   toast(`${d.e} ${d.n} equipped! (${gearStatText(item)})`);
   paintGear();
 });
+let gearSel=null;
 document.addEventListener("click",e=>{
-  const sl=e.target.closest(".gslot");if(!sl||sl.classList.contains("empty"))return;
-  const slot=sl.dataset.slot,item=SAVE.equip[slot];
-  if(!item)return;
-  SAVE.equip[slot]=null;SAVE.inv.push(item);persist();SFX.pick();
-  paintGear();
+  const sl=e.target.closest(".gslot");
+  if(sl&&!sl.classList.contains("empty")){
+    gearSel=sl.dataset.slot;SFX.pick();paintGear();return;
+  }
+  const ub=e.target.closest(".upbtn");
+  if(ub&&gearSel&&SAVE.equip[gearSel]){
+    const it=SAVE.equip[gearSel],act=ub.dataset.up;
+    if(act==="lvl"){const c=gearUpCost(it);
+      if((it.lvl||1)<GEAR_MAXLVL&&SAVE.shards>=c){SAVE.shards-=c;it.lvl=(it.lvl||1)+1;persist();SFX.buy();paintGear();}}
+    else if(act==="evo"){
+      if((it.lvl||1)>=GEAR_MAXLVL&&!it.evo&&SAVE.shards>=500){
+        SAVE.shards-=500;it.evo=true;persist();SFX.win();
+        toast(`✦ ${gearDef(it).n} awakened!`);paintGear();}}
+    else if(act==="unequip"){SAVE.equip[gearSel]=null;SAVE.inv.push(it);gearSel=null;persist();SFX.pick();paintGear();}
+  }
 });
 $("mergeBtn").addEventListener("click",()=>{
   let merges=0,changed=true;
@@ -2334,14 +2476,14 @@ function offerLevelUp(){
   for(const p of PASSIVES){const l=R.passives[p.id]||0;if(l<p.max)pool.push({def:p,cur:l,weapon:false});}
   for(const a of ARTS){const l=R.arts[a.id]||0;if(l<a.max&&artUnlocked(a))pool.push({def:a,cur:l,art:true});}
   const picks=[];
-  // evolution offer takes the first slot when earned
+  // any maxed weapon GUARANTEES its evolution appears every popup until taken
   for(const wid in EVOS){
     const ev=EVOS[wid],w=WEAPONS.find(x=>x.id===wid);
-    if(!R.evolved[wid]&&R.weapons[wid]===w.max&&(R.passives[ev.req]||0)>=3){
+    if(!R.evolved[wid]&&(R.weapons[wid]||0)>=w.max){
       picks.push({evo:wid,def:{id:wid,n:ev.n,jp:ev.jp,d:()=>ev.d}});
-      break;
     }
   }
+  if(picks.length>3)picks.length=3;
   while(picks.length<3&&pool.length)picks.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
   while(picks.length<3)picks.push({def:HEAL_CARD,cur:0,heal:true});
   $("lvCards").innerHTML=picks.map((p,i)=>`
@@ -2703,6 +2845,150 @@ function weaponsTick(dt){
       }
     }
   }
+  // Ice Fang — freezing piercing shards
+  const ic=W.icefang||0;
+  if(ic){
+    T.icefang-=dt;
+    if(T.icefang<=0){
+      const tgt=nearestEnemy(R.px,R.py,600);
+      if(tgt){
+        const evo=R.evolved.icefang,base=Math.atan2(tgt.y-R.py,tgt.x-R.px),n=2+ic;
+        for(let i=0;i<n;i++){const a=base+(i-(n-1)/2)*.2;
+          R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*420,vy:Math.sin(a)*420,
+            dmg:(14+9*ic)*R.dmgMult*(evo?1.5:1),r:8,pierce:99,life:1.4,c:"#9fe4ff",ice:true,freeze:evo});}
+        T.icefang=(1.8-ic*.12)/R.atkSpd;SFX.shot();
+      }
+    }
+  }
+  // Gale Barrage — rotating whirl of melee strikes
+  const bar=W.barrage||0;
+  if(bar){
+    R.barrageA+=dt*9;
+    T.barrage-=dt;
+    if(T.barrage<=0){
+      const evo=R.evolved.barrage,reach=evo?96:64,hits=4+bar*2;
+      for(let i=0;i<hits;i++){
+        const a=R.barrageA+i*Math.PI*2/hits;
+        const hx=R.px+Math.cos(a)*reach,hy=R.py+Math.sin(a)*reach;
+        for(const e of R.enemies){if(!e.dead&&dist2(hx,hy,e.x,e.y)<(20+e.r)*(20+e.r))
+          hitEnemy(e,(9+5*bar)*R.dmgMult*(evo?1.4:1));}
+      }
+      R.fx.push({kind:"barrage",x:R.px,y:R.py,r:reach,t:0,life:.18});
+      T.barrage=(.55-bar*.03)/R.atkSpd;if(Math.random()<.4)SFX.hit();
+    }
+  }
+  // Cursed Sigil — planted pulsing zone
+  const cur=W.curse||0;
+  if(cur){
+    T.curse-=dt;
+    if(T.curse<=0&&R.sigils.length<(R.evolved.curse?4:2)){
+      R.sigils.push({x:R.px,y:R.py,r:R.evolved.curse?130:90,until:R.t+6,next:R.t+.5,dmg:(16+9*cur)*R.dmgMult});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-40,ch:"呪",t:0,life:.5,c:"#c01830"});
+      T.curse=4/R.atkSpd;SFX.slash();
+    }
+  }
+  for(let i=R.sigils.length-1;i>=0;i--){const s=R.sigils[i];
+    if(R.t>=s.until){R.sigils.splice(i,1);continue;}
+    if(R.t>=s.next){s.next=R.t+.5;
+      for(const e of R.enemies)if(!e.dead&&dist2(e.x,e.y,s.x,s.y)<s.r*s.r)hitEnemy(e,s.dmg);}
+  }
+  // Hero Smash — shockwave punch
+  const sm=W.smash||0;
+  if(sm){
+    T.smash-=dt;
+    if(T.smash<=0){
+      const evo=R.evolved.smash,rr=evo?240:150;
+      for(const e of R.enemies){if(e.dead)continue;
+        const d2=dist2(e.x,e.y,R.px,R.py);
+        if(d2<rr*rr){const dd=Math.max(1,Math.sqrt(d2));
+          hitEnemy(e,(34+18*sm)*R.dmgMult*(evo?1.5:1),(e.x-R.px)/dd*(evo?90:50),(e.y-R.py)/dd*(evo?90:50));}}
+      R.fx.push({kind:"nova",x:R.px,y:R.py,r:rr,t:0,life:.34});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-46,ch:"豪",t:0,life:.5,c:"#ffb82e"});
+      R.shake=Math.max(R.shake,.35);SFX.bomb();hitStop(.04);
+      T.smash=(3.5-sm*.3)/R.atkSpd;
+    }
+  }
+  // Chain Scythe — wide sweeping orbit blades
+  const scy=W.scythe||0;
+  if(scy){
+    R.scytheA+=dt*(R.evolved.scythe?3.4:2.4);
+    const scyN=scy+(R.evolved.scythe?2:0),scyR=R.evolved.scythe?150:118;
+    for(let i=0;i<scyN;i++){
+      const a=R.scytheA+i*Math.PI*2/scyN;
+      const ox=R.px+Math.cos(a)*scyR,oy=R.py+Math.sin(a)*scyR;
+      for(const e of R.enemies){if(e.dead)continue;
+        if(R.t-(e.scyAt||0)>.4&&dist2(ox,oy,e.x,e.y)<(22+e.r)*(22+e.r)){
+          e.scyAt=R.t;hitEnemy(e,(20+10*scy)*R.dmgMult*(R.evolved.scythe?1.5:1));}}
+    }
+  }
+  // Meteor Fall — meteors crash on random enemies
+  const met=W.meteor||0;
+  if(met){
+    T.meteor-=dt;
+    if(T.meteor<=0&&R.enemies.length){
+      const n=1+Math.floor(met/2)+(R.evolved.meteor?2:0);
+      for(let i=0;i<n;i++){
+        const tg=R.enemies[Math.floor(Math.random()*R.enemies.length)];
+        if(tg&&!tg.dead)R.meteors.push({x:tg.x+rand(-30,30),y:tg.y+rand(-30,30),t:0,fall:.7,
+          dmg:(60+30*met)*R.dmgMult*(R.evolved.meteor?1.5:1),rad:R.evolved.meteor?90:64});
+      }
+      T.meteor=(2.6-met*.15)/R.atkSpd;
+    }
+  }
+  for(let i=R.meteors.length-1;i>=0;i--){const m=R.meteors[i];m.t+=dt;
+    if(m.t>=m.fall){
+      for(const e of R.enemies)if(!e.dead&&dist2(e.x,e.y,m.x,m.y)<m.rad*m.rad)hitEnemy(e,m.dmg);
+      R.fx.push({kind:"nova",x:m.x,y:m.y,r:m.rad*1.6,t:0,life:.32});
+      R.fx.push({kind:"flash",x:m.x,y:m.y,t:0,life:.2});
+      R.shake=Math.max(R.shake,.3);SFX.bomb();R.meteors.splice(i,1);
+    }
+  }
+  // Mainhand — the EQUIPPED weapon attacks in-world
+  mainhandTick(dt);
+}
+
+/* ---------- equipped weapon becomes a real attack ---------- */
+const WTYPE=["kunai","sword","sword","gun","blades","sword","curse","gun"]; // by world
+function equippedWeaponAttack(){
+  const it=SAVE.equip.weapon;if(!it)return null;
+  const lvl=it.lvl||1,mult=RAR[it.r].m*(1+lvl*.12)*(it.evo?2:1);
+  return {type:WTYPE[it.w]||"sword",item:it,dmg:26*mult*R.dmgMult,evo:it.evo};
+}
+function mainhandTick(dt){
+  const mw=equippedWeaponAttack();if(!mw)return;
+  const T=R.timers;T.mainhand-=dt;
+  const rate=(mw.type==="gun"?.55:mw.type==="blades"?.7:mw.type==="kunai"?.85:1.0)/R.atkSpd;
+  if(T.mainhand>0)return;
+  const tgt=nearestEnemy(R.px,R.py,mw.type==="sword"?150:560);
+  if(mw.type==="sword"){
+    // melee swing arc — actually swings the sword
+    const ang=tgt?Math.atan2(tgt.y-R.py,tgt.x-R.px):Math.atan2(R.diry,R.dirx);
+    const rr=94;
+    for(const e of R.enemies){if(e.dead)continue;
+      if(dist2(R.px,R.py,e.x,e.y)<rr*rr){
+        let da=Math.abs(((Math.atan2(e.y-R.py,e.x-R.px)-ang+Math.PI*3)%(Math.PI*2))-Math.PI);
+        if(da<1.1){const d=Math.max(1,Math.hypot(e.x-R.px,e.y-R.py));
+          hitEnemy(e,mw.dmg,(e.x-R.px)/d*30,(e.y-R.py)/d*30);}}}
+    R.swings.push({ang,dir:R.swingFlip?-1:1,t:0,life:.24,item:mw.item,evo:mw.evo});
+    R.swingFlip=!R.swingFlip;
+    SFX.slash();T.mainhand=rate;
+  }else if(mw.type==="kunai"||mw.type==="gun"){
+    if(!tgt){T.mainhand=.2;return;}
+    const a=Math.atan2(tgt.y-R.py,tgt.x-R.px);
+    const shots=mw.type==="gun"?1:1;
+    R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*(mw.type==="gun"?620:460),vy:Math.sin(a)*(mw.type==="gun"?620:460),
+      dmg:mw.dmg,r:6,pierce:mw.evo?3:1,life:1.4,c:mw.type==="gun"?"#ffd75e":"#dfe6ff",
+      wthrow:mw.type==="kunai",witem:mw.item});
+    (mw.type==="gun"?SFX.shot:SFX.shot)();T.mainhand=rate;
+  }else{ // blades — orbiting handled in render + here as pulse damage
+    const rr=70;
+    for(const e of R.enemies){if(e.dead)continue;
+      if(R.t-(e.bladeAt||0)>.4){
+        for(let i=0;i<2;i++){const a=R.t*4+i*Math.PI;
+          if(dist2(R.px+Math.cos(a)*rr,R.py+Math.sin(a)*rr,e.x,e.y)<(20+e.r)*(20+e.r)){
+            e.bladeAt=R.t;hitEnemy(e,mw.dmg*.6);break;}}}}
+    T.mainhand=.25;
+  }
 }
 
 /* ---------- awakened arts active/timed logic ---------- */
@@ -2911,6 +3197,7 @@ function update(dt){
       if(e.dead)continue;
       if(dist2(b.x,b.y,e.x,e.y)<(b.r+e.r)*(b.r+e.r)){
         hitEnemy(e,b.dmg);
+        if(b.ice){e.frozen=R.t+(b.freeze?1.6:.8);} // Ice Fang slow/freeze
         if(b.boom){ // evolved foxfire detonates
           for(const e2 of R.enemies)
             if(!e2.dead&&e2!==e&&dist2(b.x,b.y,e2.x,e2.y)<70*70)hitEnemy(e2,b.dmg*.6);
@@ -2938,6 +3225,7 @@ function update(dt){
     if(e.drift){const a=Math.atan2(sy,sx)+Math.sin(R.t*2+e.ph)*.7;sx=Math.cos(a);sy=Math.sin(a);}
     let sp=e.spd;
     if(R.domain&&R.t<R.domain.until&&dist2(e.x,e.y,R.domain.x,R.domain.y)<R.domain.r*R.domain.r)sp*=(R.domain.slow||.45);
+    if(e.frozen>R.t)sp*=.25; // Ice Fang chill
     if(e.boss){ // boss attack patterns
       if(e.mode==="tele"){ // wind-up: stand still, then commit to a charge
         if(R.t>=e.modeUntil){
@@ -3011,6 +3299,7 @@ function update(dt){
   for(let i=R.parts.length-1;i>=0;i--){const p=R.parts[i];p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;if(p.t>p.life)R.parts.splice(i,1);}
   for(let i=R.texts.length-1;i>=0;i--){const t=R.texts[i];t.t+=dt;t.y-=42*dt;if(t.t>t.life)R.texts.splice(i,1);}
   for(let i=R.fx.length-1;i>=0;i--){const f=R.fx[i];f.t+=dt;if(f.t>f.life)R.fx.splice(i,1);}
+  for(let i=R.swings.length-1;i>=0;i--){const s=R.swings[i];s.t+=dt;if(s.t>s.life)R.swings.splice(i,1);}
 
   R.spawnT-=dt;
   if(R.spawnT<=0){
@@ -3290,6 +3579,27 @@ function renderGame(){
     ctx.strokeStyle="rgba(194,107,255,.35)";ctx.lineWidth=6;
     ctx.beginPath();ctx.arc(dxp,dyp,D.r-7,0,6.29);ctx.stroke();
   }
+  // cursed sigils on the ground
+  for(const s of R.sigils){
+    const sx=wx(s.x),sy=wy(s.y),k=clamp((s.until-R.t)/6,0,1);
+    ctx.strokeStyle="rgba(192,24,48,"+(0.5+Math.sin(R.t*6)*.2)*k+")";ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(sx,sy,s.r,0,6.29);ctx.stroke();
+    ctx.save();ctx.translate(sx,sy);ctx.rotate(R.t*.6);
+    for(let p=0;p<2;p++){ctx.rotate(Math.PI);ctx.beginPath();
+      ctx.moveTo(0,-s.r*.7);ctx.lineTo(s.r*.6,s.r*.35);ctx.lineTo(-s.r*.6,s.r*.35);ctx.closePath();ctx.stroke();}
+    ctx.restore();
+  }
+  // meteor target rings + falling rocks
+  for(const m of R.meteors){
+    const mx=wx(m.x),my=wy(m.y),k=m.t/m.fall;
+    ctx.strokeStyle="rgba(255,138,60,.8)";ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(mx,my,m.rad*(1-k*.3),0,6.29);ctx.stroke();
+    ctx.beginPath();ctx.arc(mx,my,m.rad*k,0,6.29);ctx.stroke();
+    const rockY=my-(1-k)*420;
+    ctx.strokeStyle="rgba(255,180,80,.6)";ctx.lineWidth=6;
+    ctx.beginPath();ctx.moveTo(mx,rockY);ctx.lineTo(mx,rockY-40);ctx.stroke();
+    ctx.drawImage(abIconImg("meteor"),mx-16,rockY-16,32,32);
+  }
 
   for(const g of R.gems){
     const pulse=1+Math.sin(t*6+g.t)*.15,gsz=17*pulse;
@@ -3410,6 +3720,14 @@ function renderGame(){
     }else if(b.crescent){
       ctx.save();ctx.translate(bx,by);ctx.rotate(Math.atan2(b.vy,b.vx));
       ctx.drawImage(crescentSprite(),-17,-17,34,34);ctx.restore();
+    }else if(b.wthrow){ // thrown equipped weapon (kunai/blade)
+      ctx.save();ctx.translate(bx,by);ctx.rotate(t*16);
+      ctx.drawImage(gearIconCanvas(0,b.witem.w),-13,-13,26,26);ctx.restore();
+    }else if(b.ice){ // ice shard
+      ctx.save();ctx.translate(bx,by);ctx.rotate(Math.atan2(b.vy,b.vx)+Math.PI/2);
+      ctx.fillStyle="#dff4ff";ctx.strokeStyle="#141024";ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(5,4);ctx.lineTo(0,9);ctx.lineTo(-5,4);ctx.closePath();
+      ctx.fill();ctx.stroke();ctx.restore();
     }else{
       ctx.fillStyle=b.c;ctx.shadowColor=b.c;ctx.shadowBlur=8;
       ctx.beginPath();ctx.arc(bx,by,b.r,0,6.29);ctx.fill();ctx.shadowBlur=0;
@@ -3442,6 +3760,15 @@ function renderGame(){
       ctx.beginPath();ctx.arc(wx(g.x),wy(g.y)-8,13,0,6.29);ctx.fill();
       rr(ctx,wx(g.x)-8,wy(g.y)-4,16,16,5);
     }
+  }
+  // equipped weapon: sword swings, orbiting blades
+  drawSwings(t,px2,py2);
+  const eqw=SAVE.equip.weapon;
+  if(eqw&&(WTYPE[eqw.w]||"sword")==="blades"){
+    for(let i=0;i<2;i++){const a=R.t*4+i*Math.PI;
+      const bx3=px2+Math.cos(a)*70,by3=py2+Math.sin(a)*70;
+      ctx.save();ctx.translate(bx3,by3);ctx.rotate(a+Math.PI/2);
+      ctx.drawImage(gearIconCanvas(0,eqw.w),-14,-14,28,28);ctx.restore();}
   }
   const titanScale=R.titanOn?1.9:1;
   ctx.beginPath();ctx.fillStyle="rgba(0,0,0,.35)";ctx.ellipse(px2,py2+16*titanScale,14*titanScale,5*titanScale,0,0,6.29);ctx.fill();
@@ -3498,7 +3825,12 @@ function renderGame(){
   // anime overlay effects: kanji bursts, crit slashes, speed lines, iai flash
   for(const f of R.fx){
     const k=1-f.t/f.life;
-    if(f.kind==="kanji"){
+    if(f.kind==="barrage"){
+      ctx.strokeStyle="rgba(255,220,150,"+(k*.9)+")";ctx.lineWidth=3;
+      for(let u=0;u<10;u++){const a=R.barrageA+u*.628;
+        ctx.beginPath();ctx.moveTo(wx(f.x)+Math.cos(a)*f.r*.6,wy(f.y)+Math.sin(a)*f.r*.6);
+        ctx.lineTo(wx(f.x)+Math.cos(a)*f.r,wy(f.y)+Math.sin(a)*f.r);ctx.stroke();}
+    }else if(f.kind==="kanji"){
       ctx.save();ctx.translate(wx(f.x),wy(f.y));ctx.rotate(-.1);
       const pop=1+(1-k)*.35;
       ctx.font="900 "+Math.floor(40*pop)+"px 'Hiragino Sans','Yu Gothic',system-ui,sans-serif";
