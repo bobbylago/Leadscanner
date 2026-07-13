@@ -707,7 +707,34 @@ const STAGES=[
      far:"#241a10",near:"#3a2c1a",style:"wall",ground:"#1c1610",accents:["🏚️","🌾","🪨"]},
    music:{root:164.8,scale:[0,3,5,6,10],bpm:126},
    foes:["🐀","🧟","🧌","🦅","🗿","🐺"],
-   bosses:[{e:"🗿",n:"THE COLOSSAL ONE · 超大型"},{e:"🧌",n:"ARMORED BRUTE · 鎧の巨人"}]}
+   bosses:[{e:"🗿",n:"THE COLOSSAL ONE · 超大型"},{e:"🧌",n:"ARMORED BRUTE · 鎧の巨人"}]},
+  {id:"sea",e:"🏴‍☠️",n:"Grand Azure Sea",jp:"大海原",diff:4.2,shard:3.6,
+   d:"Pirate crews and sea-beasts battle for a legendary treasure.",
+   bg:"#07131f",grid:"rgba(90,180,235,.13)",petal:"spark",props:["palm","rock","crystal","ruin"],
+   vin:"rgba(20,70,120,",
+   scene:{sky:["#12406a","#05131f"],stars:true,moon:{kind:"full",color:"#eaf2ff",glow:"rgba(180,215,255,.4)"},
+     far:"#0c2740",near:"#123a5c",style:"towers",ground:"#0a1e30",accents:["🌴","🪨","⚓"]},
+   music:{root:207.6,scale:[0,2,4,5,9],bpm:112},
+   foes:["🦀","🏴‍☠️","🐙","🦈","🦑","🐊"],
+   bosses:[{e:"🐙",n:"KRAKEN LORD · 大海獣"},{e:"👑",n:"PIRATE EMPEROR · 海賊皇"}]},
+  {id:"curse",e:"👁️",n:"Cursed Metropolis",jp:"呪術都市",diff:5.2,shard:4.4,
+   d:"Sorcerers hunt cursed spirits through the neon-lit night city.",
+   bg:"#0f0818",grid:"rgba(180,95,255,.13)",petal:"petal",props:["tower","lantern","candle","grave"],
+   vin:"rgba(70,20,110,",
+   scene:{sky:["#2a1046","#0b0518"],stars:true,moon:{kind:"crescent",color:"#d4a8ff",glow:"rgba(200,140,255,.4)"},
+     far:"#1a0a30","near":"#2c1250",style:"towers",ground:"#140a24",accents:["🗼","🏮","🕯️"]},
+   music:{root:185,scale:[0,1,4,6,8],bpm:120},
+   foes:["👁️","👺","💀","👻","🕷️","👹"],
+   bosses:[{e:"👹",n:"CURSE KING · 呪王"},{e:"🌀",n:"HOLLOW SORCERER · 虚術師"}]},
+  {id:"academy",e:"🦸",n:"Hero Academy",jp:"英雄学園",diff:6.4,shard:5.2,
+   d:"Villains storm the academy — only the bravest cadets stand.",
+   bg:"#0a1020",grid:"rgba(90,200,120,.12)",petal:"star",props:["tower","ruin","rock","crystal"],
+   vin:"rgba(30,90,60,",
+   scene:{sky:["#123a54","#050f1a"],stars:false,moon:{kind:"sun",color:"#5adcff",glow:"rgba(90,220,255,.4)"},
+     far:"#0c2438","near":"#123a4c",style:"towers",ground:"#0a1826",accents:["🗼","🏙️","⚡"]},
+   music:{root:246.9,scale:[0,3,5,7,10],bpm:130},
+   foes:["🦹","🤖","👾","🦾","👿","🐉"],
+   bosses:[{e:"🦹",n:"SHADOW OVERLORD · 闇の帝"},{e:"💀",n:"THE ALL-DESTROYER · 全滅者"}]}
 ];
 const stageUnlocked=i=>i===0||SAVE.stages[STAGES[i-1].id].cleared;
 const WIN_TIME=600;
@@ -739,8 +766,8 @@ const EVOS={
   raidash:{req:"swift",n:"Storm God Step",jp:"神速雷帝",d:"A wider godspeed bolt with double the wrath."},
   icefang:{req:"focus",n:"Absolute Zero",jp:"絶対零度",d:"Shards shatter, freezing foes solid."},
   barrage:{req:"haste",n:"Thousand Fists",jp:"千手乱舞",d:"A blinding storm of strikes engulfs you."},
-  curse:{req:"lucky",n:"Malevolent Shrine",jp:"魔虚羅",d:"The sigil becomes a relentless rending field."},
-  smash:{req:"vital",n:"Plus Ultra Smash",jp:"覇天撃",d:"A colossal shockwave that flings the horde."},
+  curse:{req:"lucky",n:"Rending Sanctum",jp:"断罪陣",d:"The sigil becomes a relentless rending field."},
+  smash:{req:"vital",n:"Cataclysm Fist",jp:"覇天撃",d:"A colossal shockwave that flings the horde."},
   scythe:{req:"swift",n:"Reaper's Waltz",jp:"死神円舞",d:"Longer chains carve a lethal storm ring."},
   meteor:{req:"lucky",n:"Starfall Judgment",jp:"星落審判",d:"A rain of meteors blankets the field."}
 };
@@ -766,7 +793,19 @@ const ARTS=[
   {id:"colossal",w:4,tier:1,n:"Colossal Shift",jp:"巨人化",max:3,
    d:l=>`Every 45s become colossal for ${7+l}s: stomp nearby foes, take half damage`},
   {id:"maneuver",w:4,tier:2,n:"Sky Maneuver",jp:"立体機動",max:3,
-   d:l=>`Dash recharges ${25*l}% faster and cuts everything along its path`}
+   d:l=>`Dash recharges ${25*l}% faster and cuts everything along its path`},
+  {id:"ironwill",w:5,tier:1,n:"Iron Will",jp:"鉄の意志",max:3,
+   d:l=>`Harden your body — take ${12*l}% less damage`},
+  {id:"emperor",w:5,tier:2,n:"Emperor's Roar",jp:"覇王の咆哮",max:3,
+   d:l=>`Every ${22-2*l}s: a roar freezes every foe on screen for ${1.5+l*.5}s`},
+  {id:"reversal",w:6,tier:1,n:"Reversal Art",jp:"反転術",max:3,
+   d:l=>`Channel cursed energy inward — restore ${1.5+l}% HP per second`},
+  {id:"blackflash",w:6,tier:2,n:"Black Flash",jp:"黒閃",max:3,
+   d:l=>`+${8*l}% crit, and critical hits now strike for 3× instead of 2×`},
+  {id:"fulldrive",w:7,tier:1,n:"Full Drive",jp:"全開",max:3,
+   d:l=>`Overclock — +${10*l}% move speed and +${10*l}% attack speed`},
+  {id:"blastrush",w:7,tier:2,n:"Blast Rush",jp:"爆迅",max:3,
+   d:l=>`Your dash detonates a blast (${45+30*l} dmg) on arrival`}
 ];
 function artUnlocked(a){
   const sp=SAVE.stages[STAGES[a.w].id];
@@ -789,7 +828,8 @@ const ACHS=[
   {id:"k10k",n:"Legend of the Rift",d:"Slay 10,000 yokai",r:150,c:s=>s.totalKills>=10000},
   {id:"w1",n:"Leaf Guardian",d:"Clear Hidden Leaf Village",r:40,c:s=>s.stages.leaf.cleared},
   {id:"w3",n:"Three Worlds Deep",d:"Clear three worlds",r:80,c:s=>Object.values(s.stages).filter(x=>x.cleared).length>=3},
-  {id:"w5",n:"Rift Walker",d:"Clear all five worlds",r:200,c:s=>Object.values(s.stages).filter(x=>x.cleared).length>=5},
+  {id:"w5",n:"Rift Walker",d:"Clear five worlds",r:200,c:s=>Object.values(s.stages).filter(x=>x.cleared).length>=5},
+  {id:"w8",n:"Master of Worlds",d:"Clear all eight worlds",r:400,c:s=>Object.values(s.stages).filter(x=>x.cleared).length>=8},
   {id:"win",n:"Dawn Survivor",d:"Seal a rift (survive 10:00)",r:100,c:s=>s.totalWins>=1},
   {id:"lv5",n:"Ascendant",d:"Reach account level 5",r:50,c:s=>s.plvl>=5}
 ];
@@ -816,7 +856,10 @@ const GEAR_SETS=[
   [["⚔️","Soul Katana"],["👘","Captain's Haori"],["🧿","Soul Ribbon"],["🧤","Hollow-Bone Gauntlets"],["🥋","Reaper's Obi"],["🩴","Waraji Sandals"]],
   [["🗡️","Sunsteel Katana"],["🧣","Checkered Haori"],["🎐","Wisteria Charm"],["🧤","Breathing Wraps"],["🥋","Corps Belt"],["🥾","Night Hunter Boots"]],
   [["🔫","Scouter Blaster"],["🦺","Battle Plate"],["🟠","Four-Star Orb"],["🧤","Gravity Gloves"],["🥋","Warrior Sash"],["👢","Combat Boots"]],
-  [["⚔️","Maneuver Blades"],["🧥","Scout Cloak"],["🗝️","Basement Key"],["🧤","Grip Gauntlets"],["🪢","Harness Straps"],["🥾","Trooper Boots"]]
+  [["⚔️","Maneuver Blades"],["🧥","Scout Cloak"],["🗝️","Basement Key"],["🧤","Grip Gauntlets"],["🪢","Harness Straps"],["🥾","Trooper Boots"]],
+  [["🗡️","Sea King Cutlass"],["🧥","Pirate Coat"],["🧭","Log Charm"],["🧤","Sea-Prism Grips"],["🥋","Captain's Sash"],["🥾","Deckhand Boots"]],
+  [["🗡️","Cursed Blade"],["🧥","Sorcerer Robe"],["🔮","Cursed Talisman"],["🧤","Binding Gloves"],["🥋","Sect Belt"],["🥾","Veil Sandals"]],
+  [["🔫","Hero Blaster"],["🦺","Hero Suit"],["🎖️","Valor Badge"],["🧤","Power Gloves"],["🥋","Cadet Belt"],["👟","Speed Sneakers"]]
 ];
 const gearDef=it=>({e:GEAR_SETS[it.w][it.s][0], n:(it.evo?"Awakened ":"")+GEAR_SETS[it.w][it.s][1]});
 const GEAR_MAXLVL=10;
@@ -959,7 +1002,10 @@ const MCOLORS=[
   ["#6a5a8e","#e8e4f0","#cfc8b0","#9fd3e8","#d8d0b8","#7ba7d8"],
   ["#5a3a6e","#d84a3a","#3a3448","#b08ad8","#c0392b","#6d6a7a"],
   ["#3aa88a","#7ac74f","#4a9e68","#9b59b6","#95a5b6","#5dade2"],
-  ["#8a7a6a","#b8a878","#7d8a5a","#a08a5a","#8d8a84","#6d6a7a"]
+  ["#8a7a6a","#b8a878","#7d8a5a","#a08a5a","#8d8a84","#6d6a7a"],
+  ["#d86a3a","#3a6a9e","#8a3a5a","#4a8ab8","#6a4a8a","#3a7a6a"],
+  ["#b45fff","#6a3a8a","#d84a6a","#8a5abf","#4a3a6a","#c03a8a"],
+  ["#3ac77a","#c0433a","#5a8adf","#d8a83a","#6a4abf","#3a9ec7"]
 ];
 const monsterCache=new Map();
 function shade(hex,f){ // darken/lighten a hex color
@@ -1090,7 +1136,7 @@ function gemSprite(){
 }
 
 /* ---------- unique drawn boss models (two per world) ---------- */
-const BCOLORS=[["#ff8a3c","#4e9a4e"],["#3a3a52","#e8e0c8"],["#4a4258","#7a4fd8"],["#e8e8f8","#2f9e88"],["#c8b088","#9a9aa8"]];
+const BCOLORS=[["#ff8a3c","#4e9a4e"],["#3a3a52","#e8e0c8"],["#4a4258","#7a4fd8"],["#e8e8f8","#2f9e88"],["#c8b088","#9a9aa8"],["#8a3a6a","#d8a03a"],["#b45fff","#3a2a5a"],["#3a5adf","#c0433a"]];
 const bossCache=new Map();
 function bossSprite(w,i){
   const key=w+"-"+i;
@@ -1455,7 +1501,7 @@ function petalSprite(kind){
   petalCache.set(kind,c);return c;
 }
 /* hand-drawn gear item icons: one design per slot, tinted per world */
-const WTINT=["#57b849","#7ba7d8","#e8434f","#18b89a","#c98a3a"];
+const WTINT=["#57b849","#7ba7d8","#e8434f","#18b89a","#c98a3a","#3a8adf","#b45fff","#3ac77a"];
 const gearIconCache=new Map(),gearIconCanvasCache=new Map();
 function gearIconCanvas(s,w){const k=s+"-"+w;if(!gearIconCanvasCache.has(k))gearIconURL(s,w);return gearIconCanvasCache.get(k);}
 function gearIconURL(s,w){
@@ -1725,6 +1771,49 @@ function abilityIconURL(id){
       g.beginPath();g.arc(50,50,6,0,6.29);g.fill();g.lineWidth=3;g.stroke();g.lineWidth=4;
       g.strokeStyle="#4ce0ff";g.lineWidth=3;
       for(const dy of[54,60]){g.beginPath();g.moveTo(8,dy);g.lineTo(26,dy);g.stroke();}
+      g.strokeStyle=OL;g.lineWidth=4;break;
+    case"ironwill": // hardened shield
+      g.fillStyle=ballGrad(g,36,34,20,"#8a94ac");
+      g.beginPath();g.moveTo(36,10);g.lineTo(58,20);g.lineTo(54,44);g.quadraticCurveTo(36,60,36,60);
+      g.quadraticCurveTo(18,44,18,44);g.lineTo(14,20);g.closePath();g.fill();g.stroke();
+      g.strokeStyle="#eaf0ff";g.lineWidth=2.5;
+      g.beginPath();g.moveTo(36,18);g.lineTo(36,52);g.moveTo(24,30);g.lineTo(48,30);g.stroke();
+      g.strokeStyle=OL;g.lineWidth=4;break;
+    case"emperor": // radiant crown
+      g.fillStyle=ballGrad(g,36,40,18,"#ffd75e");
+      g.beginPath();g.moveTo(14,52);g.lineTo(14,26);g.lineTo(24,36);g.lineTo(36,16);
+      g.lineTo(48,36);g.lineTo(58,26);g.lineTo(58,52);g.closePath();g.fill();g.stroke();
+      g.fillStyle="#e8434f";for(const x of[24,36,48]){g.beginPath();g.arc(x,44,3.4,0,6.29);g.fill();g.stroke();}
+      break;
+    case"reversal": // green regen cross + swirl
+      g.strokeStyle="#3ecf4a";g.lineWidth=6;
+      g.beginPath();g.arc(36,36,20,.5,5.6);g.stroke();
+      g.strokeStyle=OL;g.lineWidth=2.5;g.beginPath();g.arc(36,36,20,.5,5.6);g.stroke();
+      g.fillStyle="#8dff7a";
+      g.fillRect(31,22,10,28);g.fillRect(22,31,28,10);
+      g.strokeRect(31,22,10,28);g.strokeRect(22,31,28,10);break;
+    case"blackflash": // black star burst with red core
+      g.fillStyle="#141024";
+      g.beginPath();for(let k=0;k<8;k++){const a=k*.785,r=k%2?26:11;g.lineTo(36+Math.cos(a)*r,36+Math.sin(a)*r);}
+      g.closePath();g.fill();
+      g.strokeStyle="#c01830";g.lineWidth=2.5;g.stroke();
+      g.fillStyle="#e8203a";g.beginPath();g.arc(36,36,6,0,6.29);g.fill();
+      g.fillStyle="#ff8aa0";g.beginPath();g.arc(34,34,2,0,6.29);g.fill();break;
+    case"fulldrive": // energy bolt aura
+      g.strokeStyle="#5adcff";g.lineWidth=5;
+      g.beginPath();g.arc(36,36,24,0,6.29);g.stroke();
+      g.strokeStyle=OL;g.lineWidth=2;g.beginPath();g.arc(36,36,24,0,6.29);g.stroke();
+      g.fillStyle=ballGrad(g,36,36,16,"#5adcff");
+      g.beginPath();g.moveTo(40,12);
+      g.lineTo(24,38);g.lineTo(34,38);g.lineTo(30,58);g.lineTo(48,32);g.lineTo(38,32);g.closePath();
+      g.fill();g.stroke();break;
+    case"blastrush": // explosion + dash lines
+      g.fillStyle=ballGrad(g,40,38,18,"#ff8a3c");
+      g.beginPath();for(let k=0;k<10;k++){const a=k*.628,r=k%2?24:12;g.lineTo(40+Math.cos(a)*r,38+Math.sin(a)*r);}
+      g.closePath();g.fill();g.stroke();
+      g.fillStyle="#fff2c0";g.beginPath();g.arc(40,38,7,0,6.29);g.fill();
+      g.strokeStyle="#4ce0ff";g.lineWidth=3;
+      for(const dy of[20,58]){g.beginPath();g.moveTo(6,dy);g.lineTo(20,dy);g.stroke();}
       g.strokeStyle=OL;g.lineWidth=4;break;
     default: // dash swirl
       g.strokeStyle="#cfe0ff";g.lineWidth=6;
@@ -2022,7 +2111,7 @@ function newRun(){
     domain:null, wasDash:false, dashStart:{x:0,y:0},
     charId:SAVE.chars.cur, evolved:{}, mods:null, ebullets:[],
     nextGoblinAt:rand(50,90), bonusShards:0,
-    arts:{}, artT:{mirror:0,samsara:0,blood:0,release:0}, dashCd:3,
+    arts:{}, artT:{mirror:0,samsara:0,blood:0,release:0,emperor:0}, dashCd:3, dmgReduce:0,
     releaseOn:false, releaseUntil:0,
     maskOn:false, maskUntil:0, maskAt:0,
     gauge:0, goldenOn:false, goldenUntil:0,
@@ -2051,6 +2140,10 @@ function recompute(){
   const A=R.arts;
   if(A.mirror)R.critC+=.08*A.mirror;
   if(A.gale)R.dmgMult*=1+(.25+.1*A.gale);
+  if(A.blackflash)R.critC+=.08*A.blackflash;      // Black Flash
+  if(A.reversal)R.regen+=(1.5+A.reversal)*(R.maxhp/100); // Reversal Art regen
+  if(A.fulldrive){R.speed*=1+.1*A.fulldrive;R.atkSpd*=1+.1*A.fulldrive;} // Full Drive
+  R.dmgReduce=A.ironwill?.12*A.ironwill:0;          // Iron Will
   R.dashCd=3*(1-.25*(A.maneuver||0));
   // transient transformations re-apply on top
   if(R.releaseOn){R.atkSpd*=1.5;R.dmgMult*=1+(.2+.1*A.release);}
@@ -2539,7 +2632,7 @@ function dmgText(x,y,v,crit){
 }
 function hitEnemy(e,dmg,kx=0,ky=0){
   const crit=Math.random()<R.critC;
-  if(crit)dmg*=2;
+  if(crit)dmg*=(R.arts.blackflash?3:2); // Black Flash empowers crits
   if(e.affix==="shield")dmg*=.55;
   if(R.arts.solar){e.burn=3;e.burnDmg=(6+4*R.arts.solar)*R.dmgMult;} // ignite
   e.hp-=dmg;e.flash=.12;
@@ -2948,7 +3041,7 @@ function weaponsTick(dt){
 }
 
 /* ---------- equipped weapon becomes a real attack ---------- */
-const WTYPE=["kunai","sword","sword","gun","blades","sword","curse","gun"]; // by world
+const WTYPE=["kunai","sword","sword","gun","blades","sword","sword","gun"]; // by world
 function equippedWeaponAttack(){
   const it=SAVE.equip.weapon;if(!it)return null;
   const lvl=it.lvl||1,mult=RAR[it.r].m*(1+lvl*.12)*(it.evo?2:1);
@@ -3082,6 +3175,18 @@ function artsTick(dt){
       if(R.t>=R.titanUntil)R.titanOn=false;
     }
   }
+  // Emperor's Roar — periodic freeze of every foe on screen
+  if(A.emperor){
+    T.emperor-=dt;
+    if(T.emperor<=0&&R.enemies.length){
+      const dur=1.5+A.emperor*.5;
+      for(const e of R.enemies)if(!e.boss)e.frozen=R.t+dur;
+      R.fx.push({kind:"nova",x:R.px,y:R.py,r:Math.max(VW,VH),t:0,life:.5});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"覇王",t:0,life:.9,c:"#ffd75e"});
+      hitStop(.09);R.shake=Math.max(R.shake,.5);SFX.boss();
+      T.emperor=22-2*A.emperor;
+    }
+  }
 }
 
 /* ============================ items ============================ */
@@ -3160,6 +3265,13 @@ function update(dt){
       if(rl)R.fx.push({kind:"kanji",x:R.px,y:R.py-48,ch:"雷",t:0,life:.5,c:"#4ce0ff"});
       SFX.bolt();hitStop(.04);
     }
+    // Blast Rush — dash detonates a blast on arrival
+    if(R.arts.blastrush){const bl=R.arts.blastrush;
+      for(const e of R.enemies){if(!e.dead&&dist2(e.x,e.y,R.px,R.py)<110*110)hitEnemy(e,(45+30*bl)*R.dmgMult);}
+      R.fx.push({kind:"nova",x:R.px,y:R.py,r:120,t:0,life:.32});
+      R.fx.push({kind:"flash",x:R.px,y:R.py,t:0,life:.2});
+      R.shake=Math.max(R.shake,.35);SFX.bomb();
+    }
   }
   if(dashing)R.wasDash=true;
   while(R.trail.length&&R.t-R.trail[0].t0>.3)R.trail.shift();
@@ -3176,7 +3288,7 @@ function update(dt){
     }else R.domain=null;
   }
   const invuln=R.t<R.dashUntil+.3||R.maskOn;
-  const dmgTaken=R.titanOn?.5:1;
+  const dmgTaken=(R.titanOn?.5:1)*(1-(R.dmgReduce||0));
   if(R.regen)R.hp=Math.min(R.maxhp,R.hp+R.regen*dt);
   R.hurtT=Math.max(0,R.hurtT-dt);
 
@@ -3441,8 +3553,8 @@ function drawSkyline(y0,pan,color,style,seedOff){
   }
 }
 /* bright per-world field + floating diorama island, mobile-game style */
-const FIELD=["#ff9d2e","#5a6cff","#e8434f","#18b89a","#c9862e"];
-const ISLAND=["#4aa856","#6a74b8","#8a3c58","#2f9e88","#a08a58"];
+const FIELD=["#ff9d2e","#5a6cff","#e8434f","#18b89a","#c9862e","#2e8ad8","#8a3cd8","#2ec97a"];
+const ISLAND=["#4aa856","#6a74b8","#8a3c58","#2f9e88","#a08a58","#3a6a9e","#6a3a9e","#3a8a6a"];
 let dotPat=null;
 function dotPattern(){
   if(dotPat)return dotPat;
