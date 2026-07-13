@@ -1527,12 +1527,57 @@ function gearIconURL(s,w){
   const c=document.createElement("canvas");c.width=c.height=64;
   const g=c.getContext("2d"),tint=WTINT[w],OL="#141024";
   g.lineWidth=3.5;g.strokeStyle=OL;g.lineJoin="round";g.lineCap="round";
-  if(s===0){ // katana
-    g.save();g.translate(32,32);g.rotate(-.78);
-    g.fillStyle=ballGrad(g,0,-8,18,"#d8e2f4");
-    g.beginPath();g.moveTo(-4,-26);g.quadraticCurveTo(5,-10,4,8);g.lineTo(-4,8);g.closePath();g.fill();g.stroke();
-    g.fillStyle=tint;g.fillRect(-6,8,12,4);g.strokeRect(-6,8,12,4);
-    g.fillStyle="#4a4668";g.fillRect(-3.5,12,7,14);g.strokeRect(-3.5,12,7,14);
+  if(s===0){ // weapon — a distinct shape per world's signature type
+    const wt=["throw","arc","sweep","shoot","orbit","spin","thrust","slam"][w]||"arc";
+    g.save();g.translate(32,32);
+    const steel="#d8e2f4";
+    if(wt==="arc"){ // katana
+      g.rotate(-.78);
+      g.fillStyle=ballGrad(g,0,-8,18,steel);
+      g.beginPath();g.moveTo(-4,-26);g.quadraticCurveTo(5,-10,4,8);g.lineTo(-4,8);g.closePath();g.fill();g.stroke();
+      g.fillStyle=tint;g.fillRect(-6,8,12,4);g.strokeRect(-6,8,12,4);
+      g.fillStyle="#4a4668";g.fillRect(-3.5,12,7,14);g.strokeRect(-3.5,12,7,14);
+    }else if(wt==="throw"){ // kunai
+      g.rotate(-.78);
+      g.fillStyle=ballGrad(g,0,-6,14,steel);
+      g.beginPath();g.moveTo(0,-24);g.lineTo(6,-4);g.lineTo(-6,-4);g.closePath();g.fill();g.stroke();
+      g.fillStyle="#4a4668";g.fillRect(-3,-4,6,18);g.strokeRect(-3,-4,6,18);
+      g.beginPath();g.arc(0,18,5,0,6.29);g.fillStyle=tint;g.fill();g.stroke();
+    }else if(wt==="sweep"){ // greatblade
+      g.rotate(-.78);
+      g.fillStyle=ballGrad(g,0,-6,22,steel);
+      g.beginPath();g.moveTo(-9,-28);g.lineTo(9,-24);g.quadraticCurveTo(11,-4,7,8);g.lineTo(-7,8);g.quadraticCurveTo(-11,-6,-9,-28);g.closePath();g.fill();g.stroke();
+      g.fillStyle=tint;g.fillRect(-11,8,22,5);g.strokeRect(-11,8,22,5);
+      g.fillStyle="#4a4668";g.fillRect(-4,13,8,15);g.strokeRect(-4,13,8,15);
+    }else if(wt==="shoot"){ // blaster
+      g.rotate(-.35);
+      g.fillStyle=ballGrad(g,0,0,20,"#4a4e66");
+      g.beginPath();g.moveTo(-20,-6);g.lineTo(18,-6);g.lineTo(18,2);g.lineTo(-8,2);g.lineTo(-8,16);g.lineTo(-18,16);g.lineTo(-20,-6);g.closePath();g.fill();g.stroke();
+      g.fillStyle=tint;g.fillRect(14,-8,8,6);g.strokeRect(14,-8,8,6);
+      g.fillStyle="#ffd75e";g.beginPath();g.arc(22,-5,2.5,0,6.29);g.fill();
+    }else if(wt==="orbit"){ // dual blades crossed
+      for(const dir of[-1,1]){g.save();g.rotate(dir*.7);
+        g.fillStyle=ballGrad(g,0,-8,12,steel);
+        g.beginPath();g.moveTo(-3,-24);g.lineTo(4,-6);g.lineTo(-3,6);g.closePath();g.fill();g.stroke();
+        g.fillStyle=tint;g.fillRect(-4,6,8,4);g.restore();}
+    }else if(wt==="spin"){ // cutlass (curved)
+      g.rotate(-.5);
+      g.fillStyle=ballGrad(g,4,-8,18,steel);
+      g.beginPath();g.moveTo(-6,-26);g.quadraticCurveTo(16,-16,10,10);g.lineTo(-2,8);g.quadraticCurveTo(-6,-8,-6,-26);g.closePath();g.fill();g.stroke();
+      g.strokeStyle=tint;g.lineWidth=4;g.beginPath();g.arc(-6,12,8,-1.2,1.6);g.stroke();g.strokeStyle=OL;g.lineWidth=3.5;
+    }else if(wt==="thrust"){ // spear
+      g.rotate(-.78);
+      g.fillStyle=ballGrad(g,0,-18,12,steel);
+      g.beginPath();g.moveTo(0,-30);g.lineTo(7,-14);g.lineTo(0,-8);g.lineTo(-7,-14);g.closePath();g.fill();g.stroke();
+      g.fillStyle="#7a5a32";g.fillRect(-2.5,-10,5,36);g.strokeRect(-2.5,-10,5,36);
+      g.fillStyle=tint;g.fillRect(-3.5,-10,7,4);
+    }else{ // slam — warhammer
+      g.rotate(-.6);
+      g.fillStyle="#7a5a32";g.fillRect(-2.5,-6,5,34);g.strokeRect(-2.5,-6,5,34);
+      g.fillStyle=ballGrad(g,0,-16,16,"#6a708a");
+      g.beginPath();g.roundRect?g.roundRect(-14,-26,28,20,4):g.rect(-14,-26,28,20);g.fill();g.stroke();
+      g.fillStyle=tint;g.fillRect(-14,-26,4,20);g.fillRect(10,-26,4,20);
+    }
     g.restore();
   }else if(s===1){ // coat
     g.fillStyle=ballGrad(g,32,36,22,tint);
@@ -2033,22 +2078,31 @@ function drawCrown(x,y,s){
 /* draw the equipped sword sweeping through its swing arc */
 function drawSwings(t,px2,py2){
   for(const s of R.swings){
-    const k=s.t/s.life;               // 0..1 progress
-    const spread=1.9;                 // total arc radians
-    const a=s.ang+(k-.5)*spread*s.dir;
-    const reach=64;
-    // motion trail wedge
+    const k=s.t/s.life;                       // 0..1 progress
+    const reach=(s.reach||100)*.62;
+    const blade=gearIconCanvas(0,s.item.w);
     ctx.save();ctx.translate(px2,py2);
-    ctx.fillStyle="rgba(255,255,255,"+(0.5*(1-k))+")";
-    ctx.beginPath();ctx.moveTo(0,0);
-    for(let u=0;u<=1;u+=.2){const aa=s.ang+((k-.5)-u*.5*s.dir)*spread*s.dir;
-      ctx.lineTo(Math.cos(aa)*reach,Math.sin(aa)*reach);}
-    ctx.closePath();ctx.fill();
-    // the actual blade
-    ctx.rotate(a+Math.PI/2);
-    ctx.drawImage(gearIconCanvas(0,s.item.w),-16,-reach-4,32,32);
-    if(s.evo){ctx.strokeStyle="rgba(255,215,94,.8)";ctx.lineWidth=3;
-      ctx.beginPath();ctx.arc(0,0,reach,-.4,.4);ctx.stroke();}
+    if(s.type==="thrust"){
+      // spear: extend straight out and retract
+      const ext=Math.sin(k*Math.PI)*reach*1.5;
+      ctx.rotate(s.ang+Math.PI/2);
+      ctx.fillStyle="rgba(255,255,255,"+(0.4*(1-k))+")";
+      ctx.fillRect(-5,-ext-10,10,ext);
+      ctx.drawImage(blade,-18,-ext-30,36,36);
+    }else{
+      const arc=s.type==="spin"?Math.PI*2:s.type==="sweep"?2.0:1.3;
+      const a=s.ang+(k-.5)*arc*s.dir;
+      // motion trail wedge
+      ctx.fillStyle=s.evo?"rgba(255,225,120,"+(0.55*(1-k))+")":"rgba(255,255,255,"+(0.5*(1-k))+")";
+      ctx.beginPath();ctx.moveTo(0,0);
+      for(let u=0;u<=1;u+=.15){const aa=s.ang+((k-.5)-u*.55*s.dir)*arc*s.dir;
+        ctx.lineTo(Math.cos(aa)*reach,Math.sin(aa)*reach);}
+      ctx.closePath();ctx.fill();
+      // the actual weapon following the arc
+      ctx.rotate(a+Math.PI/2);
+      const sz=s.type==="sweep"?42:34;
+      ctx.drawImage(blade,-sz/2,-reach-6,sz,sz);
+    }
     ctx.restore();
   }
 }
@@ -2373,7 +2427,7 @@ function paintGear(){
     $("upPanel").innerHTML=`<div class="upcard">
       <img src="${gearIconURL(sel.s,sel.w)}">
       <div class="ui"><div class="un" style="color:${RAR[sel.r].c}">${d.n} <span style="color:var(--dim);font-size:10px;">Lv ${lvl}/${GEAR_MAXLVL}</span></div>
-        <div class="ust">${gearStatText(sel)}${isWeapon?" · swings in battle":""}</div>
+        <div class="ust">${gearStatText(sel)}${isWeapon?` · ${WTYPE_NAME[WTYPE[sel.w]]||"Blade"} in battle`:""}</div>
         <div class="lvbar"><i style="width:${lvl/GEAR_MAXLVL*100}%"></i></div></div>
       <div class="upbtns">${upBtn}<button class="upbtn off" data-up="unequip">Unequip</button></div>
     </div>`;
@@ -2814,8 +2868,11 @@ function fireBolt(x,y,mult){
 }
 function weaponsTick(dt){
   const T=R.timers,W=R.weapons;
-  T.bolt-=dt;
-  if(T.bolt<=0&&fireBolt(R.px,R.py,1)){T.bolt=.5/R.atkSpd;SFX.shot();}
+  // innate ki-bolt only fires when NO weapon is equipped (else the weapon is your attack)
+  if(!SAVE.equip.weapon){
+    T.bolt-=dt;
+    if(T.bolt<=0&&fireBolt(R.px,R.py,1)){T.bolt=.5/R.atkSpd;SFX.shot();}
+  }
   const cl=(W.clone||0)+(R.evolved.clone&&W.clone?2:0);
   if(cl){
     T.clone-=dt;
@@ -3102,45 +3159,66 @@ function weaponsTick(dt){
 }
 
 /* ---------- equipped weapon becomes a real attack ---------- */
-const WTYPE=["kunai","sword","sword","gun","blades","sword","sword","gun"]; // by world
+/* eight distinct signature weapon types, one per world */
+const WTYPE=["throw","arc","sweep","shoot","orbit","spin","thrust","slam"];
+const WTYPE_NAME={throw:"Throwing Blade",arc:"Blade",sweep:"Greatblade",shoot:"Blaster",orbit:"Dual Blades",spin:"Spin Blade",thrust:"Spear",slam:"Warhammer"};
 function equippedWeaponAttack(){
   const it=SAVE.equip.weapon;if(!it)return null;
   const lvl=it.lvl||1,mult=RAR[it.r].m*(1+lvl*.12)*(it.evo?2:1);
-  return {type:WTYPE[it.w]||"sword",item:it,dmg:26*mult*R.dmgMult,evo:it.evo};
+  return {type:WTYPE[it.w]||"arc",item:it,dmg:26*mult*R.dmgMult,evo:it.evo,w:it.w};
 }
 function mainhandTick(dt){
   const mw=equippedWeaponAttack();if(!mw)return;
   const T=R.timers;T.mainhand-=dt;
-  const rate=(mw.type==="gun"?.55:mw.type==="blades"?.7:mw.type==="kunai"?.85:1.0)/R.atkSpd;
   if(T.mainhand>0)return;
-  const tgt=nearestEnemy(R.px,R.py,mw.type==="sword"?150:560);
-  if(mw.type==="sword"){
-    // melee swing arc — actually swings the sword
+  const type=mw.type;
+  const range={arc:150,sweep:175,spin:130,thrust:230,slam:600,throw:620,shoot:660,orbit:1e9}[type];
+  const tgt=nearestEnemy(R.px,R.py,range);
+  if(type==="arc"||type==="sweep"||type==="spin"||type==="thrust"){
     const ang=tgt?Math.atan2(tgt.y-R.py,tgt.x-R.px):Math.atan2(R.diry,R.dirx);
-    const rr=94;
+    let reach,spread,rate,knock=0,dm=1;
+    if(type==="arc"){reach=100;spread=1.05;rate=.7;}
+    else if(type==="sweep"){reach=132;spread=1.9;rate=1.1;knock=46;dm=1.35;}
+    else if(type==="spin"){reach=108;spread=Math.PI;rate=.85;dm=1.1;}
+    else{reach=210;spread=.34;rate=.6;dm=1.25;} // thrust: long & narrow
     for(const e of R.enemies){if(e.dead)continue;
-      if(dist2(R.px,R.py,e.x,e.y)<rr*rr){
-        let da=Math.abs(((Math.atan2(e.y-R.py,e.x-R.px)-ang+Math.PI*3)%(Math.PI*2))-Math.PI);
-        if(da<1.1){const d=Math.max(1,Math.hypot(e.x-R.px,e.y-R.py));
-          hitEnemy(e,mw.dmg,(e.x-R.px)/d*30,(e.y-R.py)/d*30);}}}
-    R.swings.push({ang,dir:R.swingFlip?-1:1,t:0,life:.24,item:mw.item,evo:mw.evo});
+      const d=Math.hypot(e.x-R.px,e.y-R.py);
+      if(d<reach+e.r){
+        const da=Math.abs(((Math.atan2(e.y-R.py,e.x-R.px)-ang+Math.PI*3)%(Math.PI*2))-Math.PI);
+        if(type==="spin"||da<spread)
+          hitEnemy(e,mw.dmg*dm,knock?(e.x-R.px)/Math.max(1,d)*knock:0,knock?(e.y-R.py)/Math.max(1,d)*knock:0);
+      }
+    }
+    R.swings.push({ang,dir:R.swingFlip?-1:1,t:0,life:type==="thrust"?.18:.26,item:mw.item,evo:mw.evo,type,reach,spread});
     R.swingFlip=!R.swingFlip;
-    SFX.slash();T.mainhand=rate;
-  }else if(mw.type==="kunai"||mw.type==="gun"){
+    SFX.slash();if(type==="sweep")R.shake=Math.max(R.shake,.15);T.mainhand=rate/R.atkSpd;
+  }else if(type==="throw"){
     if(!tgt){T.mainhand=.2;return;}
+    const base=Math.atan2(tgt.y-R.py,tgt.x-R.px),n=mw.evo?5:3;
+    for(let i=0;i<n;i++){const a=base+(i-(n-1)/2)*.17;
+      R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*480,vy:Math.sin(a)*480,dmg:mw.dmg*.7,r:6,pierce:mw.evo?3:1,life:1.3,wthrow:true,witem:mw.item});}
+    SFX.slash();T.mainhand=.85/R.atkSpd;
+  }else if(type==="shoot"){
+    if(!tgt){T.mainhand=.15;return;}
     const a=Math.atan2(tgt.y-R.py,tgt.x-R.px);
-    const shots=mw.type==="gun"?1:1;
-    R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*(mw.type==="gun"?620:460),vy:Math.sin(a)*(mw.type==="gun"?620:460),
-      dmg:mw.dmg,r:6,pierce:mw.evo?3:1,life:1.4,c:mw.type==="gun"?"#ffd75e":"#dfe6ff",
-      wthrow:mw.type==="kunai",witem:mw.item});
-    (mw.type==="gun"?SFX.shot:SFX.shot)();T.mainhand=rate;
-  }else{ // blades — orbiting handled in render + here as pulse damage
+    R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*660,vy:Math.sin(a)*660,dmg:mw.dmg*.75,r:6,pierce:mw.evo?3:1,life:1.2,c:"#ffd75e",gunshot:true});
+    SFX.shot();T.mainhand=.42/R.atkSpd;
+  }else if(type==="slam"){
+    if(!tgt){T.mainhand=.3;return;}
+    const rr=mw.evo?120:88;
+    for(const e of R.enemies){if(!e.dead&&dist2(e.x,e.y,tgt.x,tgt.y)<rr*rr){
+      const d=Math.max(1,Math.hypot(e.x-tgt.x,e.y-tgt.y));
+      hitEnemy(e,mw.dmg*1.4,(e.x-tgt.x)/d*54,(e.y-tgt.y)/d*54);}}
+    R.fx.push({kind:"nova",x:tgt.x,y:tgt.y,r:rr,t:0,life:.3});
+    R.fx.push({kind:"flash",x:tgt.x,y:tgt.y,t:0,life:.18});
+    R.shake=Math.max(R.shake,.3);SFX.bomb();T.mainhand=.95/R.atkSpd;
+  }else{ // orbit — dual blades
     const rr=70;
     for(const e of R.enemies){if(e.dead)continue;
       if(R.t-(e.bladeAt||0)>.4){
         for(let i=0;i<2;i++){const a=R.t*4+i*Math.PI;
           if(dist2(R.px+Math.cos(a)*rr,R.py+Math.sin(a)*rr,e.x,e.y)<(20+e.r)*(20+e.r)){
-            e.bladeAt=R.t;hitEnemy(e,mw.dmg*.6);break;}}}}
+            e.bladeAt=R.t;hitEnemy(e,mw.dmg*.5);break;}}}}
     T.mainhand=.25;
   }
 }
