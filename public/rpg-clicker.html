@@ -566,9 +566,10 @@
   <div id="upPanel"></div>
   <div id="invHead">My Items <span id="invCount" class="num"></span></div>
   <div id="invGrid"></div>
-  <div style="display:flex;gap:10px;">
-    <button class="bigbtn alt" id="mergeBtn" style="min-width:0;">✨ Merge ×3</button>
-    <button class="bigbtn alt" id="gearBackBtn" style="min-width:0;">← Back</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="bigbtn" id="equipBestBtn" style="min-width:0;padding:12px 16px;">⚡ Equip Best</button>
+    <button class="bigbtn alt" id="mergeBtn" style="min-width:0;padding:12px 16px;">✨ Merge ×3</button>
+    <button class="bigbtn alt" id="gearBackBtn" style="min-width:0;padding:12px 16px;">← Back</button>
   </div>
 </div>
 
@@ -864,6 +865,8 @@ const GEAR_SETS=[
 const gearDef=it=>({e:GEAR_SETS[it.w][it.s][0], n:(it.evo?"Awakened ":"")+GEAR_SETS[it.w][it.s][1]});
 const GEAR_MAXLVL=10;
 const gearValue=it=>SLOTS[it.s].base*RAR[it.r].m*(1+it.w*.5)*(1+((it.lvl||1)-1)*.15)*(it.evo?2:1);
+/* value as if the item were level 1 — used to rank items for Equip Best */
+const gearBaseValue=it=>SLOTS[it.s].base*RAR[it.r].m*(1+it.w*.5)*(it.evo?2:1);
 const gearUpCost=it=>Math.ceil(15*Math.pow(1.5,(it.lvl||1)-1)*(1+it.r*.4));
 function gearStatText(it){
   const v=gearValue(it),s=SLOTS[it.s];
@@ -2416,6 +2419,32 @@ $("mergeBtn").addEventListener("click",()=>{
   if(merges){persist();SFX.level();toast(`✨ Merged into ${merges} stronger item${merges>1?"s":""}!`);}
   else toast("Need 3 identical items to merge");
   paintGear();
+});
+function equipBest(){
+  let changed=0;
+  SLOTS.forEach((slot,si)=>{
+    const cands=[];
+    if(SAVE.equip[slot.id])cands.push(SAVE.equip[slot.id]);
+    for(const it of SAVE.inv)if(it.s===si)cands.push(it);
+    if(!cands.length)return;
+    let best=cands[0];
+    for(const it of cands)if(gearBaseValue(it)>gearBaseValue(best))best=it;
+    if(SAVE.equip[slot.id]!==best){
+      const cur=SAVE.equip[slot.id];
+      const bi=SAVE.inv.indexOf(best);
+      if(bi>=0)SAVE.inv.splice(bi,1);
+      if(cur)SAVE.inv.push(cur);
+      SAVE.equip[slot.id]=best;
+      changed++;
+    }
+  });
+  return changed;
+}
+$("equipBestBtn").addEventListener("click",()=>{
+  const n=equipBest();
+  if(n){persist();SFX.buy();toast(`⚡ Equipped best gear (${n} slot${n>1?"s":""} improved)`);}
+  else toast("Already wearing your best gear!");
+  gearSel=null;paintGear();
 });
 $("gearBackBtn").addEventListener("click",()=>show("title"));
 
