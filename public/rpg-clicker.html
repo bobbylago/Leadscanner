@@ -230,6 +230,8 @@
 
   /* records screen */
   #recList{display:flex; flex-direction:column; gap:8px; width:min(380px,92vw); max-height:52vh; overflow-y:auto;}
+  .rechead{font-size:13px; font-weight:900; letter-spacing:.08em; color:#fff; text-align:left;
+    margin-top:6px; padding-left:2px; text-shadow:0 2px 0 rgba(0,0,0,.5);}
 
   /* stage path map (replaces plain dots) */
   #dots{align-items:center; margin-bottom:16px;}
@@ -320,6 +322,8 @@
   /* evolution card + daily chip */
   .card.evo{border-color:#ffd75e; box-shadow:0 4px 0 rgba(0,0,0,.55),0 0 22px rgba(255,215,94,.5);}
   .card.evo .chead{background:linear-gradient(180deg,#e8b0ff,#b45fff); color:#3a1060;}
+  .card.art{border-color:#b45fff; box-shadow:0 4px 0 rgba(0,0,0,.55),0 0 20px rgba(180,95,255,.45);}
+  .card.art .chead{background:linear-gradient(180deg,#d4a8ff,#8a3fd8); color:#fff;}
   #modChip{
     align-self:flex-start; background:rgba(8,5,16,.85); border:2px solid #000; border-radius:999px;
     padding:3px 12px; font-size:11px; font-weight:900; color:var(--gold); box-shadow:0 2px 0 rgba(0,0,0,.5);
@@ -707,8 +711,39 @@ const EVOS={
   zan:{req:"swift",n:"Moonlit Zan",jp:"月下斬月",d:"Every slash hurls a fan of crescents."},
   kitsune:{req:"lucky",n:"Ninetail Blaze",jp:"九尾の焔",d:"Foxfire detonates on impact."},
   beam:{req:"vital",n:"Ryujin Cannon",jp:"竜神砲",d:"A second dragon erupts behind you."},
-  iai:{req:"haste",n:"Zero-Step Iai",jp:"無拍子",d:"The draw cuts a cross through creation."}
+  iai:{req:"haste",n:"Zero-Step Iai",jp:"無拍子",d:"The draw cuts a cross through creation."},
+  clone:{req:"focus",n:"Phantom Legion",jp:"幻影軍団",d:"Two more clones, striking at full power."},
+  domain:{req:"vital",n:"Boundless Domain",jp:"無限領域",d:"Vaster, longer, and it nearly stops time."},
+  raidash:{req:"swift",n:"Storm God Step",jp:"神速雷帝",d:"A wider godspeed bolt with double the wrath."}
 };
+
+/* ============================ awakened arts (world-locked abilities) ============================ */
+const ARTS=[
+  {id:"mirror",w:0,tier:1,n:"Crimson Mirror Eye",jp:"紅写しの眼",max:3,
+   d:l=>`+${8*l}% crit · every ${(8-l*1.5).toFixed(1)}s the eye unleashes a phantom volley`},
+  {id:"samsara",w:0,tier:2,n:"Samsara Eye",jp:"輪廻の瞳",max:3,
+   d:l=>`Every ${10-l}s: drag every foe inward, then blast them away (${40+25*l} dmg)`},
+  {id:"release",w:1,tier:1,n:"Soul Release",jp:"卍解放",max:3,
+   d:l=>`Every 24s: release the blade — +50% attack speed, +${20+10*l}% damage for ${5+l}s`},
+  {id:"mask",w:1,tier:2,n:"Hollow Mask",jp:"仮面憑依",max:3,
+   d:l=>`Below 30% HP: don the mask — heal ${10+5*l}%, untouchable for ${3+l}s (45s cd)`},
+  {id:"solar",w:2,tier:1,n:"Solar Breath",jp:"日輪の呼吸",max:3,
+   d:l=>`Every hit ignites foes, burning ${6+4*l}/s for 3s`},
+  {id:"blood",w:2,tier:2,n:"Blood Art",jp:"血鬼術",max:3,
+   d:l=>`Every ${(5-l*.8).toFixed(1)}s: ${2+l} homing blood shards hunt the pack`},
+  {id:"ascend",w:3,tier:1,n:"Ascended Warrior",jp:"超戦士覚醒",max:3,
+   d:l=>`Every ${45-5*l} kills: ascend — golden hair, +60% damage, +20% speed for ${8+2*l}s`},
+  {id:"gale",w:3,tier:2,n:"Crimson Gale Fist",jp:"紅蓮の構え",max:3,
+   d:l=>`Burn life for power: +${25+10*l}% damage, lose ${(1+.5*l).toFixed(1)} HP/s`},
+  {id:"colossal",w:4,tier:1,n:"Colossal Shift",jp:"巨人化",max:3,
+   d:l=>`Every 45s become colossal for ${7+l}s: stomp nearby foes, take half damage`},
+  {id:"maneuver",w:4,tier:2,n:"Sky Maneuver",jp:"立体機動",max:3,
+   d:l=>`Dash recharges ${25*l}% faster and cuts everything along its path`}
+];
+function artUnlocked(a){
+  const sp=SAVE.stages[STAGES[a.w].id];
+  return a.tier===1?sp.cleared:sp.best>=300;
+}
 
 /* ============================ daily challenge modifiers ============================ */
 const DAILY_MODS=[
@@ -783,7 +818,7 @@ function rollRarity(w){
 const fresh=()=>({shards:0, sound:true, meta:{atk:0,hp:0,spd:0,greed:0,revive:0}, best:{time:0,lvl:0,kills:0},
   energy:30, energyLast:Date.now(), pxp:0, plvl:1, totalKills:0, totalRuns:0, totalWins:0,
   inv:[], equip:{weapon:null,armor:null,charm:null,gloves:null,belt:null,boots:null}, newGear:false,
-  chars:{owned:["kage"],cur:"kage"}, daily:{date:"",done:false}, ach:{},
+  chars:{owned:["kage"],cur:"kage"}, daily:{date:"",done:false}, ach:{}, seenArt:{},
   stages:Object.fromEntries(STAGES.map(s=>[s.id,{best:0,cleared:false}]))});
 let SAVE=fresh();
 try{const r=localStorage.getItem("yokaiRift"); if(r){const p=JSON.parse(r);
@@ -1529,6 +1564,93 @@ function abilityIconURL(id){
         g.beginPath();g.ellipse(hx,hy,9,7,a,0,6.29);
         g.fillStyle=ballGrad(g,hx,hy,9,"#57b849");g.fill();g.stroke();}
       break;
+    case"mirror": // crimson eye with three pupils
+      g.fillStyle="#fff";
+      g.beginPath();g.moveTo(6,36);g.quadraticCurveTo(36,10,66,36);g.quadraticCurveTo(36,62,6,36);
+      g.closePath();g.fill();g.stroke();
+      g.fillStyle="#e8203a";g.beginPath();g.arc(36,36,14,0,6.29);g.fill();g.stroke();
+      g.fillStyle=OL;g.beginPath();g.arc(36,36,4.5,0,6.29);g.fill();
+      for(let k2=0;k2<3;k2++){const a2=k2*2.09-.5;
+        g.beginPath();g.arc(36+Math.cos(a2)*8.5,36+Math.sin(a2)*8.5,2.8,0,6.29);g.fill();}
+      break;
+    case"samsara": // ringed violet eye
+      g.fillStyle="#cbb0e8";g.beginPath();g.arc(36,36,26,0,6.29);g.fill();g.stroke();
+      g.strokeStyle="#6a3fa8";g.lineWidth=3;
+      for(const r2 of[7,14,21]){g.beginPath();g.arc(36,36,r2,0,6.29);g.stroke();}
+      g.fillStyle="#6a3fa8";g.beginPath();g.arc(36,36,3.5,0,6.29);g.fill();
+      g.strokeStyle=OL;g.lineWidth=4;break;
+    case"release": // white burst on dark
+      g.fillStyle="#1b1638";g.beginPath();g.arc(36,36,26,0,6.29);g.fill();g.stroke();
+      g.fillStyle="#fff";
+      g.beginPath();
+      for(let k2=0;k2<8;k2++){const a2=k2*.785;
+        g.lineTo(36+Math.cos(a2)*24,36+Math.sin(a2)*24);
+        g.lineTo(36+Math.cos(a2+.39)*9,36+Math.sin(a2+.39)*9);}
+      g.closePath();g.fill();g.stroke();break;
+    case"mask": // white mask with red streaks
+      g.fillStyle="#f6f2ea";
+      g.beginPath();g.ellipse(36,36,20,26,0,0,6.29);g.fill();g.stroke();
+      g.fillStyle=OL;
+      g.beginPath();g.ellipse(28,32,5,7,0,0,6.29);g.fill();
+      g.beginPath();g.ellipse(44,32,5,7,0,0,6.29);g.fill();
+      g.strokeStyle="#e8203a";g.lineWidth=4;
+      g.beginPath();g.moveTo(22,14);g.lineTo(26,58);g.moveTo(32,12);g.lineTo(34,26);g.stroke();
+      g.strokeStyle=OL;g.lineWidth=4;
+      g.lineWidth=2.5;g.beginPath();g.moveTo(28,48);g.lineTo(44,48);g.stroke();g.lineWidth=4;break;
+    case"solar": // blazing sun
+      g.fillStyle=ballGrad(g,36,36,16,"#ffb82e");
+      g.beginPath();g.arc(36,36,15,0,6.29);g.fill();g.stroke();
+      g.fillStyle="#e8434f";
+      for(let k2=0;k2<8;k2++){const a2=k2*.785+.2;
+        g.beginPath();
+        g.moveTo(36+Math.cos(a2-.18)*17,36+Math.sin(a2-.18)*17);
+        g.quadraticCurveTo(36+Math.cos(a2)*32,36+Math.sin(a2)*32,36+Math.cos(a2+.18)*17,36+Math.sin(a2+.18)*17);
+        g.closePath();g.fill();g.stroke();}
+      break;
+    case"blood": // drop + shards
+      g.fillStyle=ballGrad(g,34,38,14,"#c01830");
+      g.beginPath();g.moveTo(34,10);g.bezierCurveTo(48,30,48,44,34,52);g.bezierCurveTo(20,44,20,30,34,10);
+      g.closePath();g.fill();g.stroke();
+      g.fillStyle="#e8203a";
+      g.beginPath();g.moveTo(54,20);g.lineTo(62,28);g.lineTo(52,32);g.closePath();g.fill();g.stroke();
+      break;
+    case"ascend": // golden flare
+      g.fillStyle=ballGrad(g,36,42,16,"#ffd75e");
+      g.beginPath();
+      g.moveTo(36,6);g.quadraticCurveTo(46,22,42,30);g.quadraticCurveTo(56,26,52,42);
+      g.quadraticCurveTo(50,56,36,62);g.quadraticCurveTo(22,56,20,42);
+      g.quadraticCurveTo(16,26,30,30);g.quadraticCurveTo(26,22,36,6);
+      g.closePath();g.fill();g.stroke();
+      g.fillStyle="#fff8d8";
+      g.beginPath();g.moveTo(36,26);g.quadraticCurveTo(42,38,36,52);g.quadraticCurveTo(30,38,36,26);
+      g.closePath();g.fill();break;
+    case"gale": // red aura fist
+      g.strokeStyle="#e8203a";g.lineWidth=5;
+      g.beginPath();g.arc(36,36,26,0,6.29);g.stroke();
+      g.strokeStyle=OL;g.lineWidth=4;
+      g.fillStyle=ballGrad(g,36,38,16,"#e86a4a");
+      g.beginPath();g.moveTo(22,44);g.lineTo(22,32);g.quadraticCurveTo(22,24,30,24);g.lineTo(46,24);
+      g.quadraticCurveTo(52,24,52,30);g.lineTo(52,44);g.quadraticCurveTo(52,50,44,50);g.lineTo(30,50);
+      g.quadraticCurveTo(22,50,22,44);g.closePath();g.fill();g.stroke();
+      g.lineWidth=2.5;g.beginPath();
+      for(const x2 of[31,38,45]){g.moveTo(x2,24);g.lineTo(x2,34);}
+      g.stroke();g.lineWidth=4;break;
+    case"colossal": // giant silhouette
+      g.fillStyle=ballGrad(g,36,30,18,"#b8a878");
+      g.beginPath();g.arc(36,26,14,0,6.29);g.fill();g.stroke();
+      g.beginPath();g.moveTo(12,60);g.quadraticCurveTo(16,38,36,38);g.quadraticCurveTo(56,38,60,60);
+      g.closePath();g.fill();g.stroke();
+      g.fillStyle="#f2ecff";g.fillRect(28,28,16,6);g.strokeRect(28,28,16,6);break;
+    case"maneuver": // twin anchor lines + speed
+      g.strokeStyle="#9aa8c8";g.lineWidth=5;
+      g.beginPath();g.moveTo(14,14);g.lineTo(50,50);g.moveTo(58,14);g.lineTo(30,44);g.stroke();
+      g.strokeStyle=OL;g.lineWidth=2;
+      g.beginPath();g.moveTo(14,14);g.lineTo(50,50);g.moveTo(58,14);g.lineTo(30,44);g.stroke();
+      g.fillStyle="#9aa8c8";
+      g.beginPath();g.arc(50,50,6,0,6.29);g.fill();g.lineWidth=3;g.stroke();g.lineWidth=4;
+      g.strokeStyle="#4ce0ff";g.lineWidth=3;
+      for(const dy of[54,60]){g.beginPath();g.moveTo(8,dy);g.lineTo(26,dy);g.stroke();}
+      g.strokeStyle=OL;g.lineWidth=4;break;
     default: // dash swirl
       g.strokeStyle="#cfe0ff";g.lineWidth=6;
       g.beginPath();g.arc(30,36,18,.6,4.2);g.stroke();
@@ -1566,7 +1688,8 @@ function rr(g,x,y,w,h,r){
 const CHSTYLE={
   kage:{skin:"#f2d4b0",hair1:"#ffffff",hair2:"#c2cce8",gi1:"#3c4380",gi2:"#20244a",sash:"#ff5fa2",scarf:"#ff5fa2",style:"spiky",band:true},
   miko:{skin:"#ffe4c8",hair1:"#4a4462",hair2:"#2a2438",gi1:"#f6f0e8",gi2:"#d8d2c4",sash:"#e8434f",scarf:"#e8434f",style:"long",bow:true},
-  oni:{skin:"#e89a80",hair1:"#5a5470",hair2:"#3a3448",gi1:"#4a2a3e",gi2:"#33203a",sash:"#ffd75e",scarf:"#ffd75e",style:"wild",horn:true}
+  oni:{skin:"#e89a80",hair1:"#5a5470",hair2:"#3a3448",gi1:"#4a2a3e",gi2:"#33203a",sash:"#ffd75e",scarf:"#ffd75e",style:"wild",horn:true},
+  golden:{skin:"#ffe4c8",hair1:"#fff6c0",hair2:"#ffb82e",gi1:"#4a4380",gi2:"#2a2a5a",sash:"#ffd75e",scarf:"#ffd75e",style:"wild"}
 };
 function drawHero(x,y,t,flip,moving,alpha,g,ch){
   g=g||ctx;
@@ -1787,6 +1910,11 @@ function newRun(){
     domain:null, wasDash:false, dashStart:{x:0,y:0},
     charId:SAVE.chars.cur, evolved:{}, mods:null, ebullets:[],
     nextGoblinAt:rand(50,90), bonusShards:0,
+    arts:{}, artT:{mirror:0,samsara:0,blood:0,release:0}, dashCd:3,
+    releaseOn:false, releaseUntil:0,
+    maskOn:false, maskUntil:0, maskAt:0,
+    gauge:0, goldenOn:false, goldenUntil:0,
+    titanOn:false, titanUntil:0, titanAt:45, stompT:0,
     enemies:[], bullets:[], gems:[], parts:[], texts:[], fx:[], items:[], trail:[],
     spawnT:0, nextBossAt:75, boss:null, hurtT:0, shake:0,
     dashReadyAt:0, dashUntil:0, ddx:1, ddy:0,
@@ -1807,6 +1935,15 @@ function recompute(){
   if(R.charId==="oni"){R.maxhp=Math.round(R.maxhp*1.3);R.speed*=.9;}
   // daily modifiers
   if(R.mods){R.dmgMult*=R.mods.pd||1;R.speed*=R.mods.ps||1;}
+  // awakened arts: static effects
+  const A=R.arts;
+  if(A.mirror)R.critC+=.08*A.mirror;
+  if(A.gale)R.dmgMult*=1+(.25+.1*A.gale);
+  R.dashCd=3*(1-.25*(A.maneuver||0));
+  // transient transformations re-apply on top
+  if(R.releaseOn){R.atkSpd*=1.5;R.dmgMult*=1+(.2+.1*A.release);}
+  if(R.maskOn)R.dmgMult*=1.4;
+  if(R.goldenOn){R.dmgMult*=1.6;R.speed*=1.2;}
 }
 
 /* ============================ input ============================ */
@@ -1842,12 +1979,12 @@ function dash(){
   R.ddx=R.dirx;R.ddy=R.diry;
   const l=Math.hypot(R.ddx,R.ddy)||1;R.ddx/=l;R.ddy/=l;
   if(R.charId==="miko"){ // blink: instant teleport
-    R.dashReadyAt=t+3;R.dashUntil=t+.05;
+    R.dashReadyAt=t+R.dashCd;R.dashUntil=t+.05;
     R.fx.push({kind:"flash",x:R.px,y:R.py,t:0,life:.2});
     R.px+=R.ddx*150;R.py+=R.ddy*150;
     R.fx.push({kind:"flash",x:R.px,y:R.py,t:0,life:.25});
   }else{
-    R.dashReadyAt=t+3;R.dashUntil=t+.2;
+    R.dashReadyAt=t+R.dashCd;R.dashUntil=t+.2;
   }
   SFX.dash();
 }
@@ -2140,7 +2277,17 @@ function paintRecords(){
       <div class="ds">${sp.best>0?`Longest survived ${fmtTime(sp.best)}`:"Unexplored"}${sp.cleared?" · ⭐ boss banished":""}</div></div>
       <div class="num" style="color:var(--gold);font-weight:800;">${"◆".repeat(i+1)}</div></div>`;
   }).join("");
-  const achRows=ACHS.map(a=>{
+  const artRows=`<div class="rechead">⚡ Awakened Arts <span style="color:var(--dim);font-weight:700;">(picked mid-run)</span></div>`+
+    ARTS.map(a=>{
+      const un=artUnlocked(a);
+      const req=a.tier===1?`Clear ${STAGES[a.w].n}`:`Survive 5:00 in ${STAGES[a.w].n}`;
+      return `<div class="srow" style="${un?"":"opacity:.6;"}">
+        <img src="${abilityIconURL(a.id)}" style="width:36px;height:36px;">
+        <div class="info"><div class="nm">${a.n} <span class="jp" style="color:var(--pink);font-size:10px;">${a.jp}</span></div>
+        <div class="ds">${un?a.d(1):"🔒 "+req}</div></div>
+        <div style="font-size:10px;font-weight:800;color:${un?"#3ecf4a":"var(--dim)"};">${STAGES[a.w].e}</div></div>`;
+    }).join("");
+  const achRows=`<div class="rechead">🏆 Achievements</div>`+ACHS.map(a=>{
     const got=!!SAVE.ach[a.id];
     return `<div class="srow" style="${got?"":"opacity:.55;"}"><div class="ico">${got?"🏆":"🔒"}</div>
       <div class="info"><div class="nm">${a.n}</div><div class="ds">${a.d} · +${a.r} 🔮</div></div>
@@ -2150,7 +2297,7 @@ function paintRecords(){
     `<div class="srow"><img src="${charPortraitURL(SAVE.chars.cur)}" style="width:38px;height:38px;border-radius:9px;border:2px solid #000;">
       <div class="info"><div class="nm">${charById(SAVE.chars.cur).n} <span class="lv num" style="color:var(--gold);font-size:11px;">Lv ${SAVE.plvl}</span></div>
       <div class="ds">${SAVE.totalRuns} dive${SAVE.totalRuns===1?"":"s"} · ${fmt(SAVE.totalKills)} yokai slain · ${SAVE.totalWins} rift${SAVE.totalWins===1?"":"s"} sealed</div></div></div>`
-    +rows+achRows;
+    +`<div class="rechead">🗺️ Worlds</div>`+rows+artRows+achRows;
 }
 $("recBackBtn").addEventListener("click",()=>show("title"));
 
@@ -2185,6 +2332,7 @@ function offerLevelUp(){
   const pool=[];
   for(const w of WEAPONS){const l=R.weapons[w.id]||0;if(l<w.max)pool.push({def:w,cur:l,weapon:true});}
   for(const p of PASSIVES){const l=R.passives[p.id]||0;if(l<p.max)pool.push({def:p,cur:l,weapon:false});}
+  for(const a of ARTS){const l=R.arts[a.id]||0;if(l<a.max&&artUnlocked(a))pool.push({def:a,cur:l,art:true});}
   const picks=[];
   // evolution offer takes the first slot when earned
   for(const wid in EVOS){
@@ -2197,12 +2345,12 @@ function offerLevelUp(){
   while(picks.length<3&&pool.length)picks.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
   while(picks.length<3)picks.push({def:HEAL_CARD,cur:0,heal:true});
   $("lvCards").innerHTML=picks.map((p,i)=>`
-    <div class="card ${p.evo?"evo":""}" data-i="${i}">
-      ${p.evo?'<i class="newtag">EVOLVE!</i>':(p.cur===0&&!p.heal?'<i class="newtag">New!</i>':"")}
+    <div class="card ${p.evo?"evo":""} ${p.art?"art":""}" data-i="${i}">
+      ${p.evo?'<i class="newtag">EVOLVE!</i>':(p.art&&p.cur===0?'<i class="newtag" style="background:#b45fff;">ART!</i>':(p.cur===0&&!p.heal?'<i class="newtag">New!</i>':""))}
       <div class="chead">${p.def.n}<span class="jp">${p.def.jp}</span></div>
       <img class="cico" src="${abilityIconURL(p.def.id==="_heal"?"vital":p.def.id)}">
       <div class="cds">${p.def.d(p.cur+1)}</div>
-      ${p.heal||p.evo?"":`<div class="stars">${"★".repeat(p.cur+1)}<span class="off">${"★".repeat(Math.max(0,p.def.max-p.cur-1))}</span></div>`}
+      ${p.heal||p.evo?"":`<div class="stars">${"★".repeat(p.cur+1)}<span class="off">${"★".repeat(Math.max(0,(p.def.max||5)-p.cur-1))}</span></div>`}
     </div>`).join("");
   $("lvCards").onclick=e=>{
     const c=e.target.closest(".card");if(!c)return;
@@ -2213,6 +2361,8 @@ function offerLevelUp(){
       toast(`✨ ${EVOS[p.evo].n} awakened!`);SFX.win();hitStop(.08);
     }
     else if(p.heal){R.hp=Math.min(R.maxhp,R.hp+R.maxhp*.4);}
+    else if(p.art){R.arts[p.def.id]=(R.arts[p.def.id]||0)+1;recompute();
+      if(p.cur===0){R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"開眼",t:0,life:.9,c:"#b45fff"});SFX.win();}}
     else if(p.weapon){R.weapons[p.def.id]=(R.weapons[p.def.id]||0)+1;}
     else{R.passives[p.def.id]=(R.passives[p.def.id]||0)+1;recompute();}
     SFX.pick();
@@ -2249,6 +2399,7 @@ function hitEnemy(e,dmg,kx=0,ky=0){
   const crit=Math.random()<R.critC;
   if(crit)dmg*=2;
   if(e.affix==="shield")dmg*=.55;
+  if(R.arts.solar){e.burn=3;e.burnDmg=(6+4*R.arts.solar)*R.dmgMult;} // ignite
   e.hp-=dmg;e.flash=.12;
   e.x+=kx;e.y+=ky;
   dmgText(e.x,e.y-e.r,dmg,crit);
@@ -2257,7 +2408,7 @@ function hitEnemy(e,dmg,kx=0,ky=0){
   if(e.hp<=0&&!e.dead)killEnemy(e);
 }
 function killEnemy(e){
-  e.dead=true;R.kills++;
+  e.dead=true;R.kills++;R.gauge++;
   for(let i=0;i<(e.boss?26:e.elite?10:5);i++)
     R.parts.push({x:e.x,y:e.y,vx:rand(-140,140),vy:rand(-180,60),t:0,life:rand(.3,.7),c:e.goblin?"#ffd75e":e.boss?"#ffd75e":"#ff5fa2",sz:rand(2,4)});
   if(e.goblin){ // treasure imp pays out on the spot
@@ -2369,13 +2520,14 @@ function weaponsTick(dt){
   const T=R.timers,W=R.weapons;
   T.bolt-=dt;
   if(T.bolt<=0&&fireBolt(R.px,R.py,1)){T.bolt=.5/R.atkSpd;SFX.shot();}
-  const cl=W.clone||0;
+  const cl=(W.clone||0)+(R.evolved.clone&&W.clone?2:0);
   if(cl){
     T.clone-=dt;
     if(T.clone<=0){
+      const cdmg=R.evolved.clone?1:.6;
       for(let i=0;i<cl;i++){
         const a=R.t*1.2+i*Math.PI*2/cl;
-        fireBolt(R.px+Math.cos(a)*46,R.py+Math.sin(a)*46,.6);
+        fireBolt(R.px+Math.cos(a)*46,R.py+Math.sin(a)*46,cdmg);
       }
       T.clone=.55/R.atkSpd;
     }
@@ -2527,8 +2679,10 @@ function weaponsTick(dt){
   if(dm){
     T.domain-=dt;
     if(T.domain<=0&&R.enemies.length){
-      R.domain={x:R.px,y:R.py,r:24,maxR:150+25*dm,until:R.t+3.5,nextTick:R.t+.3,dmg:(18+10*dm)*R.dmgMult};
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"領域",t:0,life:.75,c:"#c26bff"});
+      const evoD=R.evolved.domain;
+      R.domain={x:R.px,y:R.py,r:24,maxR:(150+25*dm)*(evoD?1.7:1),until:R.t+(evoD?6:3.5),
+        nextTick:R.t+.3,dmg:(18+10*dm)*R.dmgMult*(evoD?1.5:1),slow:evoD?.15:.45};
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:evoD?"無限":"領域",t:0,life:.75,c:"#c26bff"});
       hitStop(.05);SFX.domain();R.shake=Math.max(R.shake,.35);
       T.domain=(10-dm*.7)/R.atkSpd;
     }
@@ -2547,6 +2701,99 @@ function weaponsTick(dt){
           e.orbAt=R.t;hitEnemy(e,(14+6*orb)*R.dmgMult*(evoO?1.6:1));
         }
       }
+    }
+  }
+}
+
+/* ---------- awakened arts active/timed logic ---------- */
+function artsTick(dt){
+  const A=R.arts,T=R.artT;
+  // Crimson Mirror Eye — periodic phantom volley at the nearest cluster
+  if(A.mirror){
+    T.mirror-=dt;
+    if(T.mirror<=0){
+      const tgt=nearestEnemy(R.px,R.py,620);
+      if(tgt){
+        const base=Math.atan2(tgt.y-R.py,tgt.x-R.px);
+        for(let i=0;i<6;i++){const a=base+(i-2.5)*.16;
+          R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*520,vy:Math.sin(a)*520,
+            dmg:(20+14*A.mirror)*R.dmgMult,r:6,pierce:2,life:1.1,c:"#ff3a5a"});}
+        R.fx.push({kind:"kanji",x:R.px+Math.cos(base)*70,y:R.py+Math.sin(base)*70-24,ch:"写",t:0,life:.5,c:"#e8203a"});
+        SFX.shot();T.mirror=(8-A.mirror*1.5)/R.atkSpd;
+      }
+    }
+  }
+  // Samsara Eye — gravity pull then blast
+  if(A.samsara){
+    T.samsara-=dt;
+    if(T.samsara<=0&&R.enemies.length){
+      for(const e of R.enemies){if(e.dead||e.boss)continue;
+        const a=Math.atan2(R.py-e.y,R.px-e.x);e.x+=Math.cos(a)*70;e.y+=Math.sin(a)*70;}
+      for(const e of R.enemies){if(!e.dead&&dist2(e.x,e.y,R.px,R.py)<180*180)hitEnemy(e,(40+25*A.samsara)*R.dmgMult);}
+      R.fx.push({kind:"nova",x:R.px,y:R.py,r:200,t:0,life:.45});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"輪廻",t:0,life:.7,c:"#b45fff"});
+      hitStop(.07);R.shake=Math.max(R.shake,.5);SFX.domain();
+      T.samsara=(10-A.samsara);
+    }
+  }
+  // Blood Art — homing shards
+  if(A.blood){
+    T.blood-=dt;
+    if(T.blood<=0){
+      const n=2+A.blood;
+      for(let i=0;i<n;i++){const a=i/n*6.283;
+        R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*260,vy:Math.sin(a)*260,
+          dmg:(24+14*A.blood)*R.dmgMult,r:8,pierce:1,life:2.4,c:"#c01830",homing:true});}
+      SFX.shot();T.blood=(5-A.blood*.8)/R.atkSpd;
+    }
+  }
+  // Soul Release — periodic self-buff window
+  if(A.release){
+    T.release-=dt;
+    if(!R.releaseOn&&T.release<=0){
+      R.releaseOn=true;R.releaseUntil=R.t+(5+A.release);recompute();
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"卍解",t:0,life:.8,c:"#fff"});
+      R.fx.push({kind:"lines",x:R.px,y:R.py,t:0,life:.4});
+      SFX.win();T.release=24;
+    }
+    if(R.releaseOn&&R.t>=R.releaseUntil){R.releaseOn=false;recompute();}
+  }
+  // Hollow Mask — emergency invuln + heal when low
+  if(A.mask){
+    if(!R.maskOn&&R.hp/R.maxhp<.3&&R.t>=R.maskAt){
+      R.maskOn=true;R.maskUntil=R.t+(3+A.mask);R.maskAt=R.t+45;
+      R.hp=Math.min(R.maxhp,R.hp+R.maxhp*(.1+.05*A.mask));recompute();
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"仮面",t:0,life:.9,c:"#e8203a"});
+      SFX.boss();toast("👺 Hollow Mask!");
+    }
+    if(R.maskOn&&R.t>=R.maskUntil){R.maskOn=false;recompute();}
+  }
+  // Ascended Warrior — gauge fills from kills, then transforms
+  if(A.ascend){
+    if(!R.goldenOn&&R.gauge>=(45-5*A.ascend)){
+      R.gauge=0;R.goldenOn=true;R.goldenUntil=R.t+(8+2*A.ascend);recompute();
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"超",t:0,life:1,c:"#ffd75e"});
+      R.fx.push({kind:"lines",x:R.px,y:R.py,t:0,life:.5});
+      hitStop(.1);R.shake=Math.max(R.shake,.6);SFX.win();toast("⚡ Ascended!");
+    }
+    if(R.goldenOn&&R.t>=R.goldenUntil){R.goldenOn=false;recompute();}
+  }
+  // Crimson Gale Fist — passive HP burn (recompute handles the damage boost)
+  if(A.gale)R.hp=Math.max(1,R.hp-(1+.5*A.gale)*dt);
+  // Colossal Shift — periodic giant mode with stomps
+  if(A.colossal){
+    if(!R.titanOn&&R.t>=R.titanAt){
+      R.titanOn=true;R.titanUntil=R.t+(7+A.colossal);R.titanAt=R.t+45;
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-70,ch:"巨人",t:0,life:1,c:"#f2ecff"});
+      R.shake=Math.max(R.shake,.6);SFX.boss();toast("🗿 Colossal Shift!");
+    }
+    if(R.titanOn){
+      R.stompT-=dt;
+      if(R.stompT<=0){R.stompT=.6;
+        for(const e of R.enemies){if(!e.dead&&dist2(e.x,e.y,R.px,R.py)<150*150)hitEnemy(e,(30+15*A.colossal)*R.dmgMult);}
+        R.fx.push({kind:"nova",x:R.px,y:R.py,r:150,t:0,life:.3});R.shake=Math.max(R.shake,.25);
+      }
+      if(R.t>=R.titanUntil)R.titanOn=false;
     }
   }
 }
@@ -2611,18 +2858,20 @@ function update(dt){
       R.fx.push({kind:"nova",x:R.px,y:R.py,r:130,t:0,life:.35});
       R.shake=Math.max(R.shake,.35);SFX.bomb();
     }
-    const rl=R.weapons.raidash||0;
-    if(rl){
+    const rl=R.weapons.raidash||0,mv=R.arts.maneuver||0;
+    if(rl||mv){
+      const evoRd=R.evolved.raidash;
       const sx=R.dashStart.x,sy=R.dashStart.y;
       const ddx2=R.px-sx,ddy2=R.py-sy,len=Math.max(1,Math.hypot(ddx2,ddy2)),ux=ddx2/len,uy=ddy2/len;
+      const dmg=((40+30*rl)*(rl?1:0)+(20+15*mv))*R.dmgMult*(evoRd?1.6:1);
       for(const e of R.enemies){
         if(e.dead)continue;
         const rx=e.x-sx,ry=e.y-sy,proj=rx*ux+ry*uy;
-        if(proj>-24&&proj<len+24&&Math.abs(rx*uy-ry*ux)<38+e.r)
-          hitEnemy(e,(40+30*rl)*R.dmgMult);
+        if(proj>-24&&proj<len+24&&Math.abs(rx*uy-ry*ux)<(evoRd?60:38)+e.r)
+          hitEnemy(e,dmg);
       }
       R.fx.push({kind:"bolt",pts:[{x:sx,y:sy},{x:(sx+R.px)/2,y:(sy+R.py)/2},{x:R.px,y:R.py}],t:0,life:.25});
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-48,ch:"雷",t:0,life:.5,c:"#4ce0ff"});
+      if(rl)R.fx.push({kind:"kanji",x:R.px,y:R.py-48,ch:"雷",t:0,life:.5,c:"#4ce0ff"});
       SFX.bolt();hitStop(.04);
     }
   }
@@ -2640,15 +2889,23 @@ function update(dt){
       }
     }else R.domain=null;
   }
-  const invuln=R.t<R.dashUntil+.3;
+  const invuln=R.t<R.dashUntil+.3||R.maskOn;
+  const dmgTaken=R.titanOn?.5:1;
   if(R.regen)R.hp=Math.min(R.maxhp,R.hp+R.regen*dt);
   R.hurtT=Math.max(0,R.hurtT-dt);
 
   weaponsTick(dt);
+  artsTick(dt);
 
   for(let i=R.bullets.length-1;i>=0;i--){
     const b=R.bullets[i];
     b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+    if(b.homing){ // blood shards curve toward nearest foe
+      const tg=nearestEnemy(b.x,b.y,400);
+      if(tg){const a=Math.atan2(tg.y-b.y,tg.x-b.x),sp=Math.hypot(b.vx,b.vy);
+        b.vx+=(Math.cos(a)*sp-b.vx)*Math.min(1,dt*5);
+        b.vy+=(Math.sin(a)*sp-b.vy)*Math.min(1,dt*5);}
+    }
     if(b.life<=0){R.bullets.splice(i,1);continue;}
     for(const e of R.enemies){
       if(e.dead)continue;
@@ -2669,13 +2926,18 @@ function update(dt){
     const e=R.enemies[i];
     if(e.dead){R.enemies.splice(i,1);continue;}
     if(e.goblin&&R.t>e.dieAt){e.dead=true;R.enemies.splice(i,1);continue;}
+    if(e.burn>0){ // solar breath burn tick
+      e.burn-=dt;e.hp-=e.burnDmg*dt;
+      if(Math.random()<dt*8)R.parts.push({x:e.x+rand(-8,8),y:e.y-e.r,vx:rand(-20,20),vy:rand(-60,-20),t:0,life:.4,c:"#ff8a3c",sz:rand(2,3)});
+      if(e.hp<=0&&!e.dead){killEnemy(e);continue;}
+    }
     let dx=R.px-e.x,dy=R.py-e.y;
     const d=Math.max(1,Math.hypot(dx,dy));
     let sx=dx/d,sy=dy/d;
     if(e.goblin){sx=-sx;sy=-sy;} // imp flees
     if(e.drift){const a=Math.atan2(sy,sx)+Math.sin(R.t*2+e.ph)*.7;sx=Math.cos(a);sy=Math.sin(a);}
     let sp=e.spd;
-    if(R.domain&&R.t<R.domain.until&&dist2(e.x,e.y,R.domain.x,R.domain.y)<R.domain.r*R.domain.r)sp*=.45;
+    if(R.domain&&R.t<R.domain.until&&dist2(e.x,e.y,R.domain.x,R.domain.y)<R.domain.r*R.domain.r)sp*=(R.domain.slow||.45);
     if(e.boss){ // boss attack patterns
       if(e.mode==="tele"){ // wind-up: stand still, then commit to a charge
         if(R.t>=e.modeUntil){
@@ -2703,7 +2965,7 @@ function update(dt){
     }
     e.flash=Math.max(0,e.flash-dt);
     if(!invuln&&d<e.r+16&&R.t-e.hitAt>.6&&!e.goblin){
-      e.hitAt=R.t;R.hp-=e.dmg*((R.mods&&R.mods.ed)||1);R.hurtT=.25;R.shake=Math.max(R.shake,.25);
+      e.hitAt=R.t;R.hp-=e.dmg*((R.mods&&R.mods.ed)||1)*dmgTaken;R.hurtT=.25;R.shake=Math.max(R.shake,.25);
       SFX.hurt();if(navigator.vibrate)navigator.vibrate(25);
       if(R.hp<=0){playerDeath();return;}
     }
@@ -2714,7 +2976,7 @@ function update(dt){
     b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
     if(b.life<=0){R.ebullets.splice(i,1);continue;}
     if(!invuln&&dist2(b.x,b.y,R.px,R.py)<26*26){
-      R.hp-=16*Math.sqrt(R.stg.diff)*((R.mods&&R.mods.ed)||1);
+      R.hp-=16*Math.sqrt(R.stg.diff)*((R.mods&&R.mods.ed)||1)*dmgTaken;
       R.hurtT=.25;R.shake=Math.max(R.shake,.2);SFX.hurt();
       R.ebullets.splice(i,1);
       if(R.hp<=0){playerDeath();return;}
@@ -3181,10 +3443,43 @@ function renderGame(){
       rr(ctx,wx(g.x)-8,wy(g.y)-4,16,16,5);
     }
   }
-  ctx.beginPath();ctx.fillStyle="rgba(0,0,0,.35)";ctx.ellipse(px2,py2+16,14,5,0,0,6.29);ctx.fill();
+  const titanScale=R.titanOn?1.9:1;
+  ctx.beginPath();ctx.fillStyle="rgba(0,0,0,.35)";ctx.ellipse(px2,py2+16*titanScale,14*titanScale,5*titanScale,0,0,6.29);ctx.fill();
   const moving=Math.hypot(joyVx,joyVy)>.05||keys.w||keys.a||keys.s||keys.d||R.t<R.dashUntil;
+  // transformation auras drawn beneath the hero
+  if(R.goldenOn){
+    const ar=32+Math.sin(t*18)*4;
+    const ga=ctx.createRadialGradient(px2,py2,6,px2,py2,ar+18);
+    ga.addColorStop(0,"rgba(255,225,120,.55)");ga.addColorStop(1,"rgba(255,200,60,0)");
+    ctx.fillStyle=ga;ctx.beginPath();ctx.arc(px2,py2,ar+18,0,6.29);ctx.fill();
+    ctx.strokeStyle="rgba(255,240,180,.8)";ctx.lineWidth=2;
+    for(let k=0;k<8;k++){const a=k*.785+t*2;
+      ctx.beginPath();ctx.moveTo(px2+Math.cos(a)*ar,py2+Math.sin(a)*ar);
+      ctx.lineTo(px2+Math.cos(a)*(ar+12+Math.sin(t*20+k)*5),py2+Math.sin(a)*(ar+12));ctx.stroke();}
+  }
+  if(R.releaseOn){ctx.strokeStyle="rgba(255,255,255,"+(0.4+Math.sin(t*14)*.2)+")";ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(px2,py2,30+Math.sin(t*10)*4,0,6.29);ctx.stroke();}
+  if(R.arts.gale&&!R.goldenOn){ctx.strokeStyle="rgba(232,32,58,"+(0.3+Math.sin(t*12)*.15)+")";ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.arc(px2,py2,28,0,6.29);ctx.stroke();}
+  if(R.titanOn){const ta=ctx.createRadialGradient(px2,py2,10,px2,py2,60);
+    ta.addColorStop(0,"rgba(242,236,255,.3)");ta.addColorStop(1,"rgba(242,236,255,0)");
+    ctx.fillStyle=ta;ctx.beginPath();ctx.arc(px2,py2,60,0,6.29);ctx.fill();}
   if(R.hurtT>0)ctx.globalAlpha=.6+Math.sin(t*40)*.4;
-  drawHero(px2,py2,t,R.dirx<0,moving,R.t<R.dashUntil+.3?.7:undefined);
+  // draw hero (scaled for titan, gold-tinted for ascended)
+  ctx.save();ctx.translate(px2,py2);ctx.scale(titanScale,titanScale);
+  drawHero(0,0,t,R.dirx<0,moving,R.t<R.dashUntil+.3?.7:undefined,ctx,R.goldenOn?"golden":R.charId);
+  ctx.restore();
+  if(R.maskOn){ // white hollow mask over the face
+    ctx.save();ctx.translate(px2,(py2-15)*1);
+    ctx.fillStyle="#f6f2ea";ctx.strokeStyle="#141024";ctx.lineWidth=2;
+    ctx.beginPath();ctx.ellipse(0,-1,8,10,0,0,6.29);ctx.fill();ctx.stroke();
+    ctx.fillStyle="#141024";
+    ctx.beginPath();ctx.ellipse(-3,-2,1.8,2.6,0,0,6.29);ctx.fill();
+    ctx.beginPath();ctx.ellipse(3,-2,1.8,2.6,0,0,6.29);ctx.fill();
+    ctx.strokeStyle="#e8203a";ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(-6,-9);ctx.lineTo(-4,7);ctx.moveTo(5,-9);ctx.lineTo(3,6);ctx.stroke();
+    ctx.restore();
+  }
   ctx.globalAlpha=1;
   ctx.strokeStyle="rgba(76,224,255,.07)";ctx.lineWidth=1.5;
   ctx.beginPath();ctx.arc(px2,py2,R.magnetR,0,6.29);ctx.stroke();
