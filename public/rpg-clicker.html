@@ -2183,6 +2183,7 @@ function newRun(){
     charId:SAVE.chars.cur, evolved:{}, mods:null, ebullets:[],
     nextGoblinAt:rand(50,90), bonusShards:0,
     arts:{}, artT:{mirror:0,samsara:0,blood:0,release:0,emperor:0}, dashCd:3, dmgReduce:0,
+    weaponLv:1, weaponAwake:false,
     releaseOn:false, releaseUntil:0,
     maskOn:false, maskUntil:0, maskAt:0,
     gauge:0, goldenOn:false, goldenUntil:0,
@@ -2691,17 +2692,38 @@ function offerLevelUp(){
       picks.push({evo:wid,def:{id:wid,n:ev.n,jp:ev.jp,d:()=>ev.d}});
     }
   }
+  // the EQUIPPED weapon can be upgraded here like a skill; awaken is guaranteed when maxed
+  const eqw=SAVE.equip.weapon;
+  if(eqw){
+    const wt=WTYPE[eqw.w],nm=WTYPE_NAME[wt]||"Weapon";
+    if(!R.weaponAwake&&!eqw.evo&&R.weaponLv>=WEAPON_MAXLV){
+      const aw=WEAPON_AWAKEN[eqw.w];
+      picks.push({wpnAwake:true,w:eqw.w,def:{n:aw?aw.n:"Awaken "+nm,jp:aw?aw.jp:"武器覚醒",d:()=>WTYPE_EVO[wt]}});
+    }
+    else if(R.weaponLv<WEAPON_MAXLV){
+      const wcard={wpn:true,cur:R.weaponLv-1,max:WEAPON_MAXLV,w:eqw.w,def:{n:nm,jp:"武器強化",max:WEAPON_MAXLV,d:()=>`+15% weapon power (Weapon Lv ${R.weaponLv+1})`}};
+      if(Math.random()<.5)picks.push(wcard);else pool.push(wcard); // reliably offered
+    }
+  }
   if(picks.length>3)picks.length=3;
   while(picks.length<3&&pool.length)picks.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
   while(picks.length<3)picks.push({def:HEAL_CARD,cur:0,heal:true});
-  $("lvCards").innerHTML=picks.map((p,i)=>`
-    <div class="card ${p.evo?"evo":""} ${p.art?"art":""}" data-i="${i}">
-      ${p.evo?'<i class="newtag">EVOLVE!</i>':(p.art&&p.cur===0?'<i class="newtag" style="background:#b45fff;">ART!</i>':(p.cur===0&&!p.heal?'<i class="newtag">New!</i>':""))}
+  $("lvCards").innerHTML=picks.map((p,i)=>{
+    const iconSrc=(p.wpn||p.wpnAwake)?gearIconURL(0,p.w):abilityIconURL(p.def.id==="_heal"?"vital":p.def.id);
+    const tag=p.evo?'<i class="newtag">EVOLVE!</i>'
+      :p.wpnAwake?'<i class="newtag" style="background:#ffb82e;color:#5a3600;">AWAKEN!</i>'
+      :(p.art&&p.cur===0?'<i class="newtag" style="background:#b45fff;">ART!</i>'
+      :(p.wpn?'<i class="newtag" style="background:#4ca8ff;">WEAPON</i>'
+      :(p.cur===0&&!p.heal?'<i class="newtag">New!</i>':"")));
+    const showStars=!p.heal&&!p.evo&&!p.wpnAwake;
+    const maxv=p.def.max||p.max||5;
+    return `<div class="card ${p.evo||p.wpnAwake?"evo":""} ${p.art?"art":""}" data-i="${i}">
+      ${tag}
       <div class="chead">${p.def.n}<span class="jp">${p.def.jp}</span></div>
-      <img class="cico" src="${abilityIconURL(p.def.id==="_heal"?"vital":p.def.id)}">
+      <img class="cico" src="${iconSrc}">
       <div class="cds">${p.def.d(p.cur+1)}</div>
-      ${p.heal||p.evo?"":`<div class="stars">${"★".repeat(p.cur+1)}<span class="off">${"★".repeat(Math.max(0,(p.def.max||5)-p.cur-1))}</span></div>`}
-    </div>`).join("");
+      ${showStars?`<div class="stars">${"★".repeat(p.cur+1)}<span class="off">${"★".repeat(Math.max(0,maxv-p.cur-1))}</span></div>`:""}
+    </div>`;}).join("");
   $("lvCards").onclick=e=>{
     const c=e.target.closest(".card");if(!c)return;
     const p=picks[+c.dataset.i];
@@ -2710,6 +2732,12 @@ function offerLevelUp(){
       R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"覚醒",t:0,life:.9,c:"#ffd75e"});
       toast(`✨ ${EVOS[p.evo].n} awakened!`);SFX.win();hitStop(.08);
     }
+    else if(p.wpnAwake){R.weaponAwake=true;
+      const aw=WEAPON_AWAKEN[p.w];
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:aw?aw.jp:"覚醒",t:0,life:1,c:"#ffd75e"});
+      R.fx.push({kind:"lines",x:R.px,y:R.py,t:0,life:.5});
+      toast(`✦ ${aw?aw.n:WTYPE_NAME[WTYPE[p.w]]} awakened!`);SFX.win();hitStop(.1);}
+    else if(p.wpn){R.weaponLv++;}
     else if(p.heal){R.hp=Math.min(R.maxhp,R.hp+R.maxhp*.4);}
     else if(p.art){R.arts[p.def.id]=(R.arts[p.def.id]||0)+1;recompute();
       if(p.cur===0){R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"開眼",t:0,life:.9,c:"#b45fff"});SFX.win();}}
@@ -3162,10 +3190,34 @@ function weaponsTick(dt){
 /* eight distinct signature weapon types, one per world */
 const WTYPE=["throw","arc","sweep","shoot","orbit","spin","thrust","slam"];
 const WTYPE_NAME={throw:"Throwing Blade",arc:"Blade",sweep:"Greatblade",shoot:"Blaster",orbit:"Dual Blades",spin:"Spin Blade",thrust:"Spear",slam:"Warhammer"};
+const WEAPON_MAXLV=5;
+const WTYPE_EVO={
+  throw:"awakened: 5 blades that pierce everything",
+  arc:"awakened: each swing launches a flying slash wave",
+  sweep:"awakened: sweeps hurl a giant crescent wave",
+  shoot:"awakened: piercing triple-shot barrage",
+  orbit:"awakened: four larger blades on a wide orbit",
+  spin:"awakened: unleashes a full ring of flying slashes",
+  thrust:"awakened: fires a piercing energy lance",
+  slam:"awakened: bigger blast with a follow-up quake"
+};
+/* per-world weapon awakening — themed to each world's anime (original homages) */
+const WEAPON_AWAKEN={
+  0:{n:"Sage Barrage",jp:"仙法"},      // Hidden Leaf
+  1:{n:"Blade Release",jp:"解号"},     // Soul Society
+  2:{n:"Sunfang Cut",jp:"日輪斬"},     // Demon Slayer Night
+  3:{n:"Spirit Barrage",jp:"気弾連"},  // Planet Namek
+  4:{n:"Thunder Spears",jp:"雷槍"},    // Wall Maria
+  5:{n:"Conqueror's Edge",jp:"覇斬"},  // Grand Azure Sea
+  6:{n:"Cursed Lance",jp:"呪槍"},      // Cursed Metropolis
+  7:{n:"Overdrive Smash",jp:"全力撃"}  // Hero Academy
+};
 function equippedWeaponAttack(){
   const it=SAVE.equip.weapon;if(!it)return null;
-  const lvl=it.lvl||1,mult=RAR[it.r].m*(1+lvl*.12)*(it.evo?2:1);
-  return {type:WTYPE[it.w]||"arc",item:it,dmg:26*mult*R.dmgMult,evo:it.evo,w:it.w};
+  const lvl=(it.lvl||1)+((R.weaponLv||1)-1);   // persistent level + this-run level
+  const awake=it.evo||R.weaponAwake;
+  const mult=RAR[it.r].m*(1+lvl*.12)*(awake?2:1);
+  return {type:WTYPE[it.w]||"arc",item:it,dmg:26*mult*R.dmgMult,evo:awake,w:it.w};
 }
 function mainhandTick(dt){
   const mw=equippedWeaponAttack();if(!mw)return;
@@ -3191,6 +3243,18 @@ function mainhandTick(dt){
     }
     R.swings.push({ang,dir:R.swingFlip?-1:1,t:0,life:type==="thrust"?.18:.26,item:mw.item,evo:mw.evo,type,reach,spread});
     R.swingFlip=!R.swingFlip;
+    // AWAKENED signature: melee weapons fling flying slash waves
+    if(mw.evo){
+      if(type==="thrust"){ // piercing energy lance
+        R.bullets.push({x:R.px,y:R.py,vx:Math.cos(ang)*760,vy:Math.sin(ang)*760,dmg:mw.dmg*1.3,r:12,pierce:99,life:.6,c:"#eaf2ff",gunshot:true});
+      }else if(type==="spin"){ // full ring of flying slashes
+        for(let i=0;i<6;i++){const a=i/6*6.283+R.t;
+          R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*420,vy:Math.sin(a)*420,dmg:mw.dmg*.85,r:16,pierce:99,life:.85,crescent:true});}
+      }else{ // forward flying slash (haki-style cut)
+        R.bullets.push({x:R.px,y:R.py,vx:Math.cos(ang)*460,vy:Math.sin(ang)*460,dmg:mw.dmg*(type==="sweep"?1.2:1),r:18,pierce:99,life:.9,crescent:true});
+      }
+      R.fx.push({kind:"kanji",x:R.px+Math.cos(ang)*74,y:R.py+Math.sin(ang)*74-18,ch:"斬",t:0,life:.4,c:"#b45fff"});
+    }
     SFX.slash();if(type==="sweep")R.shake=Math.max(R.shake,.15);T.mainhand=rate/R.atkSpd;
   }else if(type==="throw"){
     if(!tgt){T.mainhand=.2;return;}
@@ -3201,7 +3265,10 @@ function mainhandTick(dt){
   }else if(type==="shoot"){
     if(!tgt){T.mainhand=.15;return;}
     const a=Math.atan2(tgt.y-R.py,tgt.x-R.px);
-    R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*660,vy:Math.sin(a)*660,dmg:mw.dmg*.75,r:6,pierce:mw.evo?3:1,life:1.2,c:"#ffd75e",gunshot:true});
+    // AWAKENED signature: piercing triple-shot barrage
+    const offs=mw.evo?[-.18,0,.18]:[0];
+    for(const o of offs)
+      R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a+o)*660,vy:Math.sin(a+o)*660,dmg:mw.dmg*.75,r:6,pierce:mw.evo?3:1,life:1.2,c:"#ffd75e",gunshot:true});
     SFX.shot();T.mainhand=.42/R.atkSpd;
   }else if(type==="slam"){
     if(!tgt){T.mainhand=.3;return;}
@@ -3211,13 +3278,15 @@ function mainhandTick(dt){
       hitEnemy(e,mw.dmg*1.4,(e.x-tgt.x)/d*54,(e.y-tgt.y)/d*54);}}
     R.fx.push({kind:"nova",x:tgt.x,y:tgt.y,r:rr,t:0,life:.3});
     R.fx.push({kind:"flash",x:tgt.x,y:tgt.y,t:0,life:.18});
+    // AWAKENED signature: a follow-up quake ring
+    if(mw.evo)R.meteors.push({x:tgt.x,y:tgt.y,t:0,fall:.35,dmg:mw.dmg*1.1,rad:rr*1.3});
     R.shake=Math.max(R.shake,.3);SFX.bomb();T.mainhand=.95/R.atkSpd;
-  }else{ // orbit — dual blades
-    const rr=70;
+  }else{ // orbit — dual blades (AWAKENED: 4 larger blades, wider)
+    const n=mw.evo?4:2,rr=mw.evo?96:70;
     for(const e of R.enemies){if(e.dead)continue;
       if(R.t-(e.bladeAt||0)>.4){
-        for(let i=0;i<2;i++){const a=R.t*4+i*Math.PI;
-          if(dist2(R.px+Math.cos(a)*rr,R.py+Math.sin(a)*rr,e.x,e.y)<(20+e.r)*(20+e.r)){
+        for(let i=0;i<n;i++){const a=R.t*4+i*Math.PI*2/n;
+          if(dist2(R.px+Math.cos(a)*rr,R.py+Math.sin(a)*rr,e.x,e.y)<(22+e.r)*(22+e.r)){
             e.bladeAt=R.t;hitEnemy(e,mw.dmg*.5);break;}}}}
     T.mainhand=.25;
   }
@@ -4015,11 +4084,12 @@ function renderGame(){
   // equipped weapon: sword swings, orbiting blades
   drawSwings(t,px2,py2);
   const eqw=SAVE.equip.weapon;
-  if(eqw&&(WTYPE[eqw.w]||"sword")==="blades"){
-    for(let i=0;i<2;i++){const a=R.t*4+i*Math.PI;
-      const bx3=px2+Math.cos(a)*70,by3=py2+Math.sin(a)*70;
+  if(eqw&&WTYPE[eqw.w]==="orbit"){
+    const awake=eqw.evo||R.weaponAwake,n=awake?4:2,rr=awake?96:70;
+    for(let i=0;i<n;i++){const a=R.t*4+i*Math.PI*2/n;
+      const bx3=px2+Math.cos(a)*rr,by3=py2+Math.sin(a)*rr;
       ctx.save();ctx.translate(bx3,by3);ctx.rotate(a+Math.PI/2);
-      ctx.drawImage(gearIconCanvas(0,eqw.w),-14,-14,28,28);ctx.restore();}
+      ctx.drawImage(gearIconCanvas(0,eqw.w),-15,-15,30,30);ctx.restore();}
   }
   const titanScale=R.titanOn?1.9:1;
   ctx.beginPath();ctx.fillStyle="rgba(0,0,0,.35)";ctx.ellipse(px2,py2+16*titanScale,14*titanScale,5*titanScale,0,0,6.29);ctx.fill();
