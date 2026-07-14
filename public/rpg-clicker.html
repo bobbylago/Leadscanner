@@ -1035,6 +1035,20 @@ function ballGrad(g,x,y,r,hex){
   gr.addColorStop(0,shade(hex,1.5));gr.addColorStop(.55,hex);gr.addColorStop(1,shade(hex,.6));
   return gr;
 }
+/* bake cel-shade volume onto a drawn sprite: top-left rim light + bottom ambient
+   occlusion, clipped to the silhouette so it shades form without touching bg.
+   Keeps outlines crisp for combat readability (rim as edge, not halo). */
+function celShade(g,W,H){
+  g.save();
+  g.globalCompositeOperation="source-atop";
+  const lg=g.createLinearGradient(0,0,W*.55,H*.6);          // key light, top-left
+  lg.addColorStop(0,"rgba(255,255,255,.30)");lg.addColorStop(.45,"rgba(255,255,255,.05)");lg.addColorStop(1,"rgba(255,255,255,0)");
+  g.fillStyle=lg;g.fillRect(0,0,W,H);
+  const ao=g.createLinearGradient(0,H*.5,0,H);               // ambient occlusion, bottom
+  ao.addColorStop(0,"rgba(8,6,16,0)");ao.addColorStop(1,"rgba(8,6,16,.42)");
+  g.fillStyle=ao;g.fillRect(0,H*.5,W,H*.5);
+  g.restore();
+}
 function monsterSprite(w,s){
   const key=w+"-"+s;
   if(monsterCache.has(key))return monsterCache.get(key);
@@ -1134,6 +1148,7 @@ function monsterSprite(w,s){
     g.lineWidth=5;
   }
   g.globalAlpha=1;
+  celShade(g,C,C);
   monsterCache.set(key,c);return c;
 }
 /* survivor-style drawn xp gem */
@@ -1328,6 +1343,7 @@ function bossSprite(w,i){
     g.beginPath();g.moveTo(cx-6,cy-36);g.lineTo(cx,cy-48);g.lineTo(cx+6,cy-36);g.closePath(); // crest
     g.fill();g.stroke();
   }
+  celShade(g,C,C);
   bossCache.set(key,c);return c;
 }
 
@@ -2781,14 +2797,29 @@ function hitEnemy(e,dmg,kx=0,ky=0){
   e.hp-=dmg;e.flash=.12;
   e.x+=kx;e.y+=ky;
   dmgText(e.x,e.y-e.r,dmg,crit);
-  if(crit){SFX.crit();if(R.fx.length<40)R.fx.push({kind:"crit",x:e.x,y:e.y,t:0,life:.22});}
+  // impact sparks — glowing flecks fly off the hit (capped for perf)
+  if(R.parts.length<220){
+    const sn=crit?5:2;
+    for(let i=0;i<sn;i++){const a=rand(0,6.28);
+      R.parts.push({x:e.x,y:e.y-e.r*.4,vx:Math.cos(a)*rand(60,180),vy:Math.sin(a)*rand(60,180)-30,t:0,life:rand(.18,.34),c:crit?"#fff2a8":"#ffffff",sz:rand(4,8),glow:true});}
+  }
+  if(crit){SFX.crit();if(R.fx.length<40){R.fx.push({kind:"crit",x:e.x,y:e.y,t:0,life:.22});R.fx.push({kind:"ring",x:e.x,y:e.y,t:0,life:.24,r:e.r*1.8,c:"#fff2a8"});}}
   else if(Math.random()<.25)SFX.hit();
   if(e.hp<=0&&!e.dead)killEnemy(e);
 }
 function killEnemy(e){
   e.dead=true;R.kills++;R.gauge++;
-  for(let i=0;i<(e.boss?26:e.elite?10:5);i++)
-    R.parts.push({x:e.x,y:e.y,vx:rand(-140,140),vy:rand(-180,60),t:0,life:rand(.3,.7),c:e.goblin?"#ffd75e":e.boss?"#ffd75e":"#ff5fa2",sz:rand(2,4)});
+  // juicy death: glowing sparks + debris + a bright flash ring
+  const col=e.goblin||e.boss?"#ffd75e":(MCOLORS[e.w]&&MCOLORS[e.w][e.slot])||"#ff5fa2";
+  const N=e.boss?30:e.elite?14:7;
+  for(let i=0;i<N;i++){
+    const a=rand(0,6.28),sp=rand(60,e.boss?280:190);
+    R.parts.push({x:e.x,y:e.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-40,t:0,life:rand(.35,.7),c:col,sz:rand(6,12),glow:true});
+  }
+  for(let i=0;i<Math.ceil(N*.6);i++) // debris chunks
+    R.parts.push({x:e.x,y:e.y,vx:rand(-150,150),vy:rand(-200,40),t:0,life:rand(.3,.6),c:"#f2ecff",sz:rand(2,4)});
+  R.fx.push({kind:"ring",x:e.x,y:e.y,t:0,life:.3,r:e.boss?90:e.r*2.2,c:col});
+  R.fx.push({kind:"flash",x:e.x,y:e.y,t:0,life:.14});
   if(e.goblin){ // treasure imp pays out on the spot
     R.bonusShards+=10+Math.floor(R.stg.diff*4);
     for(let i=0;i<6;i++)R.gems.push({x:e.x+rand(-18,18),y:e.y+rand(-18,18),v:4,t:0});
@@ -3921,6 +3952,15 @@ function renderGame(){
     ctx.drawImage(abIconImg("meteor"),mx-16,rockY-16,32,32);
   }
 
+  // gem glow — soft additive halo under each gem, then the crisp sprite
+  ctx.globalCompositeOperation="lighter";
+  for(const g of R.gems){
+    const gx=wx(g.x),gy=wy(g.y),pl=0.5+Math.sin(t*6+g.t)*.2;
+    const gr=ctx.createRadialGradient(gx,gy,0,gx,gy,15);
+    gr.addColorStop(0,"rgba(120,255,140,"+(.5*pl)+")");gr.addColorStop(1,"rgba(60,220,90,0)");
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(gx,gy,15,0,6.29);ctx.fill();
+  }
+  ctx.globalCompositeOperation="source-over";
   for(const g of R.gems){
     const pulse=1+Math.sin(t*6+g.t)*.15,gsz=17*pulse;
     ctx.drawImage(gemSprite(),wx(g.x)-gsz/2,wy(g.y)-gsz/2,gsz,gsz);
@@ -3974,6 +4014,13 @@ function renderGame(){
     }else if(f.kind==="nova"){
       ctx.strokeStyle="rgba(255,215,94,"+(.9*k)+")";ctx.lineWidth=14*k+2;
       ctx.beginPath();ctx.arc(wx(f.x),wy(f.y),(1-k)*(f.r||430),0,6.29);ctx.stroke();
+    }else if(f.kind==="ring"){
+      // bright expanding shock ring with easeOut + additive glow
+      const e2=1-Math.pow(k,2.2),rr=(f.r||60)*e2;
+      ctx.globalCompositeOperation="lighter";
+      ctx.strokeStyle=f.c||"#fff";ctx.globalAlpha=k*.9;ctx.lineWidth=(1-k)*6+2;
+      ctx.beginPath();ctx.arc(wx(f.x),wy(f.y),rr,0,6.29);ctx.stroke();
+      ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";
     }
   }
   for(const e of R.enemies){
@@ -4049,8 +4096,16 @@ function renderGame(){
       ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(5,4);ctx.lineTo(0,9);ctx.lineTo(-5,4);ctx.closePath();
       ctx.fill();ctx.stroke();ctx.restore();
     }else{
-      ctx.fillStyle=b.c;ctx.shadowColor=b.c;ctx.shadowBlur=8;
-      ctx.beginPath();ctx.arc(bx,by,b.r,0,6.29);ctx.fill();ctx.shadowBlur=0;
+      // energy bolt: additive glow halo + a bright motion streak + crisp core
+      ctx.globalCompositeOperation="lighter";
+      const gr=ctx.createRadialGradient(bx,by,0,bx,by,b.r*3);
+      gr.addColorStop(0,b.c);gr.addColorStop(.4,b.c);gr.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(bx,by,b.r*3,0,6.29);ctx.fill();
+      const sp=Math.hypot(b.vx,b.vy)||1;
+      ctx.strokeStyle=b.c;ctx.lineWidth=b.r*1.3;ctx.lineCap="round";
+      ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-b.vx/sp*b.r*2.4,by-b.vy/sp*b.r*2.4);ctx.stroke();
+      ctx.globalCompositeOperation="source-over";
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(bx,by,b.r*.7,0,6.29);ctx.fill();
     }
   }
   const orbLv=R.weapons.orbs||0;
@@ -4131,16 +4186,37 @@ function renderGame(){
   ctx.globalAlpha=1;
   ctx.strokeStyle="rgba(76,224,255,.07)";ctx.lineWidth=1.5;
   ctx.beginPath();ctx.arc(px2,py2,R.magnetR,0,6.29);ctx.stroke();
+  // particles: glowing sparks drawn additively, debris drawn normally
+  let addOn=false;
   for(const p of R.parts){
-    ctx.globalAlpha=1-p.t/p.life;ctx.fillStyle=p.c;
-    ctx.fillRect(wx(p.x)-p.sz/2,wy(p.y)-p.sz/2,p.sz,p.sz);
+    const k=1-p.t/p.life;               // 0..1 remaining
+    if(p.glow){
+      if(!addOn){ctx.globalCompositeOperation="lighter";addOn=true;}
+      const gsz=p.sz*(0.6+k*1.4);       // shrink as it fades
+      ctx.globalAlpha=k*k;
+      const gr=ctx.createRadialGradient(wx(p.x),wy(p.y),0,wx(p.x),wy(p.y),gsz);
+      gr.addColorStop(0,p.c);gr.addColorStop(.4,p.c);gr.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(wx(p.x),wy(p.y),gsz,0,6.29);ctx.fill();
+    }else{
+      if(addOn){ctx.globalCompositeOperation="source-over";addOn=false;}
+      ctx.globalAlpha=k;ctx.fillStyle=p.c;
+      ctx.fillRect(wx(p.x)-p.sz/2,wy(p.y)-p.sz/2,p.sz,p.sz);
+    }
   }
+  if(addOn)ctx.globalCompositeOperation="source-over";
   ctx.globalAlpha=1;
   ctx.textAlign="center";
   for(const tx of R.texts){
-    ctx.globalAlpha=1-tx.t/tx.life;
-    ctx.font="800 "+tx.sz+"px ui-monospace,Menlo,Consolas,monospace";
-    ctx.fillStyle=tx.c;ctx.fillText(tx.s,wx(tx.x),wy(tx.y));
+    const tk=tx.t/tx.life;
+    const pop=tk<.25?1+(1-tk/.25)*(tx.crit?.9:.5):1; // easeOut pop-in
+    ctx.save();ctx.translate(wx(tx.x),wy(tx.y));ctx.scale(pop,pop);
+    ctx.globalAlpha=1-tk;
+    ctx.font="900 "+tx.sz+"px ui-monospace,Menlo,Consolas,monospace";
+    ctx.lineWidth=4;ctx.lineJoin="round";ctx.strokeStyle="rgba(10,8,20,.9)";
+    ctx.strokeText(tx.s,0,0);
+    if(tx.crit){ctx.shadowColor=tx.c;ctx.shadowBlur=10;}
+    ctx.fillStyle=tx.c;ctx.fillText(tx.s,0,0);
+    ctx.restore();
   }
   ctx.globalAlpha=1;
   // anime overlay effects: kanji bursts, crit slashes, speed lines, iai flash
