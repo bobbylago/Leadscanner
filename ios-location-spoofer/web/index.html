@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>iOS Location Spoofer · Joystick</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <!-- Top bar: live status + coordinate readout -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="glyph">◎</span>
+        <span class="title">Location Spoofer</span>
+      </div>
+      <div class="readout">
+        <div class="row">
+          <span class="k">POS</span>
+          <span id="coords" class="v mono">—</span>
+        </div>
+        <div class="row">
+          <span class="k">HDG</span><span id="heading" class="v mono">0°</span>
+          <span class="sep">·</span>
+          <span class="k">SPD</span><span id="speed-readout" class="v mono">stationary</span>
+          <span class="sep">·</span>
+          <span class="k">PTS</span><span id="track-count" class="v mono">0</span>
+        </div>
+      </div>
+      <div class="live-status">
+        <span id="live-dot" class="dot off"></span>
+        <span id="live-label" class="mono">bridge offline</span>
+      </div>
+    </header>
+
+    <!-- Left control panel -->
+    <section class="panel">
+      <div class="group">
+        <label class="group-title">Destination</label>
+        <div class="search">
+          <input id="search-input" type="text" placeholder="Address or place…" autocomplete="off" />
+          <button id="search-btn" class="btn ghost">Go</button>
+        </div>
+        <div class="coords-entry">
+          <input id="lat-input" type="text" inputmode="decimal" placeholder="lat" />
+          <input id="lon-input" type="text" inputmode="decimal" placeholder="lon" />
+          <button id="goto-btn" class="btn ghost">Set</button>
+        </div>
+        <p class="hint">Tip: click anywhere on the map to teleport.</p>
+      </div>
+
+      <div class="group">
+        <label class="group-title">Speed</label>
+        <div class="presets">
+          <button class="preset btn" data-speed="walk">🚶 Walk</button>
+          <button class="preset btn" data-speed="jog">🏃 Jog</button>
+          <button class="preset btn" data-speed="cycle">🚲 Cycle</button>
+          <button class="preset btn" data-speed="drive">🚗 Drive</button>
+        </div>
+        <input id="speed-slider" type="range" min="0.5" max="50" step="0.1" value="1.4" />
+        <div id="speed-value" class="speed-value mono">1.4 m/s · 5 km/h</div>
+      </div>
+
+      <div class="group">
+        <label class="group-title">Route</label>
+        <button id="record-btn" class="btn wide record">
+          <span class="rec-dot"></span><span class="label">Record</span>
+        </button>
+        <div class="btn-row">
+          <button id="export-btn" class="btn">⬇ Export GPX</button>
+          <button id="clear-btn" class="btn ghost">Clear</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="group-title">Live output</label>
+        <button id="live-btn" class="btn wide live">
+          <span class="label">Go live</span>
+        </button>
+        <button id="stop-btn" class="btn wide ghost">⏹ Stop / reset device</button>
+      </div>
+    </section>
+
+    <!-- Joystick -->
+    <div class="joystick-wrap">
+      <div id="joy-base" class="joy-base">
+        <div class="joy-ring"></div>
+        <div class="joy-cross"></div>
+        <div id="joy-knob" class="joy-knob"></div>
+      </div>
+      <div class="joy-hint mono">drag · or use WASD / arrows</div>
+    </div>
+
+    <button id="center-btn" class="center-btn" title="Recenter map">◎</button>
+
+    <div id="toast" class="toast"></div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="joystick.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

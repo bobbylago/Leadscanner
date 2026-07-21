@@ -1,0 +1,494 @@
+:root {
+  --bg: #0b0f16;
+  --panel: rgba(16, 21, 30, 0.92);
+  --panel-border: rgba(255, 255, 255, 0.09);
+  --ink: #e8ecf3;
+  --ink-dim: rgba(232, 236, 243, 0.55);
+  --ink-faint: rgba(232, 236, 243, 0.32);
+  --accent: #0a84ff;
+  --accent-2: #30d158;
+  --danger: #ff453a;
+  --warn: #ff9f0a;
+  --radius: 14px;
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(ellipse at center, #101725 0%, #070b12 70%, #05070c 100%);
+}
+#map.no-map::after {
+  content: "Map tiles unavailable — controls, recording and GPX export still work.";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+}
+
+/* Leaflet dark tuning */
+.leaflet-container {
+  background: #0a0e15 !important;
+}
+.leaflet-tile {
+  filter: brightness(0.72) contrast(1.05) saturate(0.85) hue-rotate(180deg) invert(0.94);
+}
+.leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.5) !important;
+  color: var(--ink-faint) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--ink-dim) !important;
+}
+.leaflet-bar a {
+  background: var(--panel) !important;
+  color: var(--ink) !important;
+  border-color: var(--panel-border) !important;
+}
+
+/* ── Location pin ─────────────────────────────────────────── */
+.loc-pin {
+  position: relative;
+}
+.loc-pin-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px rgba(10, 132, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.loc-pin-arrow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 12px solid var(--accent);
+  transform-origin: 50% 22px;
+  transform: translate(-50%, -30px);
+  opacity: 0;
+  transition: opacity 0.2s;
+  filter: drop-shadow(0 0 3px rgba(10, 132, 255, 0.6));
+}
+
+/* ── Top bar ──────────────────────────────────────────────── */
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0.9rem;
+  background: linear-gradient(180deg, rgba(7, 11, 18, 0.95), rgba(7, 11, 18, 0));
+  pointer-events: none;
+}
+.topbar > * {
+  pointer-events: auto;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.brand .glyph {
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+.brand .title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.35rem 0.7rem;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+.readout .row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+}
+.readout .k {
+  color: var(--ink-faint);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+}
+.readout .v {
+  color: var(--ink);
+}
+.readout .sep {
+  color: var(--ink-faint);
+}
+.live-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.7rem;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  backdrop-filter: blur(8px);
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+.dot.off {
+  background: var(--ink-faint);
+}
+.dot.on {
+  background: var(--accent-2);
+  box-shadow: 0 0 8px var(--accent-2);
+}
+.dot.warn {
+  background: var(--warn);
+  box-shadow: 0 0 8px var(--warn);
+}
+
+/* ── Left panel ───────────────────────────────────────────── */
+.panel {
+  position: absolute;
+  top: 76px;
+  left: 0.9rem;
+  z-index: 500;
+  width: 260px;
+  max-height: calc(100% - 96px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.group-title {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 700;
+}
+.search,
+.coords-entry {
+  display: flex;
+  gap: 0.4rem;
+}
+.coords-entry input {
+  width: 0;
+  flex: 1;
+}
+input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: 0.8rem;
+  outline: none;
+}
+input[type="text"]:focus {
+  border-color: var(--accent);
+}
+.hint {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+}
+
+/* Buttons */
+.btn {
+  padding: 0.5rem 0.65rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+  user-select: none;
+}
+.btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn.ghost {
+  background: transparent;
+}
+.btn.wide {
+  width: 100%;
+}
+.btn-row {
+  display: flex;
+  gap: 0.4rem;
+}
+.btn-row .btn {
+  flex: 1;
+}
+.presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+.preset.active {
+  background: rgba(10, 132, 255, 0.22);
+  border-color: var(--accent);
+  color: #fff;
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.speed-value {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  text-align: center;
+}
+
+/* Record button */
+.record {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+  opacity: 0.6;
+}
+.record.recording {
+  background: rgba(255, 69, 58, 0.16);
+  border-color: var(--danger);
+}
+.record.recording .rec-dot {
+  opacity: 1;
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+}
+
+/* Live button */
+.live.active {
+  background: rgba(48, 209, 88, 0.18);
+  border-color: var(--accent-2);
+  color: #fff;
+}
+
+/* ── Joystick ─────────────────────────────────────────────── */
+.joystick-wrap {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  touch-action: none;
+}
+.joy-base {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(30, 40, 56, 0.85),
+    rgba(12, 17, 26, 0.92)
+  );
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow), inset 0 1px 2px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  cursor: grab;
+  touch-action: none;
+}
+.joy-base.is-active {
+  cursor: grabbing;
+}
+.joy-ring {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+.joy-cross::before,
+.joy-cross::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.08);
+}
+.joy-cross::before {
+  left: 50%;
+  top: 20%;
+  bottom: 20%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+.joy-cross::after {
+  top: 50%;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+.joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #2b6cff, #0a84ff 55%, #0761c4);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 6px 18px rgba(10, 132, 255, 0.45), inset 0 1px 3px rgba(255, 255, 255, 0.5);
+  transition: transform 0.05s linear;
+  pointer-events: none;
+}
+.joy-base.is-active .joy-knob {
+  transition: none;
+}
+.joy-hint {
+  font-size: 0.66rem;
+  color: var(--ink-faint);
+  background: var(--panel);
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  border: 1px solid var(--panel-border);
+}
+
+/* Center button */
+.center-btn {
+  position: absolute;
+  bottom: 2rem;
+  right: 1rem;
+  z-index: 500;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+/* ── Toast ────────────────────────────────────────────────── */
+.toast {
+  position: absolute;
+  bottom: 12.5rem;
+  left: 50%;
+  transform: translate(-50%, 12px);
+  z-index: 600;
+  padding: 0.55rem 1rem;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  color: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  max-width: 80vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .panel {
+    width: calc(100% - 1.8rem);
+    top: auto;
+    bottom: 13rem;
+    max-height: 42%;
+  }
+  .topbar {
+    flex-wrap: wrap;
+  }
+  .live-status {
+    margin-left: 0;
+  }
+  .joystick-wrap {
+    bottom: 1.2rem;
+  }
+  .toast {
+    bottom: 11rem;
+  }
+}
