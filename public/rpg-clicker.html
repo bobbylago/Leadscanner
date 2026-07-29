@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Yokai Rift — Anime Auto-Shooter</title>
+<title>Realm of Legends — Mythic Auto-Shooter</title>
 <style>
   :root{
     --bg:#0b0918; --panel:#171331; --panel2:#221b45; --line:#372e63;
@@ -526,8 +526,8 @@
   <div id="profileBar">
     <div id="avatarBox">
       <canvas id="avCv" width="80" height="80"></canvas>
-      <div class="pname">Wandering Shinobi
-        <small>Lv <b class="num" id="pLvl">1</b> · Yokai Rift</small>
+      <div class="pname">Nameless Champion
+        <small>Lv <b class="num" id="pLvl">1</b> · Realm of Legends</small>
         <div id="pLvlBar"><i id="pLvlFill"></i></div>
       </div>
     </div>
@@ -585,14 +585,14 @@
 
 <div class="screen" id="scr-chars">
   <h1 class="gtitle" style="font-size:28px;">CHOOSE YOUR HERO</h1>
-  <div class="gsub"><span class="jp">英雄選択</span> · each fights their own way</div>
+  <div class="gsub"><span class="jp">HEROES</span> · each fights their own way</div>
   <div id="charList"></div>
   <button class="bigbtn alt" id="charBackBtn">← Back</button>
 </div>
 
 <div class="screen" id="scr-chest">
   <h1 class="gtitle" style="font-size:28px;">CHAPTER CHEST</h1>
-  <div class="gsub"><span class="jp">宝箱</span> · gear from every unlocked world</div>
+  <div class="gsub"><span class="jp">RELIC CACHE</span> · gear from every unlocked world</div>
   <div class="shardline">🔮 <span class="num" id="shards-chest">0</span></div>
   <img id="chestImg" alt="chest">
   <div id="pullResult"></div>
@@ -612,21 +612,21 @@
 
 <div class="screen" id="scr-records">
   <h1 class="gtitle" style="font-size:30px;">RECORDS</h1>
-  <div class="gsub"><span class="jp">戦績</span> · your legend so far</div>
+  <div class="gsub"><span class="jp">CHRONICLE</span> · your legend so far</div>
   <div id="recList"></div>
   <button class="bigbtn alt" id="recBackBtn">← Back</button>
 </div>
 
 <div class="screen" id="scr-levelup">
   <h1 class="gtitle" style="font-size:30px;">LEVEL UP!</h1>
-  <div class="gsub"><span class="jp">力を選べ</span> · choose your power</div>
+  <div class="gsub"><span class="jp">ELIGE</span> · choose your power</div>
   <div id="lvCards"></div>
 </div>
 
 <div class="screen" id="scr-death">
   <div id="deathKanji">敗</div>
   <h1 class="gtitle" style="font-size:34px;" id="deathTitle">YOU FELL…</h1>
-  <div class="gsub" id="deathSub"><span class="jp">また会おう</span> · the rift closes</div>
+  <div class="gsub" id="deathSub"><span class="jp">VALE</span> · the rift closes</div>
   <div class="deathstat" id="deathStats"></div>
   <div class="deathstat" id="lootLine" style="font-size:12.5px;line-height:1.8;max-width:320px;"></div>
   <div class="shardline">🔮 +<span class="num" id="shardsEarned">0</span> shards earned</div>
@@ -637,7 +637,7 @@
 
 <div class="screen" id="scr-shrine">
   <h1 class="gtitle" style="font-size:30px;">SHRINE OF POWER</h1>
-  <div class="gsub"><span class="jp">永続強化</span> · permanent upgrades</div>
+  <div class="gsub"><span class="jp">AETERNUM</span> · permanent upgrades</div>
   <div class="shardline">🔮 <span class="num" id="shards-shrine">0</span></div>
   <div id="shrineList"></div>
   <button class="bigbtn alt" id="shrineBackBtn">← Back</button>
@@ -678,148 +678,148 @@ const EBASE=[
   {hp:130,spd:80, dmg:18, xp:4, r:18, at:320}
 ];
 const STAGES=[
-  {id:"leaf",e:"🍃",n:"Hidden Leaf Village",jp:"木ノ葉の里",diff:1,shard:1,
-   d:"Rogue shinobi and summoned beasts prowl the forest paths.",
+  {id:"leaf",e:"🏛️",n:"Olympus Fields",jp:"ΟΛΥΜΠΟΣ",diff:1,shard:1,
+   d:"Satyrs and beasts roam the sunlit vales below the gods' mountain.",
    bg:"#0c1712",grid:"rgba(110,190,110,.14)",petal:"leaf",props:["tree","pine","lantern","mushroom"],
    vin:"rgba(18,60,30,",
    scene:{sky:["#14382a","#071510"],stars:false,moon:{kind:"full",color:"#e9e2c0",glow:"rgba(255,240,190,.4)"},
      far:"#0a1f16",near:"#12301f",style:"village",ground:"#101f14",accents:["⛩️","🏮","🌳"]},
    music:{root:220,scale:[0,3,5,7,10],bpm:104},
-   foes:["🐍","🥷","🦂","🐸","🐗","🦅"],
-   bosses:[{e:"🦊",n:"NINE TAILS · 九尾"},{e:"🐍",n:"GREAT SERPENT · 大蛇"}]},
-  {id:"soul",e:"⚔️",n:"Soul Society",jp:"尸魂界",diff:1.4,shard:1.3,
-   d:"Hollows slip through the gates of the spirit realm.",
+   foes:["🐐","🦅","🐂","🐍","🦂","🦁"],
+   bosses:[{e:"🐍",n:"THE HYDRA"},{e:"👁️",n:"CYCLOPS KING"}]},
+  {id:"soul",e:"❄️",n:"Frostheim",jp:"NIFLHEIM",diff:1.4,shard:1.3,
+   d:"Draugr and frost-wolves haunt the frozen halls of the north.",
    bg:"#0d1020",grid:"rgba(150,170,235,.13)",petal:"spark",props:["torii","lantern","candle","tower"],
    vin:"rgba(35,45,110,",
    scene:{sky:["#1a2150","#0a0c1e"],stars:true,moon:{kind:"crescent",color:"#dfe6ff",glow:"rgba(190,210,255,.4)"},
      far:"#141a3d",near:"#232b5e",style:"towers",ground:"#11142c",accents:["⛩️","🗼","🕯️"]},
    music:{root:196,scale:[0,2,5,7,9],bpm:92},
-   foes:["🦇","🎭","💀","👻","🦴","🌪️"],
-   bosses:[{e:"🎭",n:"MENOS GRANDE · 大虚"},{e:"💀",n:"HOLLOW KING · 虚王"}]},
-  {id:"demon",e:"🌙",n:"Demon Slayer Night",jp:"鬼の夜",diff:1.9,shard:1.7,
-   d:"Demons feast under a blood moon. The wisteria won't save you.",
+   foes:["🐺","🧟","🦴","👻","🦇","🌪️"],
+   bosses:[{e:"🧊",n:"THE FROST JOTUN"},{e:"🐉",n:"WORLD SERPENT"}]},
+  {id:"demon",e:"🦇",n:"Vampire's Hollow",jp:"NOSFERATU",diff:1.9,shard:1.7,
+   d:"The blood moon rises. Ghouls and the undead stir in the crypts.",
    bg:"#170a14",grid:"rgba(220,110,160,.12)",petal:"petal",props:["torii","lantern","wheat","grave"],
    vin:"rgba(95,15,45,",
    scene:{sky:["#471223","#150408"],stars:true,moon:{kind:"full",color:"#ff2f4d",glow:"rgba(255,47,77,.45)"},
      far:"#200710",near:"#341019",style:"village",ground:"#1c0910",accents:["🏮","🪦","⛩️"]},
    music:{root:174.6,scale:[0,1,5,7,8],bpm:118},
-   foes:["🦇","👺","🕷️","👻","👹","🐺"],
-   bosses:[{e:"🕷️",n:"SPIDER MOTHER · 母蜘蛛"},{e:"🌑",n:"UPPER MOON · 上弦の鬼"}]},
-  {id:"namek",e:"🪐",n:"Planet Namek",jp:"ナメック星",diff:2.5,shard:2.2,
-   d:"Alien warbands scour the green sky for the dragon's wish.",
+   foes:["🦇","🧟","🕷️","👻","🧛","🐺"],
+   bosses:[{e:"🕷️",n:"THE BROODMOTHER"},{e:"🧛",n:"THE COUNT"}]},
+  {id:"namek",e:"🍄",n:"The Feywild",jp:"AVALON",diff:2.5,shard:2.2,
+   d:"Sprites and treants guard the enchanted, ever-shifting grove.",
    bg:"#081614",grid:"rgba(90,220,190,.12)",petal:"star",props:["rock","palm","ufo","crystal"],
    vin:"rgba(10,80,65,",
    scene:{sky:["#155c48","#06241c"],stars:true,moon:{kind:"planet",color:"#8fd8b8",glow:"rgba(140,255,220,.35)"},
      far:"#0a2b22",near:"#12463a",style:"domes",ground:"#0c221c",accents:["🛸","🌴","🪨"]},
    music:{root:233.1,scale:[0,2,4,7,9],bpm:110},
-   foes:["🪲","👽","🦎","👾","🤖","🛸"],
-   bosses:[{e:"❄️",n:"FROST TYRANT · 冷帝"},{e:"🐲",n:"GALACTIC WYRM · 銀河竜"}]},
-  {id:"wall",e:"🏰",n:"Wall Maria",jp:"ウォール・マリア",diff:3.3,shard:3,
-   d:"The wall has fallen. Giants walk. Humanity watches.",
+   foes:["🦋","🐸","🍄","🐗","🦎","🐍"],
+   bosses:[{e:"🌳",n:"THE ELDER TREANT"},{e:"🧚",n:"THE FAE QUEEN"}]},
+  {id:"wall",e:"🏰",n:"Fallen Citadel",jp:"RUINA",diff:3.3,shard:3,
+   d:"The great keep has fallen. Golems and the risen dead march.",
    bg:"#171310",grid:"rgba(200,170,120,.12)",petal:"autumn",props:["ruin","rock","wheat","keep"],
    vin:"rgba(85,60,30,",
    scene:{sky:["#5c3a1a","#1a0f06"],stars:false,moon:{kind:"sun",color:"#ff8a3c",glow:"rgba(255,138,60,.4)"},
      far:"#241a10",near:"#3a2c1a",style:"wall",ground:"#1c1610",accents:["🏚️","🌾","🪨"]},
    music:{root:164.8,scale:[0,3,5,6,10],bpm:126},
-   foes:["🐀","🧟","🧌","🦅","🗿","🐺"],
-   bosses:[{e:"🗿",n:"THE COLOSSAL ONE · 超大型"},{e:"🧌",n:"ARMORED BRUTE · 鎧の巨人"}]},
-  {id:"sea",e:"🏴‍☠️",n:"Grand Azure Sea",jp:"大海原",diff:4.2,shard:3.6,
-   d:"Pirate crews and sea-beasts battle for a legendary treasure.",
+   foes:["🐀","🧟","🗿","🦅","💀","🐺"],
+   bosses:[{e:"🗿",n:"THE STONE COLOSSUS"},{e:"🛡️",n:"THE IRON WARDEN"}]},
+  {id:"sea",e:"🔱",n:"Sunken Atlantis",jp:"ATLANTIS",diff:4.2,shard:3.6,
+   d:"Sirens and sea-fiends guard the drowned city's lost throne.",
    bg:"#07131f",grid:"rgba(90,180,235,.13)",petal:"spark",props:["palm","rock","crystal","ruin"],
    vin:"rgba(20,70,120,",
    scene:{sky:["#12406a","#05131f"],stars:true,moon:{kind:"full",color:"#eaf2ff",glow:"rgba(180,215,255,.4)"},
      far:"#0c2740",near:"#123a5c",style:"towers",ground:"#0a1e30",accents:["🌴","🪨","⚓"]},
    music:{root:207.6,scale:[0,2,4,5,9],bpm:112},
-   foes:["🦀","🏴‍☠️","🐙","🦈","🦑","🐊"],
-   bosses:[{e:"🐙",n:"KRAKEN LORD · 大海獣"},{e:"👑",n:"PIRATE EMPEROR · 海賊皇"}]},
-  {id:"curse",e:"👁️",n:"Cursed Metropolis",jp:"呪術都市",diff:5.2,shard:4.4,
-   d:"Sorcerers hunt cursed spirits through the neon-lit night city.",
+   foes:["🦀","🧜","🐙","🦈","🦑","🐊"],
+   bosses:[{e:"🐙",n:"THE KRAKEN"},{e:"🌊",n:"THE LEVIATHAN"}]},
+  {id:"curse",e:"💀",n:"The Shadowfell",jp:"UMBRA",diff:5.2,shard:4.4,
+   d:"Wraiths and liches drift through the realm of endless twilight.",
    bg:"#0f0818",grid:"rgba(180,95,255,.13)",petal:"petal",props:["tower","lantern","candle","grave"],
    vin:"rgba(70,20,110,",
    scene:{sky:["#2a1046","#0b0518"],stars:true,moon:{kind:"crescent",color:"#d4a8ff",glow:"rgba(200,140,255,.4)"},
      far:"#1a0a30","near":"#2c1250",style:"towers",ground:"#140a24",accents:["🗼","🏮","🕯️"]},
    music:{root:185,scale:[0,1,4,6,8],bpm:120},
-   foes:["👁️","👺","💀","👻","🕷️","👹"],
-   bosses:[{e:"👹",n:"CURSE KING · 呪王"},{e:"🌀",n:"HOLLOW SORCERER · 虚術師"}]},
-  {id:"academy",e:"🦸",n:"Hero Academy",jp:"英雄学園",diff:6.4,shard:5.2,
-   d:"Villains storm the academy — only the bravest cadets stand.",
+   foes:["👁️","👻","💀","🕷️","🦇","🐍"],
+   bosses:[{e:"💀",n:"THE LICH KING"},{e:"🌀",n:"THE VOID WARLOCK"}]},
+  {id:"academy",e:"😇",n:"The Celestial Gate",jp:"AETHER",diff:6.4,shard:5.2,
+   d:"Fallen angels lay siege to the last shining bastion of the sky.",
    bg:"#0a1020",grid:"rgba(90,200,120,.12)",petal:"star",props:["tower","ruin","rock","crystal"],
    vin:"rgba(30,90,60,",
    scene:{sky:["#123a54","#050f1a"],stars:false,moon:{kind:"sun",color:"#5adcff",glow:"rgba(90,220,255,.4)"},
      far:"#0c2438","near":"#123a4c",style:"towers",ground:"#0a1826",accents:["🗼","🏙️","⚡"]},
    music:{root:246.9,scale:[0,3,5,7,10],bpm:130},
-   foes:["🦹","🤖","👾","🦾","👿","🐉"],
-   bosses:[{e:"🦹",n:"SHADOW OVERLORD · 闇の帝"},{e:"💀",n:"THE ALL-DESTROYER · 全滅者"}]}
+   foes:["👼","🦅","😈","🦾","👿","🐉"],
+   bosses:[{e:"😇",n:"THE FALLEN SERAPH"},{e:"💀",n:"THE WORLD-ENDER"}]}
 ];
 const stageUnlocked=i=>i===0||SAVE.stages[STAGES[i-1].id].cleared;
 const WIN_TIME=600;
 
 /* ============================ heroes ============================ */
 const CHARS=[
-  {id:"kage",n:"Kage",jp:"影",d:"The wandering shinobi. Balanced and true.",
-   start:"shuriken",bn:"Starts with Shuriken Storm · quick dash",unlock:null},
-  {id:"miko",n:"Suzu",jp:"鈴",d:"A shrine maiden whose bell calls the spirits home.",
-   start:"raiton",bn:"+15% XP · Starts with Raiton · blink dash",
-   unlock:{type:"clear",w:"leaf",label:"Clear Hidden Leaf Village"}},
-  {id:"oni",n:"Goro",jp:"剛",d:"Demon-blooded brawler. Hits like a landslide.",
-   start:"zan",bn:"+30% HP, −10% speed · Starts with Zan · slam dash",
+  {id:"kage",n:"Knight",jp:"MILES",d:"A stalwart knight-errant. Balanced and true.",
+   start:"shuriken",bn:"Starts with Blade Fan · quick dash",unlock:null},
+  {id:"miko",n:"Sorceress",jp:"MAGA",d:"A sorceress whose sigils call down the storm.",
+   start:"raiton",bn:"+15% XP · Starts with Chain Lightning · blink dash",
+   unlock:{type:"clear",w:"leaf",label:"Clear Olympus Fields"}},
+  {id:"oni",n:"Barbarian",jp:"FUROR",d:"A mountain-born berserker. Hits like an avalanche.",
+   start:"zan",bn:"+30% HP, −10% speed · Starts with Blade Arc · slam dash",
    unlock:{type:"shards",cost:500,label:"Unlock — 500 🔮"}}
 ];
 const charById=id=>CHARS.find(c=>c.id===id)||CHARS[0];
 
 /* ============================ weapon evolutions ============================ */
 const EVOS={
-  shuriken:{req:"haste",n:"Tempest Blades",jp:"千刃嵐",d:"Twice the blades — endless pierce."},
-  raiton:{req:"focus",n:"Divine Thunder",jp:"神鳴り",d:"Chains farther, strikes far harder."},
-  orbs:{req:"magnet",n:"Celestial Ring",jp:"星の環",d:"More orbs on a wider, crueler orbit."},
-  zan:{req:"swift",n:"Moonlit Zan",jp:"月下斬月",d:"Every slash hurls a fan of crescents."},
-  kitsune:{req:"lucky",n:"Ninetail Blaze",jp:"九尾の焔",d:"Foxfire detonates on impact."},
-  beam:{req:"vital",n:"Ryujin Cannon",jp:"竜神砲",d:"A second dragon erupts behind you."},
-  iai:{req:"haste",n:"Zero-Step Iai",jp:"無拍子",d:"The draw cuts a cross through creation."},
-  clone:{req:"focus",n:"Phantom Legion",jp:"幻影軍団",d:"Two more clones, striking at full power."},
-  domain:{req:"vital",n:"Boundless Domain",jp:"無限領域",d:"Vaster, longer, and it nearly stops time."},
-  raidash:{req:"swift",n:"Storm God Step",jp:"神速雷帝",d:"A wider godspeed bolt with double the wrath."},
-  icefang:{req:"focus",n:"Absolute Zero",jp:"絶対零度",d:"Shards shatter, freezing foes solid."},
-  barrage:{req:"haste",n:"Thousand Fists",jp:"千手乱舞",d:"A blinding storm of strikes engulfs you."},
-  curse:{req:"lucky",n:"Rending Sanctum",jp:"断罪陣",d:"The sigil becomes a relentless rending field."},
-  smash:{req:"vital",n:"Cataclysm Fist",jp:"覇天撃",d:"A colossal shockwave that flings the horde."},
-  scythe:{req:"swift",n:"Reaper's Waltz",jp:"死神円舞",d:"Longer chains carve a lethal storm ring."},
-  meteor:{req:"lucky",n:"Starfall Judgment",jp:"星落審判",d:"A rain of meteors blankets the field."}
+  shuriken:{req:"haste",n:"Tempest Blades",jp:"TEMPESTAS",d:"Twice the blades — endless pierce."},
+  raiton:{req:"focus",n:"Divine Thunder",jp:"FULMEN",d:"Chains farther, strikes far harder."},
+  orbs:{req:"magnet",n:"Celestial Ring",jp:"ASTRA",d:"More orbs on a wider, crueler orbit."},
+  zan:{req:"swift",n:"Crescent Reaver",jp:"LUNA",d:"Every slash hurls a fan of crescents."},
+  kitsune:{req:"lucky",n:"Hellfire Wisp",jp:"IGNIS",d:"Spirit fire detonates on impact."},
+  beam:{req:"vital",n:"Dragonbreath",jp:"DRACO",d:"A second dragon erupts behind you."},
+  iai:{req:"haste",n:"Phantom Cut",jp:"ICTUS",d:"The draw cuts a cross through creation."},
+  clone:{req:"focus",n:"Phantom Legion",jp:"UMBRA",d:"Two more echoes, striking at full power."},
+  domain:{req:"vital",n:"Endless Hex",jp:"ABYSSUS",d:"Vaster, longer, and it nearly stops time."},
+  raidash:{req:"swift",n:"Storm Lord's Step",jp:"TONITRUS",d:"A wider godspeed bolt with double the wrath."},
+  icefang:{req:"focus",n:"Absolute Zero",jp:"GELU",d:"Shards shatter, freezing foes solid."},
+  barrage:{req:"haste",n:"Thousand Fists",jp:"FUROR",d:"A blinding storm of strikes engulfs you."},
+  curse:{req:"lucky",n:"Rending Sanctum",jp:"MALUM",d:"The sigil becomes a relentless rending field."},
+  smash:{req:"vital",n:"Cataclysm Fist",jp:"RUINA",d:"A colossal shockwave that flings the horde."},
+  scythe:{req:"swift",n:"Reaper's Waltz",jp:"MORTIS",d:"Longer chains carve a lethal storm ring."},
+  meteor:{req:"lucky",n:"Starfall Judgment",jp:"CAELUM",d:"A rain of meteors blankets the field."}
 };
 
 /* ============================ awakened arts (world-locked abilities) ============================ */
 const ARTS=[
-  {id:"mirror",w:0,tier:1,n:"Crimson Mirror Eye",jp:"紅写しの眼",max:3,
-   d:l=>`+${8*l}% crit · every ${(8-l*1.5).toFixed(1)}s the eye unleashes a phantom volley`},
-  {id:"samsara",w:0,tier:2,n:"Samsara Eye",jp:"輪廻の瞳",max:3,
+  {id:"mirror",w:0,tier:1,n:"Eye of the Gods",jp:"OCULUS",max:3,
+   d:l=>`+${8*l}% crit · every ${(8-l*1.5).toFixed(1)}s the eye looses a divine volley`},
+  {id:"samsara",w:0,tier:2,n:"Hand of Fate",jp:"GRAVITAS",max:3,
    d:l=>`Every ${10-l}s: drag every foe inward, then blast them away (${40+25*l} dmg)`},
-  {id:"release",w:1,tier:1,n:"Soul Release",jp:"卍解放",max:3,
-   d:l=>`Every 24s: release the blade — +50% attack speed, +${20+10*l}% damage for ${5+l}s`},
-  {id:"mask",w:1,tier:2,n:"Hollow Mask",jp:"仮面憑依",max:3,
-   d:l=>`Below 30% HP: don the mask — heal ${10+5*l}%, untouchable for ${3+l}s (45s cd)`},
-  {id:"solar",w:2,tier:1,n:"Solar Breath",jp:"日輪の呼吸",max:3,
+  {id:"release",w:1,tier:1,n:"Berserker Fury",jp:"BERSERKR",max:3,
+   d:l=>`Every 24s: enter a rage — +50% attack speed, +${20+10*l}% damage for ${5+l}s`},
+  {id:"mask",w:1,tier:2,n:"Valkyrie's Veil",jp:"VALKYR",max:3,
+   d:l=>`Below 30% HP: the veil takes you — heal ${10+5*l}%, untouchable for ${3+l}s (45s cd)`},
+  {id:"solar",w:2,tier:1,n:"Sunfire Brand",jp:"SOL",max:3,
    d:l=>`Every hit ignites foes, burning ${6+4*l}/s for 3s`},
-  {id:"blood",w:2,tier:2,n:"Blood Art",jp:"血鬼術",max:3,
+  {id:"blood",w:2,tier:2,n:"Blood Rite",jp:"SANGUIS",max:3,
    d:l=>`Every ${(5-l*.8).toFixed(1)}s: ${2+l} homing blood shards hunt the pack`},
-  {id:"ascend",w:3,tier:1,n:"Ascended Warrior",jp:"超戦士覚醒",max:3,
-   d:l=>`Every ${45-5*l} kills: ascend — golden hair, +60% damage, +20% speed for ${8+2*l}s`},
-  {id:"gale",w:3,tier:2,n:"Crimson Gale Fist",jp:"紅蓮の構え",max:3,
+  {id:"ascend",w:3,tier:1,n:"Primal Ascension",jp:"PRIMUS",max:3,
+   d:l=>`Every ${45-5*l} kills: ascend — radiant aura, +60% damage, +20% speed for ${8+2*l}s`},
+  {id:"gale",w:3,tier:2,n:"Bloodthorn Stance",jp:"SPINA",max:3,
    d:l=>`Burn life for power: +${25+10*l}% damage, lose ${(1+.5*l).toFixed(1)} HP/s`},
-  {id:"colossal",w:4,tier:1,n:"Colossal Shift",jp:"巨人化",max:3,
-   d:l=>`Every 45s become colossal for ${7+l}s: stomp nearby foes, take half damage`},
-  {id:"maneuver",w:4,tier:2,n:"Sky Maneuver",jp:"立体機動",max:3,
+  {id:"colossal",w:4,tier:1,n:"Titan Form",jp:"TITAN",max:3,
+   d:l=>`Every 45s become a titan for ${7+l}s: stomp nearby foes, take half damage`},
+  {id:"maneuver",w:4,tier:2,n:"Phantom Step",jp:"CELERITAS",max:3,
    d:l=>`Dash recharges ${25*l}% faster and cuts everything along its path`},
-  {id:"ironwill",w:5,tier:1,n:"Iron Will",jp:"鉄の意志",max:3,
+  {id:"ironwill",w:5,tier:1,n:"Aegis Ward",jp:"AEGIS",max:3,
    d:l=>`Harden your body — take ${12*l}% less damage`},
-  {id:"emperor",w:5,tier:2,n:"Emperor's Roar",jp:"覇王の咆哮",max:3,
+  {id:"emperor",w:5,tier:2,n:"Poseidon's Roar",jp:"TRIDENS",max:3,
    d:l=>`Every ${22-2*l}s: a roar freezes every foe on screen for ${1.5+l*.5}s`},
-  {id:"reversal",w:6,tier:1,n:"Reversal Art",jp:"反転術",max:3,
-   d:l=>`Channel cursed energy inward — restore ${1.5+l}% HP per second`},
-  {id:"blackflash",w:6,tier:2,n:"Black Flash",jp:"黒閃",max:3,
+  {id:"reversal",w:6,tier:1,n:"Soul Siphon",jp:"ANIMA",max:3,
+   d:l=>`Drain the shadows — restore ${1.5+l}% HP per second`},
+  {id:"blackflash",w:6,tier:2,n:"Death Mark",jp:"MORS",max:3,
    d:l=>`+${8*l}% crit, and critical hits now strike for 3× instead of 2×`},
-  {id:"fulldrive",w:7,tier:1,n:"Full Drive",jp:"全開",max:3,
-   d:l=>`Overclock — +${10*l}% move speed and +${10*l}% attack speed`},
-  {id:"blastrush",w:7,tier:2,n:"Blast Rush",jp:"爆迅",max:3,
+  {id:"fulldrive",w:7,tier:1,n:"Divine Overdrive",jp:"DIVINUS",max:3,
+   d:l=>`Halo of light — +${10*l}% move speed and +${10*l}% attack speed`},
+  {id:"blastrush",w:7,tier:2,n:"Meteor Dash",jp:"IMPETUS",max:3,
    d:l=>`Your dash detonates a blast (${45+30*l} dmg) on arrival`}
 ];
 function artUnlocked(a){
@@ -830,7 +830,7 @@ function artUnlocked(a){
 /* ============================ daily challenge modifiers ============================ */
 const DAILY_MODS=[
   {id:"glass",n:"Glass Cannon",d:"Deal ×4 damage. Take ×3 damage.",pd:4,ed:3},
-  {id:"horde",n:"Horde Night",d:"Twice the yokai, twice the shards.",spawn:.5,gold:2},
+  {id:"horde",n:"Horde Night",d:"Twice the beasts, twice the shards.",spawn:.5,gold:2},
   {id:"speed",n:"Bullet Hour",d:"Everything is faster.",es:1.4,ps:1.25},
   {id:"bossrush",n:"Boss Rush",d:"A boss every 45 seconds.",bossEvery:45,gold:1.5},
   {id:"midas",n:"Midas Rift",d:"Gems are worth double.",gem:2,gold:1.5}
@@ -838,9 +838,9 @@ const DAILY_MODS=[
 
 /* ============================ achievements ============================ */
 const ACHS=[
-  {id:"k100",n:"First Hundred",d:"Slay 100 yokai",r:20,c:s=>s.totalKills>=100},
-  {id:"k2k",n:"Yokai Slayer",d:"Slay 2,000 yokai",r:60,c:s=>s.totalKills>=2000},
-  {id:"k10k",n:"Legend of the Rift",d:"Slay 10,000 yokai",r:150,c:s=>s.totalKills>=10000},
+  {id:"k100",n:"First Hundred",d:"Slay 100 beasts",r:20,c:s=>s.totalKills>=100},
+  {id:"k2k",n:"Yokai Slayer",d:"Slay 2,000 beasts",r:60,c:s=>s.totalKills>=2000},
+  {id:"k10k",n:"Legend of the Rift",d:"Slay 10,000 beasts",r:150,c:s=>s.totalKills>=10000},
   {id:"w1",n:"Leaf Guardian",d:"Clear Hidden Leaf Village",r:40,c:s=>s.stages.leaf.cleared},
   {id:"w3",n:"Three Worlds Deep",d:"Clear three worlds",r:80,c:s=>Object.values(s.stages).filter(x=>x.cleared).length>=3},
   {id:"w5",n:"Rift Walker",d:"Clear five worlds",r:200,c:s=>Object.values(s.stages).filter(x=>x.cleared).length>=5},
@@ -867,14 +867,14 @@ const SLOTS=[
 ];
 /* one themed item per slot per world */
 const GEAR_SETS=[
-  [["🔪","Twin Leaf Kunai"],["🧥","Red Dawn Coat"],["🍥","Ramen Charm"],["🧤","Chakra Wraps"],["🥋","Genin Sash"],["👟","Shinobi Tabi"]],
-  [["⚔️","Soul Katana"],["👘","Captain's Haori"],["🧿","Soul Ribbon"],["🧤","Hollow-Bone Gauntlets"],["🥋","Reaper's Obi"],["🩴","Waraji Sandals"]],
-  [["🗡️","Sunsteel Katana"],["🧣","Checkered Haori"],["🎐","Wisteria Charm"],["🧤","Breathing Wraps"],["🥋","Corps Belt"],["🥾","Night Hunter Boots"]],
-  [["🔫","Scouter Blaster"],["🦺","Battle Plate"],["🟠","Four-Star Orb"],["🧤","Gravity Gloves"],["🥋","Warrior Sash"],["👢","Combat Boots"]],
-  [["⚔️","Maneuver Blades"],["🧥","Scout Cloak"],["🗝️","Basement Key"],["🧤","Grip Gauntlets"],["🪢","Harness Straps"],["🥾","Trooper Boots"]],
-  [["🗡️","Sea King Cutlass"],["🧥","Pirate Coat"],["🧭","Log Charm"],["🧤","Sea-Prism Grips"],["🥋","Captain's Sash"],["🥾","Deckhand Boots"]],
-  [["🗡️","Cursed Blade"],["🧥","Sorcerer Robe"],["🔮","Cursed Talisman"],["🧤","Binding Gloves"],["🥋","Sect Belt"],["🥾","Veil Sandals"]],
-  [["🔫","Hero Blaster"],["🦺","Hero Suit"],["🎖️","Valor Badge"],["🧤","Power Gloves"],["🥋","Cadet Belt"],["👟","Speed Sneakers"]]
+  [["⚔️","Olympian Blade"],["🧥","Aegis Mantle"],["⚡","Bolt Charm"],["🧤","Titan Gauntlets"],["🥋","Laurel Sash"],["👟","Winged Sandals"]],
+  [["🗡️","Frostrune Sword"],["🧥","Jotun Furs"],["❄️","Rime Talisman"],["🧤","Glacier Gloves"],["🥋","Valkyrie Belt"],["🥾","Snowtread Boots"]],
+  [["🗡️","Silver Fang Blade"],["🧥","Nocturne Cloak"],["🩸","Blood Sigil"],["🧤","Crimson Grips"],["🥋","Coven Sash"],["🥾","Nightstalker Boots"]],
+  [["🗡️","Thornwood Glaive"],["🧥","Sylvan Cloak"],["🍃","Feywild Charm"],["🧤","Bramble Gloves"],["🥋","Verdant Sash"],["🥾","Wanderer Boots"]],
+  [["⚔️","Sentinel Blades"],["🦺","Ruinguard Plate"],["🗝️","Broken Crest"],["🧤","Bulwark Gauntlets"],["🪢","Iron Harness"],["🥾","Warden Boots"]],
+  [["🗡️","Trident Cutlass"],["🧥","Abyssal Coat"],["🧭","Tideglass Charm"],["🧤","Coral Grips"],["🥋","Mariner's Sash"],["🥾","Deepwalk Boots"]],
+  [["🗡️","Umbral Blade"],["🧥","Shadow Robe"],["🔮","Wraith Talisman"],["🧤","Void Gloves"],["🥋","Eclipse Belt"],["🥾","Phantom Sandals"]],
+  [["🔫","Astral Cannon"],["🦺","Celestial Armor"],["🎖️","Seraph Badge"],["🧤","Radiant Gloves"],["🥋","Star Belt"],["👟","Comet Greaves"]]
 ];
 const gearDef=it=>({e:GEAR_SETS[it.w][it.s][0], n:(it.evo?"Awakened ":"")+GEAR_SETS[it.w][it.s][1]});
 const GEAR_MAXLVL=10;
@@ -1165,6 +1165,28 @@ function gemSprite(){
   g.beginPath();g.moveTo(18,7);g.lineTo(26,17);g.lineTo(18,15);g.closePath();
   g.fillStyle="rgba(255,255,255,.65)";g.fill();
   gemCv=c;return c;
+}
+/* soft radial ground shadow, baked once and drawn scaled (cheap for hundreds of enemies) */
+let _shadowCv=null;
+function shadowSprite(){
+  if(_shadowCv)return _shadowCv;
+  const S=64,c=document.createElement("canvas");c.width=c.height=S;
+  const g=c.getContext("2d");
+  const gr=g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+  gr.addColorStop(0,"rgba(0,0,0,.5)");gr.addColorStop(.5,"rgba(0,0,0,.34)");gr.addColorStop(1,"rgba(0,0,0,0)");
+  g.fillStyle=gr;g.fillRect(0,0,S,S);
+  _shadowCv=c;return c;
+}
+/* baked soft additive glow disk, tinted per rgb string e.g. "255,95,162" */
+const _glowCache=new Map();
+function glowSprite(rgb){
+  if(_glowCache.has(rgb))return _glowCache.get(rgb);
+  const S=64,c=document.createElement("canvas");c.width=c.height=S;
+  const g=c.getContext("2d");
+  const gr=g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+  gr.addColorStop(0,"rgba("+rgb+",.95)");gr.addColorStop(.4,"rgba("+rgb+",.5)");gr.addColorStop(1,"rgba("+rgb+",0)");
+  g.fillStyle=gr;g.fillRect(0,0,S,S);
+  _glowCache.set(rgb,c);return c;
 }
 
 /* ---------- unique drawn boss models (two per world) ---------- */
@@ -2137,37 +2159,37 @@ addEventListener("resize",resize);resize();
 
 /* ============================ ability defs ============================ */
 const WEAPONS=[
-  {id:"shuriken",e:"✴️",n:"Shuriken Storm",jp:"手裏剣",max:5,
-   d:l=>`Hurl ${2+l} piercing shuriken every ${(1.9-l*.15).toFixed(1)}s`},
-  {id:"raiton",e:"⚡",n:"Raiton Arc",jp:"雷遁",max:5,
+  {id:"shuriken",e:"✴️",n:"Blade Fan",jp:"SICA",max:5,
+   d:l=>`Hurl ${2+l} piercing blades every ${(1.9-l*.15).toFixed(1)}s`},
+  {id:"raiton",e:"⚡",n:"Chain Lightning",jp:"FULMEN",max:5,
    d:l=>`Lightning chains through ${2+l} enemies (${18+10*l} dmg)`},
-  {id:"orbs",e:"🌀",n:"Spirit Orbs",jp:"螺旋",max:5,
-   d:l=>`${l} rasen orb${l>1?"s":""} circle you (${14+6*l} dmg)`},
-  {id:"zan",e:"🗡️",n:"Zan Slash",jp:"斬撃",max:5,
-   d:l=>`Katana arc every ${(2.4-l*.2).toFixed(1)}s (${28+14*l} dmg + knockback)`},
-  {id:"kitsune",e:"🦊",n:"Kitsune Fire",jp:"狐火",max:5,
-   d:l=>`${1+Math.floor(l/2)} piercing foxfire bolt${l>2?"s":""} (${16+8*l} dmg)`},
-  {id:"beam",e:"🐉",n:"Dragon Beam",jp:"竜破斬",max:5,
+  {id:"orbs",e:"🌀",n:"Astral Orbs",jp:"ASTRA",max:5,
+   d:l=>`${l} astral orb${l>1?"s":""} circle you (${14+6*l} dmg)`},
+  {id:"zan",e:"🗡️",n:"Blade Arc",jp:"ENSIS",max:5,
+   d:l=>`A sword arc every ${(2.4-l*.2).toFixed(1)}s (${28+14*l} dmg + knockback)`},
+  {id:"kitsune",e:"🦊",n:"Wisp Fire",jp:"IGNIS",max:5,
+   d:l=>`${1+Math.floor(l/2)} piercing wisp-fire bolt${l>2?"s":""} (${16+8*l} dmg)`},
+  {id:"beam",e:"🐉",n:"Dragon Breath",jp:"DRACO",max:5,
    d:l=>`Devastating beam every ${(9-l*.8).toFixed(1)}s (${90*l} dmg)`},
-  {id:"clone",e:"👥",n:"Shadow Clone",jp:"影分身",max:3,
-   d:l=>`${l} clone${l>1?"s":""} fight beside you (60% damage)`},
-  {id:"iai",e:"💫",n:"Iai Flash",jp:"一閃",max:5,
+  {id:"clone",e:"👥",n:"Spirit Echoes",jp:"UMBRA",max:3,
+   d:l=>`${l} spirit echo${l>1?"es":""} fight beside you (60% damage)`},
+  {id:"iai",e:"💫",n:"Flash Cut",jp:"ICTUS",max:5,
    d:l=>`Instant sword-draw cuts a full line every ${(7-l*.6).toFixed(1)}s (${50+30*l} dmg)`},
-  {id:"domain",e:"🕳️",n:"Shadow Domain",jp:"領域展開",max:5,
-   d:l=>`Expand a domain that slows foes and rends them (${18+10*l} dmg/tick)`},
-  {id:"raidash",e:"🌩️",n:"Raijin Step",jp:"雷神脚",max:3,
+  {id:"domain",e:"🕳️",n:"Cursed Circle",jp:"ORBIS",max:5,
+   d:l=>`Expand a ring that slows foes and rends them (${18+10*l} dmg/tick)`},
+  {id:"raidash",e:"🌩️",n:"Storm Dash",jp:"TONITRUS",max:3,
    d:l=>`Your dash becomes lightning, scorching your path (${40+30*l} dmg)`},
-  {id:"icefang",e:"❄️",n:"Ice Fang",jp:"氷牙",max:5,
+  {id:"icefang",e:"❄️",n:"Frost Shards",jp:"GELU",max:5,
    d:l=>`${2+l} freezing shards pierce & slow foes (${14+9*l} dmg)`},
-  {id:"barrage",e:"👊",n:"Gale Barrage",jp:"乱打",max:5,
+  {id:"barrage",e:"👊",n:"Fist Flurry",jp:"FUROR",max:5,
    d:l=>`A whirl of ${4+l*2} rapid strikes around you (${9+5*l} dmg each)`},
-  {id:"curse",e:"🩸",n:"Cursed Sigil",jp:"呪印",max:5,
+  {id:"curse",e:"🩸",n:"Hex Sigil",jp:"HEXA",max:5,
    d:l=>`Plant a sigil that pulses ${16+9*l} dmg over an area`},
-  {id:"smash",e:"💥",n:"Hero Smash",jp:"豪腕",max:5,
-   d:l=>`Shockwave punch every ${(3.5-l*.3).toFixed(1)}s (${34+18*l} dmg)`},
-  {id:"scythe",e:"🌾",n:"Chain Scythe",jp:"鎖鎌",max:5,
+  {id:"smash",e:"💥",n:"Quake Smash",jp:"RUINA",max:5,
+   d:l=>`Shockwave slam every ${(3.5-l*.3).toFixed(1)}s (${34+18*l} dmg)`},
+  {id:"scythe",e:"🌾",n:"Reaper Scythe",jp:"FALX",max:5,
    d:l=>`${l} bladed chain${l>1?"s":""} sweep a wide orbit (${20+10*l} dmg)`},
-  {id:"meteor",e:"☄️",n:"Meteor Fall",jp:"流星",max:5,
+  {id:"meteor",e:"☄️",n:"Meteor Fall",jp:"CAELUM",max:5,
    d:l=>`${1+Math.floor(l/2)} meteor${l>1?"s":""} crash on foes (${60+30*l} dmg)`}
 ];
 const PASSIVES=[
@@ -2663,7 +2685,7 @@ function paintRecords(){
   $("recList").innerHTML=
     `<div class="srow"><img src="${charPortraitURL(SAVE.chars.cur)}" style="width:38px;height:38px;border-radius:9px;border:2px solid #000;">
       <div class="info"><div class="nm">${charById(SAVE.chars.cur).n} <span class="lv num" style="color:var(--gold);font-size:11px;">Lv ${SAVE.plvl}</span></div>
-      <div class="ds">${SAVE.totalRuns} dive${SAVE.totalRuns===1?"":"s"} · ${fmt(SAVE.totalKills)} yokai slain · ${SAVE.totalWins} rift${SAVE.totalWins===1?"":"s"} sealed</div></div></div>`
+      <div class="ds">${SAVE.totalRuns} dive${SAVE.totalRuns===1?"":"s"} · ${fmt(SAVE.totalKills)} beasts slain · ${SAVE.totalWins} rift${SAVE.totalWins===1?"":"s"} sealed</div></div></div>`
     +`<div class="rechead">🗺️ Worlds</div>`+rows+artRows+achRows;
 }
 $("recBackBtn").addEventListener("click",()=>show("title"));
@@ -2714,10 +2736,10 @@ function offerLevelUp(){
     const wt=WTYPE[eqw.w],nm=WTYPE_NAME[wt]||"Weapon";
     if(!R.weaponAwake&&!eqw.evo&&R.weaponLv>=WEAPON_MAXLV){
       const aw=WEAPON_AWAKEN[eqw.w];
-      picks.push({wpnAwake:true,w:eqw.w,def:{n:aw?aw.n:"Awaken "+nm,jp:aw?aw.jp:"武器覚醒",d:()=>WTYPE_EVO[wt]}});
+      picks.push({wpnAwake:true,w:eqw.w,def:{n:aw?aw.n:"Awaken "+nm,jp:aw?aw.jp:"AWAKEN",d:()=>WTYPE_EVO[wt]}});
     }
     else if(R.weaponLv<WEAPON_MAXLV){
-      const wcard={wpn:true,cur:R.weaponLv-1,max:WEAPON_MAXLV,w:eqw.w,def:{n:nm,jp:"武器強化",max:WEAPON_MAXLV,d:()=>`+15% weapon power (Weapon Lv ${R.weaponLv+1})`}};
+      const wcard={wpn:true,cur:R.weaponLv-1,max:WEAPON_MAXLV,w:eqw.w,def:{n:nm,jp:"ARMA",max:WEAPON_MAXLV,d:()=>`+15% weapon power (Weapon Lv ${R.weaponLv+1})`}};
       if(Math.random()<.5)picks.push(wcard);else pool.push(wcard); // reliably offered
     }
   }
@@ -2745,18 +2767,18 @@ function offerLevelUp(){
     const p=picks[+c.dataset.i];
     if(p.evo){
       R.evolved[p.evo]=true;
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"覚醒",t:0,life:.9,c:"#ffd75e"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"AWAKEN",t:0,life:.9,c:"#ffd75e"});
       toast(`✨ ${EVOS[p.evo].n} awakened!`);SFX.win();hitStop(.08);
     }
     else if(p.wpnAwake){R.weaponAwake=true;
       const aw=WEAPON_AWAKEN[p.w];
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:aw?aw.jp:"覚醒",t:0,life:1,c:"#ffd75e"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:aw?aw.jp:"AWAKEN",t:0,life:1,c:"#ffd75e"});
       R.fx.push({kind:"lines",x:R.px,y:R.py,t:0,life:.5});
       toast(`✦ ${aw?aw.n:WTYPE_NAME[WTYPE[p.w]]} awakened!`);SFX.win();hitStop(.1);}
     else if(p.wpn){R.weaponLv++;}
     else if(p.heal){R.hp=Math.min(R.maxhp,R.hp+R.maxhp*.4);}
     else if(p.art){R.arts[p.def.id]=(R.arts[p.def.id]||0)+1;recompute();
-      if(p.cur===0){R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"開眼",t:0,life:.9,c:"#b45fff"});SFX.win();}}
+      if(p.cur===0){R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"BOON",t:0,life:.9,c:"#b45fff"});SFX.win();}}
     else if(p.weapon){R.weapons[p.def.id]=(R.weapons[p.def.id]||0)+1;}
     else{R.passives[p.def.id]=(R.passives[p.def.id]||0)+1;recompute();}
     SFX.pick();
@@ -2818,12 +2840,19 @@ function killEnemy(e){
   }
   for(let i=0;i<Math.ceil(N*.6);i++) // debris chunks
     R.parts.push({x:e.x,y:e.y,vx:rand(-150,150),vy:rand(-200,40),t:0,life:rand(.3,.6),c:"#f2ecff",sz:rand(2,4)});
+  // rising soul wisps that float up and fade
+  for(let i=0;i<(e.boss?6:e.elite?4:2);i++)
+    R.parts.push({x:e.x+rand(-e.r*.6,e.r*.6),y:e.y,vx:rand(-24,24),vy:rand(-150,-80),t:0,life:rand(.5,.95),c:col,sz:rand(3,6),glow:true});
+  // dissolving husk of the body: the sprite flares bright, scales up and fades out
+  R.fx.push({kind:"husk",x:e.x,y:e.y,t:0,life:e.boss?.4:.26,
+    mdl:e.goblin?goblinSprite():e.boss?bossSprite(e.w,e.bIdx):monsterSprite(e.w,e.slot),size:e.r*2.2,c:col});
+  R.fx.push({kind:"wave",x:e.x,y:e.y,t:0,life:e.boss?.42:.32,r:e.boss?170:e.r*3.4,c:col}); // flat ground shockwave
   R.fx.push({kind:"ring",x:e.x,y:e.y,t:0,life:.3,r:e.boss?90:e.r*2.2,c:col});
   R.fx.push({kind:"flash",x:e.x,y:e.y,t:0,life:.14});
   if(e.goblin){ // treasure imp pays out on the spot
     R.bonusShards+=10+Math.floor(R.stg.diff*4);
     for(let i=0;i<6;i++)R.gems.push({x:e.x+rand(-18,18),y:e.y+rand(-18,18),v:4,t:0});
-    R.fx.push({kind:"kanji",x:e.x,y:e.y-40,ch:"金",t:0,life:.6,c:"#ffd75e"});
+    R.fx.push({kind:"kanji",x:e.x,y:e.y-40,ch:"LOOT",t:0,life:.6,c:"#ffd75e"});
     toast("💰 Treasure imp burst! Bonus shards!");SFX.coin?.();SFX.item();
     return;
   }
@@ -2855,7 +2884,7 @@ function killEnemy(e){
     R.bossKills++;R.boss=null;$("bossBarWrap").style.display="none";
     R.hp=Math.min(R.maxhp,R.hp+R.maxhp*.25);
     R.fx.push({kind:"lines",x:e.x,y:e.y,t:0,life:.4});
-    R.fx.push({kind:"kanji",x:e.x,y:e.y-56,ch:"討伐",t:0,life:.8,c:"#ffd75e"});
+    R.fx.push({kind:"kanji",x:e.x,y:e.y-56,ch:"SLAIN",t:0,life:.8,c:"#ffd75e"});
     hitStop(.12);
     R.shake=Math.max(R.shake,.7);SFX.boss();
     toast(`🏆 ${e.name} banished!`);
@@ -2978,7 +3007,7 @@ function weaponsTick(dt){
       }
       if(hitcount){
         R.fx.push({kind:"bolt",pts,t:0,life:.22});
-        R.fx.push({kind:"kanji",x:pts[1].x,y:pts[1].y-44,ch:"雷",t:0,life:.5,c:"#4ce0ff"});
+        R.fx.push({kind:"kanji",x:pts[1].x,y:pts[1].y-44,ch:"BOLT",t:0,life:.5,c:"#4ce0ff"});
         SFX.bolt();T.raiton=2.6/R.atkSpd;
       }
     }
@@ -3003,7 +3032,7 @@ function weaponsTick(dt){
           }
         }
         R.fx.push({kind:"arc",x:R.px,y:R.py,ang,r:rr,t:0,life:.28});
-        R.fx.push({kind:"kanji",x:R.px+Math.cos(ang)*72,y:R.py+Math.sin(ang)*72-22,ch:"斬",t:0,life:.5,c:"#ff5fa2"});
+        R.fx.push({kind:"kanji",x:R.px+Math.cos(ang)*72,y:R.py+Math.sin(ang)*72-22,ch:"SLASH",t:0,life:.5,c:"#ff5fa2"});
         if(evoZ){ // fan of crescents
           for(const off of[-.4,0,.4])
             R.bullets.push({x:R.px,y:R.py,vx:Math.cos(ang+off)*330,vy:Math.sin(ang+off)*330,
@@ -3053,7 +3082,7 @@ function weaponsTick(dt){
         }
         R.fx.push({kind:"flash",x:R.px,y:R.py,t:0,life:.22});
         R.fx.push({kind:"lines",x:R.px+Math.cos(a0)*180,y:R.py+Math.sin(a0)*180,t:0,life:.32});
-        R.fx.push({kind:"kanji",x:R.px+Math.cos(a0)*130,y:R.py+Math.sin(a0)*130-40,ch:"竜",t:0,life:.6,c:"#4ce0ff"});
+        R.fx.push({kind:"kanji",x:R.px+Math.cos(a0)*130,y:R.py+Math.sin(a0)*130-40,ch:"DRAGON",t:0,life:.6,c:"#4ce0ff"});
         hitStop(.07);
         R.shake=Math.max(R.shake,.5);SFX.beam();
         T.beam=(9-be*.8)/R.atkSpd;
@@ -3080,7 +3109,7 @@ function weaponsTick(dt){
           }
           R.fx.push({kind:"iai",x:R.px,y:R.py,ang:a,t:0,life:.32});
         }
-        R.fx.push({kind:"kanji",x:R.px+Math.cos(a0)*90,y:R.py+Math.sin(a0)*90-30,ch:evoI?"無拍子":"一閃",t:0,life:.6,c:"#fff"});
+        R.fx.push({kind:"kanji",x:R.px+Math.cos(a0)*90,y:R.py+Math.sin(a0)*90-30,ch:evoI?"VOID":"FLASH",t:0,life:.6,c:"#fff"});
         hitStop(.09);SFX.iai();R.shake=Math.max(R.shake,.3);
         T.iai=(7-ia*.6)/R.atkSpd;
       }
@@ -3094,7 +3123,7 @@ function weaponsTick(dt){
       const evoD=R.evolved.domain;
       R.domain={x:R.px,y:R.py,r:24,maxR:(150+25*dm)*(evoD?1.7:1),until:R.t+(evoD?6:3.5),
         nextTick:R.t+.3,dmg:(18+10*dm)*R.dmgMult*(evoD?1.5:1),slow:evoD?.15:.45};
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:evoD?"無限":"領域",t:0,life:.75,c:"#c26bff"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:evoD?"INFINITY":"DOMAIN",t:0,life:.75,c:"#c26bff"});
       hitStop(.05);SFX.domain();R.shake=Math.max(R.shake,.35);
       T.domain=(10-dm*.7)/R.atkSpd;
     }
@@ -3153,7 +3182,7 @@ function weaponsTick(dt){
     T.curse-=dt;
     if(T.curse<=0&&R.sigils.length<(R.evolved.curse?4:2)){
       R.sigils.push({x:R.px,y:R.py,r:R.evolved.curse?130:90,until:R.t+6,next:R.t+.5,dmg:(16+9*cur)*R.dmgMult});
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-40,ch:"呪",t:0,life:.5,c:"#c01830"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-40,ch:"HEX",t:0,life:.5,c:"#c01830"});
       T.curse=4/R.atkSpd;SFX.slash();
     }
   }
@@ -3173,7 +3202,7 @@ function weaponsTick(dt){
         if(d2<rr*rr){const dd=Math.max(1,Math.sqrt(d2));
           hitEnemy(e,(34+18*sm)*R.dmgMult*(evo?1.5:1),(e.x-R.px)/dd*(evo?90:50),(e.y-R.py)/dd*(evo?90:50));}}
       R.fx.push({kind:"nova",x:R.px,y:R.py,r:rr,t:0,life:.34});
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-46,ch:"豪",t:0,life:.5,c:"#ffb82e"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-46,ch:"QUAKE",t:0,life:.5,c:"#ffb82e"});
       R.shake=Math.max(R.shake,.35);SFX.bomb();hitStop(.04);
       T.smash=(3.5-sm*.3)/R.atkSpd;
     }
@@ -3220,7 +3249,7 @@ function weaponsTick(dt){
 /* ---------- equipped weapon becomes a real attack ---------- */
 /* eight distinct signature weapon types, one per world */
 const WTYPE=["throw","arc","sweep","shoot","orbit","spin","thrust","slam"];
-const WTYPE_NAME={throw:"Throwing Blade",arc:"Blade",sweep:"Greatblade",shoot:"Blaster",orbit:"Dual Blades",spin:"Spin Blade",thrust:"Spear",slam:"Warhammer"};
+const WTYPE_NAME={throw:"Throwing Axe",arc:"Sword",sweep:"Greatsword",shoot:"Crossbow",orbit:"War Glaives",spin:"Whirlblade",thrust:"Spear",slam:"Warhammer"};
 const WEAPON_MAXLV=5;
 const WTYPE_EVO={
   throw:"awakened: 5 blades that pierce everything",
@@ -3232,16 +3261,16 @@ const WTYPE_EVO={
   thrust:"awakened: fires a piercing energy lance",
   slam:"awakened: bigger blast with a follow-up quake"
 };
-/* per-world weapon awakening — themed to each world's anime (original homages) */
+/* per-world weapon awakening — themed to each legendary realm */
 const WEAPON_AWAKEN={
-  0:{n:"Sage Barrage",jp:"仙法"},      // Hidden Leaf
-  1:{n:"Blade Release",jp:"解号"},     // Soul Society
-  2:{n:"Sunfang Cut",jp:"日輪斬"},     // Demon Slayer Night
-  3:{n:"Spirit Barrage",jp:"気弾連"},  // Planet Namek
-  4:{n:"Thunder Spears",jp:"雷槍"},    // Wall Maria
-  5:{n:"Conqueror's Edge",jp:"覇斬"},  // Grand Azure Sea
-  6:{n:"Cursed Lance",jp:"呪槍"},      // Cursed Metropolis
-  7:{n:"Overdrive Smash",jp:"全力撃"}  // Hero Academy
+  0:{n:"Bolt of Olympus",jp:"IUPPITER"}, // Olympus Fields
+  1:{n:"Runeblade Fury",jp:"RUNA"},      // Frostheim
+  2:{n:"Crimson Reaver",jp:"SANGUIS"},   // Vampire's Hollow
+  3:{n:"Sylvan Volley",jp:"SILVA"},      // The Feywild
+  4:{n:"Sentinel Blades",jp:"CUSTOS"},   // Fallen Citadel
+  5:{n:"Maelstrom Edge",jp:"VORTEX"},    // Sunken Atlantis
+  6:{n:"Doom Lance",jp:"MORS"},          // The Shadowfell
+  7:{n:"Wrath of Heaven",jp:"CAELUM"}    // The Celestial Gate
 };
 function equippedWeaponAttack(){
   const it=SAVE.equip.weapon;if(!it)return null;
@@ -3284,7 +3313,7 @@ function mainhandTick(dt){
       }else{ // forward flying slash (haki-style cut)
         R.bullets.push({x:R.px,y:R.py,vx:Math.cos(ang)*460,vy:Math.sin(ang)*460,dmg:mw.dmg*(type==="sweep"?1.2:1),r:18,pierce:99,life:.9,crescent:true});
       }
-      R.fx.push({kind:"kanji",x:R.px+Math.cos(ang)*74,y:R.py+Math.sin(ang)*74-18,ch:"斬",t:0,life:.4,c:"#b45fff"});
+      R.fx.push({kind:"kanji",x:R.px+Math.cos(ang)*74,y:R.py+Math.sin(ang)*74-18,ch:"SLASH",t:0,life:.4,c:"#b45fff"});
     }
     SFX.slash();if(type==="sweep")R.shake=Math.max(R.shake,.15);T.mainhand=rate/R.atkSpd;
   }else if(type==="throw"){
@@ -3336,7 +3365,7 @@ function artsTick(dt){
         for(let i=0;i<6;i++){const a=base+(i-2.5)*.16;
           R.bullets.push({x:R.px,y:R.py,vx:Math.cos(a)*520,vy:Math.sin(a)*520,
             dmg:(20+14*A.mirror)*R.dmgMult,r:6,pierce:2,life:1.1,c:"#ff3a5a"});}
-        R.fx.push({kind:"kanji",x:R.px+Math.cos(base)*70,y:R.py+Math.sin(base)*70-24,ch:"写",t:0,life:.5,c:"#e8203a"});
+        R.fx.push({kind:"kanji",x:R.px+Math.cos(base)*70,y:R.py+Math.sin(base)*70-24,ch:"SMITE",t:0,life:.5,c:"#e8203a"});
         SFX.shot();T.mirror=(8-A.mirror*1.5)/R.atkSpd;
       }
     }
@@ -3349,7 +3378,7 @@ function artsTick(dt){
         const a=Math.atan2(R.py-e.y,R.px-e.x);e.x+=Math.cos(a)*70;e.y+=Math.sin(a)*70;}
       for(const e of R.enemies){if(!e.dead&&dist2(e.x,e.y,R.px,R.py)<180*180)hitEnemy(e,(40+25*A.samsara)*R.dmgMult);}
       R.fx.push({kind:"nova",x:R.px,y:R.py,r:200,t:0,life:.45});
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"輪廻",t:0,life:.7,c:"#b45fff"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"FATE",t:0,life:.7,c:"#b45fff"});
       hitStop(.07);R.shake=Math.max(R.shake,.5);SFX.domain();
       T.samsara=(10-A.samsara);
     }
@@ -3370,7 +3399,7 @@ function artsTick(dt){
     T.release-=dt;
     if(!R.releaseOn&&T.release<=0){
       R.releaseOn=true;R.releaseUntil=R.t+(5+A.release);recompute();
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"卍解",t:0,life:.8,c:"#fff"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"RAGE",t:0,life:.8,c:"#fff"});
       R.fx.push({kind:"lines",x:R.px,y:R.py,t:0,life:.4});
       SFX.win();T.release=24;
     }
@@ -3381,7 +3410,7 @@ function artsTick(dt){
     if(!R.maskOn&&R.hp/R.maxhp<.3&&R.t>=R.maskAt){
       R.maskOn=true;R.maskUntil=R.t+(3+A.mask);R.maskAt=R.t+45;
       R.hp=Math.min(R.maxhp,R.hp+R.maxhp*(.1+.05*A.mask));recompute();
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"仮面",t:0,life:.9,c:"#e8203a"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-60,ch:"VEIL",t:0,life:.9,c:"#e8203a"});
       SFX.boss();toast("👺 Hollow Mask!");
     }
     if(R.maskOn&&R.t>=R.maskUntil){R.maskOn=false;recompute();}
@@ -3390,7 +3419,7 @@ function artsTick(dt){
   if(A.ascend){
     if(!R.goldenOn&&R.gauge>=(45-5*A.ascend)){
       R.gauge=0;R.goldenOn=true;R.goldenUntil=R.t+(8+2*A.ascend);recompute();
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"超",t:0,life:1,c:"#ffd75e"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"ASCEND",t:0,life:1,c:"#ffd75e"});
       R.fx.push({kind:"lines",x:R.px,y:R.py,t:0,life:.5});
       hitStop(.1);R.shake=Math.max(R.shake,.6);SFX.win();toast("⚡ Ascended!");
     }
@@ -3402,7 +3431,7 @@ function artsTick(dt){
   if(A.colossal){
     if(!R.titanOn&&R.t>=R.titanAt){
       R.titanOn=true;R.titanUntil=R.t+(7+A.colossal);R.titanAt=R.t+45;
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-70,ch:"巨人",t:0,life:1,c:"#f2ecff"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-70,ch:"TITAN",t:0,life:1,c:"#f2ecff"});
       R.shake=Math.max(R.shake,.6);SFX.boss();toast("🗿 Colossal Shift!");
     }
     if(R.titanOn){
@@ -3421,7 +3450,7 @@ function artsTick(dt){
       const dur=1.5+A.emperor*.5;
       for(const e of R.enemies)if(!e.boss)e.frozen=R.t+dur;
       R.fx.push({kind:"nova",x:R.px,y:R.py,r:Math.max(VW,VH),t:0,life:.5});
-      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"覇王",t:0,life:.9,c:"#ffd75e"});
+      R.fx.push({kind:"kanji",x:R.px,y:R.py-64,ch:"ROAR",t:0,life:.9,c:"#ffd75e"});
       hitStop(.09);R.shake=Math.max(R.shake,.5);SFX.boss();
       T.emperor=22-2*A.emperor;
     }
@@ -3501,7 +3530,7 @@ function update(dt){
           hitEnemy(e,dmg);
       }
       R.fx.push({kind:"bolt",pts:[{x:sx,y:sy},{x:(sx+R.px)/2,y:(sy+R.py)/2},{x:R.px,y:R.py}],t:0,life:.25});
-      if(rl)R.fx.push({kind:"kanji",x:R.px,y:R.py-48,ch:"雷",t:0,life:.5,c:"#4ce0ff"});
+      if(rl)R.fx.push({kind:"kanji",x:R.px,y:R.py-48,ch:"BOLT",t:0,life:.5,c:"#4ce0ff"});
       SFX.bolt();hitStop(.04);
     }
     // Blast Rush — dash detonates a blast on arrival
@@ -3708,10 +3737,10 @@ function endRun(win){
   $("deathKanji").textContent=win?"勝":"敗";
   $("deathSub").innerHTML=win
     ?'<span class="jp">完全勝利</span> · the night is over (2× shards)'
-    :'<span class="jp">また会おう</span> · the rift closes';
+    :'<span class="jp">VALE</span> · the rift closes';
   $("deathStats").innerHTML=
     `Survived <b>${fmtTime(Math.min(R.t,WIN_TIME))}</b> in ${R.stg.e} <b>${R.stg.n}</b><br>`+
-    `Level <b>${R.lvl}</b> · <b>${R.kills}</b> yokai slain · <b>${R.bossKills}</b> boss${R.bossKills===1?"":"es"} banished`+
+    `Level <b>${R.lvl}</b> · <b>${R.kills}</b> beasts slain · <b>${R.bossKills}</b> boss${R.bossKills===1?"":"es"} banished`+
     (dailyCleared?`<br><b style="color:var(--gold)">📅 Daily cleared! +100 🔮</b>`:"");
   checkAch();
   $("lootLine").innerHTML=R.loot.length
@@ -4021,51 +4050,86 @@ function renderGame(){
       ctx.strokeStyle=f.c||"#fff";ctx.globalAlpha=k*.9;ctx.lineWidth=(1-k)*6+2;
       ctx.beginPath();ctx.arc(wx(f.x),wy(f.y),rr,0,6.29);ctx.stroke();
       ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";
+    }else if(f.kind==="wave"){
+      // flat ground shockwave hugging the floor plane
+      const e2=1-Math.pow(k,2.4),rr=(f.r||60)*e2;
+      ctx.save();ctx.globalCompositeOperation="lighter";ctx.globalAlpha=k*.55;
+      ctx.strokeStyle=f.c||"#fff";ctx.lineWidth=k*5+1;
+      ctx.beginPath();ctx.ellipse(wx(f.x),wy(f.y)+2,rr,rr*.4,0,0,6.29);ctx.stroke();
+      ctx.restore();ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";
+    }else if(f.kind==="husk"){
+      // the body dissolving: scales up, flares additive, fades to nothing
+      const sc=1+(1-k)*.55;
+      ctx.save();ctx.translate(wx(f.x),wy(f.y));ctx.scale(sc,sc);
+      ctx.globalAlpha=k*k;
+      ctx.drawImage(f.mdl,-f.size/2,-f.size/2,f.size,f.size);
+      ctx.globalCompositeOperation="lighter";ctx.globalAlpha=k*.6;
+      ctx.drawImage(f.mdl,-f.size/2,-f.size/2,f.size,f.size);
+      ctx.restore();ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";
     }
   }
   for(const e of R.enemies){
     const ex=wx(e.x),ey=wy(e.y);
     if(ex<-80||ex>VW+80||ey<-80||ey>VH+80)continue;
-    const size=e.r*2.2,bob=Math.sin(t*5+e.ph)*2;
-    // ground shadow
-    ctx.fillStyle="rgba(0,0,0,.3)";
-    ctx.beginPath();ctx.ellipse(ex,ey+e.r*.85,e.r*.7,e.r*.24,0,0,6.29);ctx.fill();
+    const size=e.r*2.2, damp=e.boss?.45:1;
+    // ---- procedural animation state ----
+    const dpx=R.px-e.x,dpy=R.py-e.y,dist=Math.hypot(dpx,dpy)||1;
+    const face=dpx<0?-1:1;                                  // face the player
+    const wph=t*9+e.ph;
+    const hop=Math.abs(Math.sin(wph));                      // 0..1 gait bounce
+    const lift=hop*e.r*.17*damp;                            // rise off the ground
+    const lean=Math.sin(wph)*.10*damp;                      // waddle rock
+    const breath=Math.sin(t*4+e.ph)*.045;                  // idle breathing
+    const inRange=dist<e.r*1.6+34;                          // striking distance
+    const atkC=inRange?(Math.sin(t*8+e.ph)*.5+.5):0;        // 0..1 attack cycle (anticipation)
+    const lungeS=inRange?Math.sin(t*8+e.ph):0;              // -1..1 pull-back/jab
+    const lox=dpx/dist*lungeS*e.r*.55, loy=dpy/dist*lungeS*e.r*.55;
+    const cy2=ey-lift;                                       // lifted baseline
+    // ---- reactive soft ground shadow (shrinks/fades as it hops) ----
+    const shR=e.r*(1.7-hop*.42*damp);
+    ctx.globalAlpha=.85-hop*.35*damp;
+    ctx.drawImage(shadowSprite(),ex-shR,ey+e.r*.7-shR*.34,shR*2,shR*.68);
+    ctx.globalAlpha=1;
     if(e.elite){
       const ac2=e.affix==="shield"?"rgba(76,224,255,.8)":e.affix==="berserk"?"rgba(255,90,70,.85)":"rgba(255,215,94,.8)";
       ctx.strokeStyle=ac2;ctx.lineWidth=2.5;
-      ctx.beginPath();ctx.arc(ex,ey,e.r+6+Math.sin(t*5)*2,0,6.29);ctx.stroke();
+      ctx.beginPath();ctx.arc(ex,cy2,e.r+6+Math.sin(t*5)*2,0,6.29);ctx.stroke();
       if(e.affix==="shield"){ctx.fillStyle="rgba(76,224,255,.12)";
-        ctx.beginPath();ctx.arc(ex,ey,e.r+6,0,6.29);ctx.fill();}
+        ctx.beginPath();ctx.arc(ex,cy2,e.r+6,0,6.29);ctx.fill();}
     }
     if(e.boss){
-      const aura=ctx.createRadialGradient(ex,ey,e.r*.4,ex,ey,e.r+26);
+      const aura=ctx.createRadialGradient(ex,cy2,e.r*.4,ex,cy2,e.r+26);
       aura.addColorStop(0,"rgba(255,77,94,0)");aura.addColorStop(.75,"rgba(255,77,94,"+(0.22+Math.sin(t*4)*.08)+")");aura.addColorStop(1,"rgba(255,77,94,0)");
-      ctx.fillStyle=aura;ctx.beginPath();ctx.arc(ex,ey,e.r+26,0,6.29);ctx.fill();
+      ctx.fillStyle=aura;ctx.beginPath();ctx.arc(ex,cy2,e.r+26,0,6.29);ctx.fill();
       ctx.strokeStyle="rgba(255,77,94,.7)";ctx.lineWidth=3;
-      ctx.beginPath();ctx.arc(ex,ey,e.r+10+Math.sin(t*4)*3,0,6.29);ctx.stroke();
+      ctx.beginPath();ctx.arc(ex,cy2,e.r+10+Math.sin(t*4)*3,0,6.29);ctx.stroke();
       if(e.mode==="tele"){ // charge telegraph
-        const dd=Math.max(1,Math.hypot(R.px-e.x,R.py-e.y));
-        const ux2=(R.px-e.x)/dd,uy2=(R.py-e.y)/dd;
+        const dd=Math.max(1,dist);
+        const ux2=dpx/dd,uy2=dpy/dd;
         ctx.strokeStyle="rgba(255,60,60,"+(0.5+Math.sin(t*20)*.3)+")";ctx.lineWidth=5;
         ctx.setLineDash([14,10]);
-        ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex+ux2*440,ey+uy2*440);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(ex,cy2);ctx.lineTo(ex+ux2*440,cy2+uy2*440);ctx.stroke();
         ctx.setLineDash([]);
       }
     }
     const mdl=e.goblin?goblinSprite():e.boss?bossSprite(e.w,e.bIdx):monsterSprite(e.w,e.slot);
-    // spawn pop-in + idle squash for game feel
+    // spawn pop-in + breathing + attack anticipation (squash down on wind-up, stretch on jab)
     const grow=Math.min(1,(t-(e.born||0))/.25);
-    const syq=1+Math.sin(t*7+e.ph)*.05,sxq=1-(syq-1)*.7;
-    ctx.save();ctx.translate(ex,ey+bob);ctx.scale(grow*sxq,grow*syq);
+    let sx=1+breath*.6+atkC*.14, sy=1-breath-atkC*.10+Math.max(0,lungeS)*.08;
+    sx*=grow;sy*=grow;
+    ctx.save();
+    ctx.translate(ex+lox,cy2+loy);
+    ctx.rotate(lean);
+    ctx.scale(face*sx,sy);
     ctx.drawImage(mdl,-size/2,-size/2,size,size);
     if(e.flash>0){ctx.globalAlpha=e.flash*6;ctx.globalCompositeOperation="lighter";
       ctx.drawImage(mdl,-size/2,-size/2,size,size);
       ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;}
     ctx.restore();
-    if(e.elite&&!e.boss)drawCrown(ex,ey-e.r-9+bob,9);
+    if(e.elite&&!e.boss)drawCrown(ex,cy2-e.r-9,9);
     if(!e.boss&&e.hp<e.maxhp){
-      ctx.fillStyle="rgba(10,6,20,.7)";ctx.fillRect(ex-16,ey-e.r-12,32,4);
-      ctx.fillStyle="#ff4d5e";ctx.fillRect(ex-16,ey-e.r-12,32*clamp(e.hp/e.maxhp,0,1),4);
+      ctx.fillStyle="rgba(10,6,20,.7)";ctx.fillRect(ex-16,ey-e.r-14,32,4);
+      ctx.fillStyle="#ff4d5e";ctx.fillRect(ex-16,ey-e.r-14,32*clamp(e.hp/e.maxhp,0,1),4);
     }
   }
   // boss bullets
@@ -4256,8 +4320,11 @@ function renderGame(){
         ctx.stroke();
       }
     }else if(f.kind==="flash"){
-      ctx.fillStyle="rgba(255,255,255,"+(.85*k)+")";
-      ctx.beginPath();ctx.arc(wx(f.x),wy(f.y),12+46*k,0,6.29);ctx.fill();
+      // soft additive bloom pop
+      const fr=12+52*k;
+      ctx.save();ctx.globalCompositeOperation="lighter";ctx.globalAlpha=k;
+      ctx.drawImage(glowSprite("255,255,255"),wx(f.x)-fr,wy(f.y)-fr,fr*2,fr*2);
+      ctx.restore();ctx.globalAlpha=1;
     }else if(f.kind==="iai"){
       ctx.save();ctx.translate(wx(f.x),wy(f.y));ctx.rotate(f.ang);
       ctx.fillStyle="rgba(255,255,255,"+(.95*k)+")";
