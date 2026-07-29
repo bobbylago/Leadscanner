@@ -1030,23 +1030,57 @@ function shade(hex,f){ // darken/lighten a hex color
   const r=clamp(((n>>16)&255)*f,0,255),g2=clamp(((n>>8)&255)*f,0,255),b=clamp((n&255)*f,0,255);
   return `rgb(${r|0},${g2|0},${b|0})`;
 }
+/* --- small color math for rendered-material shading --- */
+function _hx(hex){const n=parseInt(hex.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255];}
+function _cl(v){return v<0?0:v>255?255:v;}
+function _mix(a,b,t){return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];}
+function _lit(a,f){return[_cl(a[0]*f),_cl(a[1]*f),_cl(a[2]*f)];}
+function _rgb(a,al){return al==null?`rgb(${a[0]|0},${a[1]|0},${a[2]|0})`:`rgba(${a[0]|0},${a[1]|0},${a[2]|0},${al})`;}
+/* volumetric sphere fill: a hot near-white spot offset toward the top-left key light,
+   a broad mid-tone, and a deep terminator on the shadow side — reads as a lit 3D form
+   instead of a flat cartoon fill. */
 function ballGrad(g,x,y,r,hex){
-  const gr=g.createRadialGradient(x-r*.35,y-r*.5,r*.12,x,y,r*1.18);
-  gr.addColorStop(0,shade(hex,1.5));gr.addColorStop(.55,hex);gr.addColorStop(1,shade(hex,.6));
+  let c=_hx(hex);
+  const lum=c[0]*.3+c[1]*.59+c[2]*.11;      // lift near-black palettes toward a visible ambient
+  if(lum<72)c=_mix(c,[118,120,140],(72-lum)/150);
+  const gr=g.createRadialGradient(x-r*.44,y-r*.52,r*.03, x-r*.1,y-r*.06,r*1.28);
+  gr.addColorStop(0,   _rgb(_mix(_lit(c,1.6),[255,255,255],.5)));
+  gr.addColorStop(.2,  _rgb(_lit(c,1.42)));
+  gr.addColorStop(.5,  _rgb(c));
+  gr.addColorStop(.82, _rgb(_lit(c,.5)));
+  gr.addColorStop(1,   _rgb(_lit(c,.3)));
   return gr;
 }
-/* bake cel-shade volume onto a drawn sprite: top-left rim light + bottom ambient
-   occlusion, clipped to the silhouette so it shades form without touching bg.
-   Keeps outlines crisp for combat readability (rim as edge, not halo). */
+/* soft glowing eye — bright core with a colored bloom, far more menacing/rendered
+   than a flat cartoon eye. */
+function glowEye(g,x,y,r,hex){
+  const c=_hx(hex);
+  g.save();g.globalCompositeOperation="lighter";
+  const gr=g.createRadialGradient(x,y,0,x,y,r*2.6);
+  gr.addColorStop(0,"rgba(255,255,255,.95)");gr.addColorStop(.3,_rgb(c,.95));gr.addColorStop(1,_rgb(c,0));
+  g.fillStyle=gr;g.beginPath();g.arc(x,y,r*2.6,0,6.29);g.fill();
+  g.restore();
+  g.fillStyle="#fff";g.beginPath();g.arc(x,y,r*.55,0,6.29);g.fill();
+}
+/* finishing material pass baked onto a sprite (clipped to its silhouette):
+   top-left key light, a glossy specular sheen, deep ambient occlusion at the base,
+   and a cool back-light rim hugging the shadow-side edge. Turns flat art into a
+   rendered, volumetric look while keeping the silhouette readable. */
 function celShade(g,W,H){
   g.save();
   g.globalCompositeOperation="source-atop";
-  const lg=g.createLinearGradient(0,0,W*.55,H*.6);          // key light, top-left
-  lg.addColorStop(0,"rgba(255,255,255,.30)");lg.addColorStop(.45,"rgba(255,255,255,.05)");lg.addColorStop(1,"rgba(255,255,255,0)");
+  const lg=g.createLinearGradient(0,0,W*.6,H*.7);           // key light, top-left
+  lg.addColorStop(0,"rgba(255,255,255,.26)");lg.addColorStop(.42,"rgba(255,255,255,.05)");lg.addColorStop(1,"rgba(255,255,255,0)");
   g.fillStyle=lg;g.fillRect(0,0,W,H);
-  const ao=g.createLinearGradient(0,H*.5,0,H);               // ambient occlusion, bottom
-  ao.addColorStop(0,"rgba(8,6,16,0)");ao.addColorStop(1,"rgba(8,6,16,.42)");
-  g.fillStyle=ao;g.fillRect(0,H*.5,W,H*.5);
+  const sh=g.createRadialGradient(W*.4,H*.26,0,W*.4,H*.26,W*.44); // glossy specular sheen
+  sh.addColorStop(0,"rgba(255,255,255,.5)");sh.addColorStop(.45,"rgba(255,255,255,.07)");sh.addColorStop(1,"rgba(255,255,255,0)");
+  g.fillStyle=sh;g.fillRect(0,0,W,H*.62);
+  const ao=g.createLinearGradient(0,H*.48,0,H);              // ambient occlusion, base
+  ao.addColorStop(0,"rgba(6,4,14,0)");ao.addColorStop(1,"rgba(6,4,14,.4)");
+  g.fillStyle=ao;g.fillRect(0,H*.48,W,H*.52);
+  const rim=g.createRadialGradient(W*.62,H*.66,W*.3,W*.62,H*.66,W*.52); // cool back-light rim on the shadow edge
+  rim.addColorStop(0,"rgba(150,200,255,0)");rim.addColorStop(.84,"rgba(150,200,255,0)");rim.addColorStop(1,"rgba(190,222,255,.5)");
+  g.fillStyle=rim;g.fillRect(0,0,W,H);
   g.restore();
 }
 function monsterSprite(w,s){
@@ -1054,8 +1088,8 @@ function monsterSprite(w,s){
   if(monsterCache.has(key))return monsterCache.get(key);
   const C=112,c=document.createElement("canvas");c.width=c.height=C;
   const g=c.getContext("2d"),cx=C/2,cy=C/2+6;
-  const col=MCOLORS[w][s],OL="#141024";
-  g.lineWidth=5;g.strokeStyle=OL;g.lineJoin="round";g.lineCap="round";
+  const col=MCOLORS[w][s],OL="rgba(11,7,20,.8)";
+  g.lineWidth=3.5;g.strokeStyle=OL;g.lineJoin="round";g.lineCap="round";
   const blob=(x,y,rx,ry)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,6.29);
     g.fillStyle=ballGrad(g,x,y,Math.max(rx,ry),col);g.fill();g.stroke();};
   const ghost=s===3;
@@ -1084,7 +1118,7 @@ function monsterSprite(w,s){
     blob(cx,cy,30,25);
     g.fillStyle=shade(col,.68);
     g.beginPath();g.ellipse(cx,cy+13,20,9,0,0,6.29);g.fill();
-    g.lineWidth=3;g.stroke();g.lineWidth=5;
+    g.lineWidth=2.5;g.stroke();g.lineWidth=3.5;
   }else if(ghost){ // drifter: teardrop with wavy skirt
     g.beginPath();
     g.moveTo(cx-24,cy+16);
@@ -1116,36 +1150,26 @@ function monsterSprite(w,s){
     }
     blob(cx,cy,25,23);
   }
-  // face: big cartoon eyes with shine, angry brows on brutes
-  const ey=ghost?cy-8:cy-4,er=s===4?8:7;
-  for(const dir of[-1,1]){
-    g.beginPath();g.ellipse(cx+dir*11,ey,er,er+2,0,0,6.29);
-    g.fillStyle=ghost?"#141024":"#fff";g.fill();
-    g.lineWidth=3.5;g.stroke();g.lineWidth=5;
-    if(!ghost){
-      g.beginPath();g.arc(cx+dir*11+dir*2,ey+2,3.6,0,6.29);
-      g.fillStyle="#141024";g.fill();
-      g.beginPath();g.arc(cx+dir*11,ey-1,1.3,0,6.29);
-      g.fillStyle="#fff";g.fill();
-    }else{
-      g.beginPath();g.arc(cx+dir*11-1,ey-2,1.6,0,6.29);
-      g.fillStyle="rgba(180,220,255,.9)";g.fill();
-    }
-  }
-  if(s===1||s===2||s===4){ // angry brows
-    g.lineWidth=4;g.strokeStyle=OL;
+  // angry brows carve a menacing shadow above the eyes on brutes
+  const ey=ghost?cy-8:cy-4,er=s===4?5:4.4;
+  const eyeCol=ghost?"#8fe6ff":(s===1||s===2||s===4)?"#ff5a3c":"#ffd24a";
+  if(s===1||s===2||s===4){
+    g.lineWidth=4.5;g.strokeStyle="rgba(9,6,16,.9)";
     for(const dir of[-1,1]){
-      g.beginPath();g.moveTo(cx+dir*4,ey-er-6);g.lineTo(cx+dir*16,ey-er-1);g.stroke();
+      g.beginPath();g.moveTo(cx+dir*3,ey-er-7);g.lineTo(cx+dir*18,ey-er-1);g.stroke();
     }
-    g.lineWidth=5;
+    g.lineWidth=3.5;g.strokeStyle=OL;
   }
+  // glowing eyes — bright core + colored bloom (far more menacing than cartoon eyes)
+  glowEye(g,cx-11,ey,er,eyeCol);
+  glowEye(g,cx+11,ey,er,eyeCol);
   if(s===1||s===2||s===4){ // fangs
-    g.fillStyle="#fff";g.lineWidth=2.5;
+    g.fillStyle="#f4eede";g.lineWidth=2;g.strokeStyle=OL;
     for(const dir of[-1,1]){
       g.beginPath();g.moveTo(cx+dir*8,ey+13);g.lineTo(cx+dir*5,ey+20);g.lineTo(cx+dir*2,ey+13);
       g.closePath();g.fill();g.stroke();
     }
-    g.lineWidth=5;
+    g.lineWidth=3.5;
   }
   g.globalAlpha=1;
   celShade(g,C,C);
@@ -1197,18 +1221,16 @@ function bossSprite(w,i){
   if(bossCache.has(key))return bossCache.get(key);
   const C=160,c=document.createElement("canvas");c.width=c.height=C;
   const g=c.getContext("2d"),cx=80,cy=92;
-  const col=BCOLORS[w][i],OL="#141024";
-  g.lineWidth=5.5;g.strokeStyle=OL;g.lineJoin="round";g.lineCap="round";
+  const col=BCOLORS[w][i],OL="rgba(9,6,17,.82)";
+  g.lineWidth=4;g.strokeStyle=OL;g.lineJoin="round";g.lineCap="round";
   const ball=(x,y,rx,ry,hex)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,6.29);
     g.fillStyle=ballGrad(g,x,y,Math.max(rx,ry),hex||col);g.fill();g.stroke();};
-  const eye=(x,y,r,red)=>{ // fierce boss eye
-    g.beginPath();g.ellipse(x,y,r,r*1.15,0,0,6.29);
-    g.fillStyle=red?"#ff4030":"#fff";g.fill();g.lineWidth=3.5;g.stroke();g.lineWidth=5.5;
-    g.beginPath();g.arc(x,y+1,r*.42,0,6.29);g.fillStyle=OL;g.fill();
+  const eye=(x,y,r,red)=>{ // fierce glowing boss eye
+    glowEye(g,x,y,r*.95,red?"#ff4433":"#ffe06a");
   };
-  const brows=(y,r)=>{g.lineWidth=4.5;
+  const brows=(y,r)=>{g.lineWidth=4.5;g.strokeStyle="rgba(7,5,14,.92)";
     for(const d of[-1,1]){g.beginPath();g.moveTo(cx+d*4,y-r-7);g.lineTo(cx+d*19,y-r);g.stroke();}
-    g.lineWidth=5.5;};
+    g.lineWidth=4;g.strokeStyle=OL;};
   const id=w+"-"+i;
   if(id==="0-0"){ // Nine Tails — fox with a fan of tails
     for(let k=-2;k<=2;k++){
@@ -1219,7 +1241,7 @@ function bossSprite(w,i){
       g.quadraticCurveTo(cx+Math.cos(a+.28)*46,cy-8+Math.sin(a+.28)*40,cx,cy-2);
       g.closePath();g.fillStyle=ballGrad(g,cx+Math.cos(a)*40,cy-10+Math.sin(a)*36,18,col);g.fill();g.stroke();
       g.beginPath();g.arc(cx+Math.cos(a)*58,cy-14+Math.sin(a)*52,6,0,6.29);
-      g.fillStyle="#fff";g.fill();g.lineWidth=3;g.stroke();g.lineWidth=5.5;
+      g.fillStyle="#fff";g.fill();g.lineWidth=3;g.stroke();g.lineWidth=4;
     }
     ball(cx,cy+6,36,30);
     for(const d of[-1,1]){ // ears
@@ -1239,7 +1261,7 @@ function bossSprite(w,i){
     eye(cx+6,cy-38,5.5,false);eye(cx+19,cy-36,5.5,false);
     g.fillStyle="#fff";g.lineWidth=2.5; // fangs
     g.beginPath();g.moveTo(cx+18,cy-24);g.lineTo(cx+20,cy-16);g.lineTo(cx+23,cy-23);g.closePath();g.fill();g.stroke();
-    g.lineWidth=5.5;
+    g.lineWidth=4;
   }else if(id==="1-0"){ // Menos — towering cloak and white mask
     g.beginPath(); // tall cloak
     g.moveTo(cx-34,cy+38);
@@ -1257,7 +1279,7 @@ function bossSprite(w,i){
     g.lineWidth=3; // jagged mask mouth
     g.beginPath();g.moveTo(cx-11,cy-14);
     for(let k=0;k<5;k++)g.lineTo(cx-11+(k+.5)*4.4,cy-(k%2?12:17)+0);
-    g.stroke();g.lineWidth=5.5;
+    g.stroke();g.lineWidth=4;
   }else if(id==="1-1"){ // Hollow King — crowned great skull
     ball(cx,cy-6,32,29,"#efe8d4");
     g.beginPath(); // jaw
@@ -1265,14 +1287,14 @@ function bossSprite(w,i){
     g.closePath();g.fillStyle=ballGrad(g,cx,cy+24,20,"#e2d8bc");g.fill();g.stroke();
     g.lineWidth=2.5;g.beginPath(); // teeth seams
     for(let k=-2;k<=2;k++){g.moveTo(cx+k*8,cy+18);g.lineTo(cx+k*8,cy+32);}
-    g.stroke();g.lineWidth=5.5;
+    g.stroke();g.lineWidth=4;
     g.fillStyle=OL; // sockets
     g.beginPath();g.ellipse(cx-12,cy-8,7.5,9,0,0,6.29);g.fill();
     g.beginPath();g.ellipse(cx+12,cy-8,7.5,9,0,0,6.29);g.fill();
     g.fillStyle="#ff4030";
     g.beginPath();g.arc(cx-12,cy-7,3,0,6.29);g.fill();
     g.beginPath();g.arc(cx+12,cy-7,3,0,6.29);g.fill();
-    g.lineWidth=2.5;g.beginPath();g.moveTo(cx+20,cy-28);g.lineTo(cx+28,cy-14);g.stroke();g.lineWidth=5.5; // crack
+    g.lineWidth=2.5;g.beginPath();g.moveTo(cx+20,cy-28);g.lineTo(cx+28,cy-14);g.stroke();g.lineWidth=4; // crack
     g.fillStyle="#ffd75e"; // crown
     g.beginPath();g.moveTo(cx-18,cy-30);g.lineTo(cx-18,cy-46);g.lineTo(cx-9,cy-36);g.lineTo(cx,cy-50);
     g.lineTo(cx+9,cy-36);g.lineTo(cx+18,cy-46);g.lineTo(cx+18,cy-30);g.closePath();g.fill();g.stroke();
@@ -1281,7 +1303,7 @@ function bossSprite(w,i){
       g.beginPath();
       g.moveTo(cx+d*18,cy-2+k*7);
       g.quadraticCurveTo(cx+d*52,cy-26+k*10,cx+d*60,cy+6+k*9);
-      g.lineWidth=7;g.stroke();g.lineWidth=5.5;
+      g.lineWidth=7;g.stroke();g.lineWidth=4;
     }
     ball(cx,cy+18,26,20,shade(col,.8)); // abdomen
     g.fillStyle="#e4574c";
@@ -1291,7 +1313,7 @@ function bossSprite(w,i){
     eye(cx-16,cy-8,3,true);eye(cx+16,cy-8,3,true);
     g.fillStyle="#fff";g.lineWidth=2.5;
     for(const d of[-1,1]){g.beginPath();g.moveTo(cx+d*7,cy);g.lineTo(cx+d*4,cy+8);g.lineTo(cx+d*1,cy);g.closePath();g.fill();g.stroke();}
-    g.lineWidth=5.5;
+    g.lineWidth=4;
   }else if(id==="2-1"){ // Upper Moon — horned demon with cracked skin
     ball(cx,cy+12,30,26);
     ball(cx,cy-18,23,21,shade(col,1.15)); // head
@@ -1301,7 +1323,7 @@ function bossSprite(w,i){
     g.fillStyle=ballGrad(g,cx+4,cy-50,12,"#e8d8c0");g.fill();g.stroke();
     g.lineWidth=2.5;g.strokeStyle="#2a1a3a"; // skin cracks
     g.beginPath();g.moveTo(cx-16,cy-26);g.lineTo(cx-8,cy-18);g.moveTo(cx+16,cy-10);g.lineTo(cx+8,cy-16);g.stroke();
-    g.strokeStyle=OL;g.lineWidth=5.5;
+    g.strokeStyle=OL;g.lineWidth=4;
     eye(cx-9,cy-20,6,true);eye(cx+9,cy-20,6,true);brows(cy-20,7);
   }else if(id==="3-0"){ // Frost Tyrant — sleek dome + tail
     g.beginPath(); // tail
@@ -1328,12 +1350,12 @@ function bossSprite(w,i){
     g.closePath();g.fillStyle=ballGrad(g,cx-4,cy+10,40,col);g.fill();g.stroke();
     ball(cx+14,cy-34,17,13); // head
     for(const d of[-1,1]){ // antlers
-      g.beginPath();g.moveTo(cx+8+d*6,cy-44);g.lineTo(cx+4+d*14,cy-58);g.lineWidth=4;g.stroke();g.lineWidth=5.5;
+      g.beginPath();g.moveTo(cx+8+d*6,cy-44);g.lineTo(cx+4+d*14,cy-58);g.lineWidth=4;g.stroke();g.lineWidth=4;
     }
     g.lineWidth=3; // whiskers
     g.beginPath();g.moveTo(cx+30,cy-34);g.quadraticCurveTo(cx+48,cy-30,cx+52,cy-18);g.stroke();
     g.beginPath();g.moveTo(cx-2,cy-34);g.quadraticCurveTo(cx-20,cy-30,cx-24,cy-18);g.stroke();
-    g.lineWidth=5.5;
+    g.lineWidth=4;
     eye(cx+8,cy-36,4.6,false);eye(cx+21,cy-35,4.6,false);
   }else if(id==="4-0"){ // The Colossal One — grinning giant
     ball(cx,cy+30,40,18,shade(col,.75)); // shoulders
@@ -1344,12 +1366,78 @@ function bossSprite(w,i){
     g.lineWidth=2.5;g.beginPath();
     for(let k=-2;k<=2;k++){g.moveTo(cx+k*8.5,cy+9);g.lineTo(cx+k*8.5,cy+21);}
     g.moveTo(cx-20,cy+15);g.lineTo(cx+20,cy+15);
-    g.stroke();g.lineWidth=5.5;
+    g.stroke();g.lineWidth=4;
     g.lineWidth=3; // muscle striations
     g.beginPath();g.moveTo(cx-24,cy-20);g.lineTo(cx-12,cy-14);g.moveTo(cx+24,cy-20);g.lineTo(cx+12,cy-14);g.stroke();
-    g.lineWidth=5.5;
+    g.lineWidth=4;
     eye(cx-12,cy-12,6,false);eye(cx+12,cy-12,6,false);brows(cy-12,7);
-  }else{ // Armored Brute — plated juggernaut
+  }else if(id==="5-0"){ // The Kraken — bulbous head with writhing tentacles
+    for(let k=-3;k<=3;k++){
+      const a=Math.PI/2+k*.34,len=54;
+      g.beginPath();g.moveTo(cx+Math.cos(a-.12)*14,cy+18+Math.sin(a-.12)*14);
+      g.quadraticCurveTo(cx+Math.cos(a)*40,cy+30+Math.sin(a)*44,cx+Math.cos(a+.05)*len,cy+40+Math.sin(a)*len*.5);
+      g.quadraticCurveTo(cx+Math.cos(a)*34,cy+24+Math.sin(a)*40,cx+Math.cos(a+.14)*14,cy+18);
+      g.closePath();g.fillStyle=ballGrad(g,cx+Math.cos(a)*34,cy+26+Math.sin(a)*34,12,col);g.fill();g.stroke();
+    }
+    ball(cx,cy-4,32,34); // mantle
+    ball(cx,cy-30,20,15,shade(col,1.12)); // dome crest
+    eye(cx-13,cy-2,7,true);eye(cx+13,cy-2,7,true);brows(cy-2,8);
+  }else if(id==="5-1"){ // Leviathan — long sea serpent with fins
+    ball(cx,cy+24,40,15,shade(col,.85));
+    ball(cx-6,cy+4,30,14);
+    ball(cx-2,cy-16,23,13,shade(col,1.1));
+    for(const d of[-1,1]){ // dorsal fins
+      g.beginPath();g.moveTo(cx+12,cy-44);g.lineTo(cx+12+d*16,cy-58);g.lineTo(cx+12+d*4,cy-40);g.closePath();
+      g.fillStyle=ballGrad(g,cx+12,cy-48,10,shade(col,1.2));g.fill();g.stroke();
+    }
+    ball(cx+12,cy-32,20,17); // head
+    eye(cx+6,cy-36,5.5,true);eye(cx+20,cy-34,5.5,true);
+  }else if(id==="6-0"){ // Lich King — crowned skull mage
+    g.beginPath();g.moveTo(cx-30,cy+38);g.quadraticCurveTo(cx-34,cy-28,cx,cy-32);
+    g.quadraticCurveTo(cx+34,cy-28,cx+30,cy+38);g.closePath();
+    g.fillStyle=ballGrad(g,cx,cy,40,col);g.fill();g.stroke(); // robe
+    ball(cx,cy-22,20,18,"#e8e0cf"); // skull
+    g.fillStyle="rgba(8,6,16,.92)";
+    g.beginPath();g.ellipse(cx-8,cy-24,4.6,6.2,0,0,6.29);g.fill();
+    g.beginPath();g.ellipse(cx+8,cy-24,4.6,6.2,0,0,6.29);g.fill();
+    glowEye(g,cx-8,cy-24,3.4,"#66ffcc");glowEye(g,cx+8,cy-24,3.4,"#66ffcc");
+    g.fillStyle="#ffd75e"; // crown
+    g.beginPath();g.moveTo(cx-16,cy-38);g.lineTo(cx-16,cy-52);g.lineTo(cx-8,cy-42);g.lineTo(cx,cy-56);
+    g.lineTo(cx+8,cy-42);g.lineTo(cx+16,cy-52);g.lineTo(cx+16,cy-38);g.closePath();g.fill();g.stroke();
+  }else if(id==="6-1"){ // Void Warlock — hooded caster with a void orb
+    g.beginPath();g.moveTo(cx-30,cy+38);g.quadraticCurveTo(cx-30,cy-36,cx,cy-42);
+    g.quadraticCurveTo(cx+30,cy-36,cx+30,cy+38);g.closePath();
+    g.fillStyle=ballGrad(g,cx,cy-4,42,col);g.fill();g.stroke(); // hooded robe
+    g.beginPath();g.moveTo(cx-18,cy-16);g.quadraticCurveTo(cx,cy-46,cx+18,cy-16);
+    g.lineTo(cx+12,cy-4);g.lineTo(cx-12,cy-4);g.closePath();
+    g.fillStyle="rgba(6,4,12,.95)";g.fill();g.stroke(); // shadowed hood
+    glowEye(g,cx-7,cy-15,4,"#c26bff");glowEye(g,cx+7,cy-15,4,"#c26bff");
+    g.fillStyle=ballGrad(g,cx,cy+22,12,"#7a3ac0"); // floating orb
+    g.beginPath();g.arc(cx,cy+22,12,0,6.29);g.fill();g.stroke();
+    glowEye(g,cx,cy+22,4,"#e0b3ff");
+  }else if(id==="7-0"){ // Fallen Seraph — winged radiant angel
+    for(const d of[-1,1]){ // wings
+      g.beginPath();g.moveTo(cx+d*10,cy-10);
+      g.quadraticCurveTo(cx+d*54,cy-44,cx+d*60,cy-8);
+      g.quadraticCurveTo(cx+d*44,cy-6,cx+d*50,cy+16);
+      g.quadraticCurveTo(cx+d*30,cy+6,cx+d*10,cy+8);g.closePath();
+      g.fillStyle=ballGrad(g,cx+d*36,cy-8,26,"#eef2ff");g.fill();g.stroke();
+    }
+    ball(cx,cy+8,22,26); // body
+    ball(cx,cy-22,16,15,shade(col,1.15)); // head
+    g.strokeStyle="#ffe89a";g.lineWidth=4; // halo
+    g.beginPath();g.ellipse(cx,cy-40,15,5,0,0,6.29);g.stroke();g.strokeStyle=OL;
+    glowEye(g,cx-6,cy-22,3.4,"#fff2c0");glowEye(g,cx+6,cy-22,3.4,"#fff2c0");
+  }else if(id==="7-1"){ // World-Ender — cosmic titan with a burning core
+    ball(cx,cy+10,36,34);
+    for(const d of[-1,1])ball(cx+d*34,cy-4,12,16,shade(col,1.1)); // shoulders
+    ball(cx,cy-30,20,18,shade(col,1.15)); // head
+    const cg=g.createRadialGradient(cx,cy+12,0,cx,cy+12,18); // chest core
+    cg.addColorStop(0,"#fff");cg.addColorStop(.4,"#ffd75e");cg.addColorStop(1,"rgba(255,140,60,0)");
+    g.save();g.globalCompositeOperation="lighter";g.fillStyle=cg;
+    g.beginPath();g.arc(cx,cy+12,18,0,6.29);g.fill();g.restore();
+    glowEye(g,cx-8,cy-30,4.4,"#ff8a3c");glowEye(g,cx+8,cy-30,4.4,"#ff8a3c");brows(cy-30,8);
+  }else{ // Iron Warden — plated juggernaut (fallback)
     ball(cx,cy+16,34,26,shade(col,.9)); // torso
     for(const d of[-1,1])ball(cx+d*30,cy+2,11,14,shade(col,1.1)); // pauldrons
     g.fillStyle=ballGrad(g,cx,cy+16,20,shade(col,1.2)); // chest plate
@@ -1966,7 +2054,7 @@ function drawHero(x,y,t,flip,moving,alpha,g,ch){
   const OL="#141024";
   g.lineJoin="round";g.lineCap="round";
   // legs
-  g.strokeStyle=OL;g.lineWidth=5.5;
+  g.strokeStyle=OL;g.lineWidth=4;
   g.beginPath();g.moveTo(-4,9+bob*.3);g.lineTo(-4+lg,18);
   g.moveTo(4,9+bob*.3);g.lineTo(4-lg,18);g.stroke();
   // katana on back: outlined blade + gold wrap
